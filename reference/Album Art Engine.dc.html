@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;background:#0a0a0b;}
+    input[type=range]{-webkit-appearance:none;appearance:none;width:100%;background:transparent;cursor:pointer;height:12px;}
+    input[type=range]::-webkit-slider-runnable-track{height:2px;background:#26262a;border-radius:2px;}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:11px;height:11px;border-radius:50%;background:#e8e8ea;margin-top:-4.5px;}
+    input[type=range]::-moz-range-track{height:2px;background:#26262a;border-radius:2px;}
+    input[type=range]::-moz-range-thumb{width:11px;height:11px;border:none;border-radius:50%;background:#e8e8ea;}
+    input[type=number]::-webkit-inner-spin-button{opacity:.3;}
+    ::placeholder{color:#48484c;letter-spacing:.1em;}
+    .pnl::-webkit-scrollbar{width:9px;}
+    .pnl::-webkit-scrollbar-track{background:#0c0c0e;}
+    .pnl::-webkit-scrollbar-thumb{background:#222226;border-radius:5px;border:2px solid #0c0c0e;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+  </style>
+</helmet>
+<div style="height:100vh;overflow:hidden;background:#0a0a0b;color:#e8e8ea;font-family:'IBM Plex Sans',sans-serif;display:flex;flex-direction:column;">
+
+  <header style="display:flex;align-items:center;padding:14px 22px;border-bottom:1px solid #18181b;flex:none;">
+    <span style="display:inline-flex;align-items:baseline;">
+      <span style="font:300 15px/1 'IBM Plex Mono';letter-spacing:.3em;color:#7d7d83;">aka</span><span style="font:600 15px/1 'IBM Plex Mono';letter-spacing:.3em;color:#f0f0f2;">COVART</span>
+    </span>
+  </header>
+
+  <main style="flex:1;display:flex;min-height:0;">
+
+    <section style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:34px;background:radial-gradient(circle at 50% 38%,#121215,#0a0a0b 72%);min-width:0;">
+      <div style="position:relative;width:min(74vh,720px);aspect-ratio:1;box-shadow:0 30px 80px rgba(0,0,0,.65),0 0 0 1px #1c1c20;background:#000;">
+        <canvas ref="{{ canvasRef }}" style="width:100%;height:100%;display:block;"></canvas>
+      </div>
+      <div style="font:400 9px/1 'IBM Plex Mono';letter-spacing:.16em;color:#55555a;">3000 × 3000 PX&nbsp;&nbsp;·&nbsp;&nbsp;SEED&nbsp;{{ seed }}</div>
+    </section>
+
+    <aside style="width:364px;flex:none;border-left:1px solid #18181b;background:#0c0c0e;display:flex;flex-direction:column;min-height:0;">
+
+      <div style="flex:none;padding:12px 18px 0;display:flex;gap:5px;">
+        <sc-for list="{{ engineOpts }}" as="o" hint-placeholder-count="4">
+          <button data-val="{{ o.val }}" onClick="{{ setEngine }}" style="{{ o.style }}" style-hover="border-color:#3a3a42;">{{ o.label }}</button>
+        </sc-for>
+      </div>
+
+      <div style="flex:none;padding:12px 18px;border-bottom:1px solid #18181b;display:flex;gap:8px;">
+        <input type="number" value="{{ seed }}" data-key="seed" onChange="{{ onRange }}" style="flex:1;min-width:0;background:#141417;border:1px solid #222226;color:#e8e8ea;font:500 12px/1 'IBM Plex Mono';padding:0 12px;height:40px;border-radius:3px;outline:none;" />
+        <button onClick="{{ newSeed }}" style="flex:none;padding:0 18px;height:40px;background:#ececef;border:none;color:#0a0a0b;border-radius:3px;font:600 10px/1 'IBM Plex Mono';letter-spacing:.14em;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:7px;" style-hover="background:#ffffff;">↻&nbsp;GENERATE</button>
+      </div>
+
+      <div class="pnl" style="flex:1;overflow-y:auto;min-height:0;">
+
+        <sc-if value="{{ stillMode }}" hint-placeholder-val="{{ true }}">
+
+        <div style="border-bottom:1px solid #161619;">
+          <button data-sec="library" onClick="{{ toggleSec }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:15px 20px;background:transparent;border:none;cursor:pointer;font:600 9px/1 'IBM Plex Mono';letter-spacing:.22em;color:#9a9aa0;">STARTING POINTS<span style="color:#6a6a6e;font:400 14px/1 'IBM Plex Mono';">{{ libGlyph }}</span></button>
+          <sc-if value="{{ libOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:0 20px 18px;">
+              <div style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;margin-bottom:8px;">PRESETS</div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px;">
+                <sc-for list="{{ presetChips }}" as="o" hint-placeholder-count="8">
+                  <button data-i="{{ o.i }}" onClick="{{ applyPreset }}" style="{{ o.style }}" style-hover="border-color:#3a3a42;background:#1c1c20;">{{ o.name }}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
+                <span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">VARIATIONS</span>
+                <button onClick="{{ reshuffle }}" style="background:transparent;border:1px solid #202024;color:#9a9aa0;border-radius:3px;padding:5px 10px;font:600 8px/1 'IBM Plex Mono';letter-spacing:.12em;cursor:pointer;" style-hover="border-color:#3a3a42;color:#ececef;">↻ MORE</button>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                <sc-for list="{{ gallery }}" as="o" hint-placeholder-count="9">
+                  <button data-seed="{{ o.seed }}" onClick="{{ pickThumb }}" style="position:relative;padding:0;border:1px solid #1e1e22;background:#000;border-radius:3px;cursor:pointer;aspect-ratio:1;overflow:hidden;line-height:0;" style-hover="border-color:#4a4a52;">
+                    <canvas ref="{{ thumbRef }}" data-gi="{{ o.i }}" style="width:100%;height:100%;display:block;"></canvas>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="border-bottom:1px solid #161619;">
+          <button data-sec="palette" onClick="{{ toggleSec }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:15px 20px;background:transparent;border:none;cursor:pointer;font:600 9px/1 'IBM Plex Mono';letter-spacing:.22em;color:#9a9aa0;">PALETTE · MOOD<span style="color:#6a6a6e;font:400 14px/1 'IBM Plex Mono';">{{ palGlyph }}</span></button>
+          <sc-if value="{{ palOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:0 20px 18px;display:flex;gap:6px;">
+              <sc-for list="{{ moodOpts }}" as="o" hint-placeholder-count="4">
+                <button data-key="{{ o.key }}" data-val="{{ o.val }}" onClick="{{ onPick }}" style="{{ o.style }}">{{ o.label }}</button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="border-bottom:1px solid #161619;">
+          <button data-sec="composition" onClick="{{ toggleSec }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:15px 20px;background:transparent;border:none;cursor:pointer;font:600 9px/1 'IBM Plex Mono';letter-spacing:.22em;color:#9a9aa0;">COMPOSITION<span style="color:#6a6a6e;font:400 14px/1 'IBM Plex Mono';">{{ compGlyph }}</span></button>
+          <sc-if value="{{ compOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:0 20px 18px;">
+              <sc-if value="{{ engBlob }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">BLOB DENSITY</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ density }}</span></div>
+                <input type="range" min="0" max="100" value="{{ density }}" data-key="density" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">SMEAR / BLUR</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ smear }}</span></div>
+                <input type="range" min="0" max="100" value="{{ smear }}" data-key="smear" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">BLOB SIZE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ blobSize }}</span></div>
+                <input type="range" min="0" max="100" value="{{ blobSize }}" data-key="blobSize" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">GLOW</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ glow }}</span></div>
+                <input type="range" min="0" max="100" value="{{ glow }}" data-key="glow" onChange="{{ onRange }}" />
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 12px;">
+                <span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">DIAMOND ZONES</span>
+                <button data-key="diamonds" onClick="{{ onToggle }}" style="{{ stDiamonds }}">{{ diamondsLabel }}</button>
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">COUNT</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ diamondCount }}</span></div>
+                <input type="range" min="0" max="4" value="{{ diamondCount }}" data-key="diamondCount" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">SIZE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ diamondSize }}</span></div>
+                <input type="range" min="0" max="100" value="{{ diamondSize }}" data-key="diamondSize" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">SHAPE&nbsp;WIDE–TALL</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ diamondShape }}</span></div>
+                <input type="range" min="0" max="100" value="{{ diamondShape }}" data-key="diamondShape" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin:18px 0 12px;font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">ACCENT STREAKS</div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">INTENSITY</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ accent }}</span></div>
+                <input type="range" min="0" max="100" value="{{ accent }}" data-key="accent" onChange="{{ onRange }}" />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">COUNT</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ accentCount }}</span></div>
+                <input type="range" min="0" max="4" value="{{ accentCount }}" data-key="accentCount" onChange="{{ onRange }}" />
+              </div>
+              </sc-if>
+
+              <sc-if value="{{ engGrid }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">COLUMNS</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ gridCols }}</span></div>
+                <input type="range" min="3" max="18" value="{{ gridCols }}" data-key="gridCols" onChange="{{ onRange }}" />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">FILL DENSITY</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ gridDensity }}</span></div>
+                <input type="range" min="0" max="100" value="{{ gridDensity }}" data-key="gridDensity" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin:16px 0 16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">3D&nbsp;PLANE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ gridPerspective }}</span></div>
+                <input type="range" min="0" max="100" value="{{ gridPerspective }}" data-key="gridPerspective" onChange="{{ onRange }}" />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">MAGNET&nbsp;·&nbsp;SCATTER</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ gridMagnet }}</span></div>
+                <input type="range" min="0" max="100" value="{{ gridMagnet }}" data-key="gridMagnet" onChange="{{ onRange }}" />
+              </div>
+              </sc-if>
+
+              <sc-if value="{{ engWaves }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">LINES</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ waveCount }}</span></div>
+                <input type="range" min="10" max="160" value="{{ waveCount }}" data-key="waveCount" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">AMPLITUDE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ waveAmp }}</span></div>
+                <input type="range" min="0" max="100" value="{{ waveAmp }}" data-key="waveAmp" onChange="{{ onRange }}" />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">DETAIL</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ waveDetail }}</span></div>
+                <input type="range" min="0" max="100" value="{{ waveDetail }}" data-key="waveDetail" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin:16px 0 16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">TURBULENCE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ waveTurbulence }}</span></div>
+                <input type="range" min="0" max="100" value="{{ waveTurbulence }}" data-key="waveTurbulence" onChange="{{ onRange }}" />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">PERSPECTIVE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ wavePerspective }}</span></div>
+                <input type="range" min="0" max="100" value="{{ wavePerspective }}" data-key="wavePerspective" onChange="{{ onRange }}" />
+              </div>
+              </sc-if>
+
+              <sc-if value="{{ engOrb }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">ORB SIZE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ orbSize }}</span></div>
+                <input type="range" min="0" max="100" value="{{ orbSize }}" data-key="orbSize" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">SOFTNESS</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ orbSoft }}</span></div>
+                <input type="range" min="0" max="100" value="{{ orbSoft }}" data-key="orbSoft" onChange="{{ onRange }}" />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">HALFTONE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ orbHalftone }}</span></div>
+                <input type="range" min="0" max="100" value="{{ orbHalftone }}" data-key="orbHalftone" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin:16px 0 16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">MELT</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ orbMelt }}</span></div>
+                <input type="range" min="0" max="100" value="{{ orbMelt }}" data-key="orbMelt" onChange="{{ onRange }}" />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">3D&nbsp;SHADE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ orbShade }}</span></div>
+                <input type="range" min="0" max="100" value="{{ orbShade }}" data-key="orbShade" onChange="{{ onRange }}" />
+              </div>
+              </sc-if>
+
+              <div style="margin:18px 0 12px;font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">FINISH</div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">CONTRAST</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ contrast }}</span></div>
+                <input type="range" min="0" max="100" value="{{ contrast }}" data-key="contrast" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">SATURATION</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ saturation }}</span></div>
+                <input type="range" min="0" max="100" value="{{ saturation }}" data-key="saturation" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">VIGNETTE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ vignette }}</span></div>
+                <input type="range" min="0" max="100" value="{{ vignette }}" data-key="vignette" onChange="{{ onRange }}" />
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">BLOOM</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ bloom }}</span></div>
+                <input type="range" min="0" max="100" value="{{ bloom }}" data-key="bloom" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-top:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">SOFTEN&nbsp;·&nbsp;BLUR</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ soften }}</span></div>
+                <input type="range" min="0" max="100" value="{{ soften }}" data-key="soften" onChange="{{ onRange }}" />
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="border-bottom:1px solid #161619;">
+          <button data-sec="texture" onClick="{{ toggleSec }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:15px 20px;background:transparent;border:none;cursor:pointer;font:600 9px/1 'IBM Plex Mono';letter-spacing:.22em;color:#9a9aa0;">TEXTURE<span style="color:#6a6a6e;font:400 14px/1 'IBM Plex Mono';">{{ texGlyph }}</span></button>
+          <sc-if value="{{ texOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:0 20px 18px;">
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">FILM GRAIN</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ grain }}</span></div>
+                <input type="range" min="0" max="100" value="{{ grain }}" data-key="grain" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">GRAIN SIZE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ grainSize }}</span></div>
+                <input type="range" min="0" max="100" value="{{ grainSize }}" data-key="grainSize" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">DUST / SPECKS</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ dust }}</span></div>
+                <input type="range" min="0" max="100" value="{{ dust }}" data-key="dust" onChange="{{ onRange }}" />
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 12px;">
+                <span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">SCRATCH LINES</span>
+                <button data-key="scratches" onClick="{{ onToggle }}" style="{{ stScratches }}">{{ scratchesLabel }}</button>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">COUNT</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ scratchCount }}</span></div>
+                <input type="range" min="0" max="16" value="{{ scratchCount }}" data-key="scratchCount" onChange="{{ onRange }}" />
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="border-bottom:1px solid #161619;">
+          <button data-sec="sigil" onClick="{{ toggleSec }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:15px 20px;background:transparent;border:none;cursor:pointer;font:600 9px/1 'IBM Plex Mono';letter-spacing:.22em;color:#9a9aa0;">SIGIL<span style="color:#6a6a6e;font:400 14px/1 'IBM Plex Mono';">{{ sigGlyph }}</span></button>
+          <sc-if value="{{ sigOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:0 20px 18px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">SIGIL MARKS</span>
+                <button data-key="sigilMarks" onClick="{{ onToggle }}" style="{{ stMarks }}">{{ marksLabel }}</button>
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">DENSITY</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ sigilMarkCount }}</span></div>
+                <input type="range" min="0" max="20" value="{{ sigilMarkCount }}" data-key="sigilMarkCount" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">SIZE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ sigilMarkSize }}</span></div>
+                <input type="range" min="0" max="100" value="{{ sigilMarkSize }}" data-key="sigilMarkSize" onChange="{{ onRange }}" />
+              </div>
+              <div style="margin-bottom:6px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">SCATTER</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ sigilMarkScatter }}</span></div>
+                <input type="range" min="0" max="100" value="{{ sigilMarkScatter }}" data-key="sigilMarkScatter" onChange="{{ onRange }}" />
+              </div>
+
+              <div style="height:1px;background:#161619;margin:16px 0;"></div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">BARB FRAME</span>
+                <button data-key="sigilFrame" onClick="{{ onToggle }}" style="{{ stFrame }}">{{ frameLabel }}</button>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">FRAME DENSITY</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ sigilFrameDensity }}</span></div>
+                <input type="range" min="0" max="100" value="{{ sigilFrameDensity }}" data-key="sigilFrameDensity" onChange="{{ onRange }}" />
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="border-bottom:1px solid #161619;">
+          <button data-sec="type" onClick="{{ toggleSec }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:15px 20px;background:transparent;border:none;cursor:pointer;font:600 9px/1 'IBM Plex Mono';letter-spacing:.22em;color:#9a9aa0;">TYPE OVERLAY<span style="color:#6a6a6e;font:400 14px/1 'IBM Plex Mono';">{{ typeGlyph }}</span></button>
+          <sc-if value="{{ typeOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:0 20px 18px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">RENDER TEXT</span>
+                <button data-key="showText" onClick="{{ onToggle }}" style="{{ stText }}">{{ textLabel }}</button>
+              </div>
+              <input type="text" value="{{ title }}" data-key="title" onChange="{{ onText }}" placeholder="TITLE" style="width:100%;background:#141417;border:1px solid #222226;color:#e8e8ea;font:600 11px/1 'IBM Plex Mono';letter-spacing:.1em;padding:0 12px;height:38px;border-radius:3px;outline:none;margin-bottom:9px;" />
+              <input type="text" value="{{ artist }}" data-key="artist" onChange="{{ onText }}" placeholder="ARTIST" style="width:100%;background:#141417;border:1px solid #222226;color:#b8b8bc;font:400 11px/1 'IBM Plex Mono';letter-spacing:.1em;padding:0 12px;height:38px;border-radius:3px;outline:none;margin-bottom:14px;" />
+              <div style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;margin-bottom:8px;">CASE</div>
+              <div style="display:flex;gap:6px;margin-bottom:14px;">
+                <sc-for list="{{ caseOpts }}" as="o" hint-placeholder-count="3">
+                  <button data-key="{{ o.key }}" data-val="{{ o.val }}" onClick="{{ onPick }}" style="{{ o.style }}">{{ o.label }}</button>
+                </sc-for>
+              </div>
+              <div style="margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">DISTORT&nbsp;/&nbsp;GLITCH</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ distort }}</span></div>
+                <input type="range" min="0" max="100" value="{{ distort }}" data-key="distort" onChange="{{ onRange }}" />
+              </div>
+              <div style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;margin-bottom:8px;">COLOR</div>
+              <div style="display:flex;gap:6px;margin-bottom:14px;">
+                <sc-for list="{{ colorOpts }}" as="o" hint-placeholder-count="3">
+                  <button data-key="{{ o.key }}" data-val="{{ o.val }}" onClick="{{ onPick }}" style="{{ o.style }}">{{ o.label }}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                <span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#6a6a6e;">POSITION</span>
+                <span style="font:400 8px/1 'IBM Plex Mono';letter-spacing:.08em;color:#55555a;">or drag on canvas ⤢</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:108px;">
+                <sc-for list="{{ anchors }}" as="o" hint-placeholder-count="9">
+                  <button data-x="{{ o.x }}" data-y="{{ o.y }}" data-align="{{ o.align }}" onClick="{{ pickAnchor }}" style="{{ o.style }}" style-hover="border-color:#3a3a42;"><span style="{{ o.dot }}"></span></button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        </sc-if>
+
+        <sc-if value="{{ animMode }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:16px 20px 4px;">
+            <div style="font:400 9px/1.7 'IBM Plex Mono';letter-spacing:.05em;color:#6a6a6e;">Beat-synced motion for techno. Set the BPM, dial the pump &amp; kick, then export a looping video (MP4 where supported, else WEBM).</div>
+          </div>
+          <div style="padding:14px 20px 6px;">
+            <div style="font:600 9px/1 'IBM Plex Mono';letter-spacing:.18em;color:#6a6a6e;margin-bottom:14px;">BEAT</div>
+            <div style="margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">BPM</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ animBPM }}</span></div>
+              <input type="range" min="90" max="160" value="{{ animBPM }}" data-key="animBPM" onChange="{{ onRange }}" />
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">PUMP</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ animPump }}</span></div>
+              <input type="range" min="0" max="100" value="{{ animPump }}" data-key="animPump" onChange="{{ onRange }}" />
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">KICK</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ animKick }}</span></div>
+              <input type="range" min="0" max="100" value="{{ animKick }}" data-key="animKick" onChange="{{ onRange }}" />
+            </div>
+            <div style="height:1px;background:#161619;margin:16px 0;"></div>
+
+            <div style="font:600 9px/1 'IBM Plex Mono';letter-spacing:.18em;color:#6a6a6e;margin-bottom:14px;">DRIFT</div>
+            <div style="margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">SPEED</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ animSpeed }}</span></div>
+              <input type="range" min="0" max="100" value="{{ animSpeed }}" data-key="animSpeed" onChange="{{ onRange }}" />
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">WANDER</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ animDrift }}</span></div>
+              <input type="range" min="0" max="100" value="{{ animDrift }}" data-key="animDrift" onChange="{{ onRange }}" />
+            </div>
+            <div style="margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">SWIRL</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ animSwirl }}</span></div>
+              <input type="range" min="0" max="100" value="{{ animSwirl }}" data-key="animSwirl" onChange="{{ onRange }}" />
+            </div>
+
+            <div style="height:1px;background:#161619;margin:16px 0;"></div>
+
+            <div style="font:600 9px/1 'IBM Plex Mono';letter-spacing:.18em;color:#6a6a6e;margin-bottom:14px;">COLOR</div>
+            <div style="margin-bottom:16px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">HUE CYCLE</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ animHue }}</span></div>
+              <input type="range" min="0" max="100" value="{{ animHue }}" data-key="animHue" onChange="{{ onRange }}" />
+            </div>
+            <div style="margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;"><span style="font:500 9px/1 'IBM Plex Mono';letter-spacing:.14em;color:#8a8a8e;">FLICKER</span><span style="font:500 10px/1 'IBM Plex Mono';color:#d8d8da;">{{ animFlicker }}</span></div>
+              <input type="range" min="0" max="100" value="{{ animFlicker }}" data-key="animFlicker" onChange="{{ onRange }}" />
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+
+      <div style="flex:none;padding:12px 18px;border-top:1px solid #18181b;display:flex;flex-direction:column;gap:9px;">
+        <div style="display:flex;gap:6px;">
+          <button data-mode="still" onClick="{{ setMode }}" style="{{ stillBtn }}">STILL</button>
+          <button data-mode="animate" onClick="{{ setMode }}" style="{{ animBtn }}">ANIMATE</button>
+        </div>
+        <button onClick="{{ primaryAction }}" style="width:100%;height:44px;background:#ececef;border:none;color:#0a0a0b;border-radius:3px;font:600 10px/1 'IBM Plex Mono';letter-spacing:.16em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;" style-hover="background:#ffffff;">
+          <span style="{{ spinStyle }}">◐</span>{{ actionLabel }}
+        </button>
+      </div>
+
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  canvasRef = React.createRef();
+  displaySize = 880;
+  thumbEls = {};
+  state = {
+    mood:'random',
+    engine:'blob', gridCols:9, gridDensity:55, gridPerspective:0, gridMagnet:0, waveCount:60, waveAmp:50, waveDetail:45, waveTurbulence:25, wavePerspective:0, orbSize:55, orbSoft:55, orbHalftone:40, orbMelt:30, orbShade:55, soften:0,
+    seed:(Math.random()*1e9)|0,
+    density:60, smear:45, grain:60,
+    blobSize:50, glow:55, contrast:50, saturation:50, vignette:28, bloom:22,
+    grainSize:50, dust:18,
+    accent:60, accentCount:2,
+    diamonds:true, diamondCount:2, diamondSize:50, diamondShape:50,
+    markers:true, markerCount:8, markerScatter:55, markSize:45,
+    sigilMarks:true, sigilMarkCount:5, sigilMarkSize:42, sigilMarkScatter:58,
+    sigilFrame:false, sigilFrameDensity:50,
+    mode:'still', animSpeed:55, animDrift:62, animSwirl:24, animHue:18, animFlicker:20,
+    animBPM:128, animPump:55, animKick:50, recording:false,
+    scratches:true, scratchCount:6,
+    showText:true, title:'UNTITLED', artist:'V/A',
+    textColor:'auto', textCase:'upper', distort:0,
+    textX:0.05, textY:0.85, textAlign:'left',
+    rendering:false,
+    open:{library:true,palette:true,composition:false,texture:false,sigil:true,type:false},
+    gallerySeeds:[],
+  };
+
+  makeSeeds(n){ var a=[]; for(var i=0;i<n;i++){ a.push((Math.random()*1e9)|0); } return a; }
+
+  presets(){ return [
+    {name:'VOID',     cfg:{mood:'dark', density:36,smear:64,blobSize:64,glow:72,contrast:55,saturation:42,vignette:48,bloom:42,diamonds:true,diamondCount:1,accent:32,accentCount:1,grain:54,grainSize:46,dust:14,scratches:true,scratchCount:4,sigilMarks:true,sigilMarkCount:4,sigilMarkSize:46,sigilMarkScatter:52,sigilFrame:false,sigilFrameDensity:46}},
+    {name:'RITUAL',   cfg:{mood:'dark', density:54,smear:40,blobSize:50,glow:60,contrast:52,saturation:56,vignette:34,bloom:28,diamonds:true,diamondCount:2,accent:58,accentCount:2,grain:58,grainSize:50,dust:18,scratches:true,scratchCount:6,sigilMarks:true,sigilMarkCount:7,sigilMarkSize:42,sigilMarkScatter:64,sigilFrame:false,sigilFrameDensity:62}},
+    {name:'ASH',      cfg:{mood:'grey', density:62,smear:34,blobSize:44,glow:48,contrast:54,saturation:46,vignette:30,bloom:14,diamonds:true,diamondCount:2,accent:40,accentCount:1,grain:72,grainSize:58,dust:28,scratches:true,scratchCount:9,sigilMarks:true,sigilMarkCount:6,sigilMarkSize:40,sigilMarkScatter:58,sigilFrame:false,sigilFrameDensity:56}},
+    {name:'BLEACH',   cfg:{mood:'cream',density:30,smear:52,blobSize:66,glow:50,contrast:48,saturation:50,vignette:22,bloom:18,diamonds:true,diamondCount:2,accent:30,accentCount:1,grain:52,grainSize:48,dust:12,scratches:true,scratchCount:5,sigilMarks:true,sigilMarkCount:4,sigilMarkSize:46,sigilMarkScatter:50,sigilFrame:false,sigilFrameDensity:34}},
+    {name:'TOXIC',    cfg:{mood:'dark', density:50,smear:30,blobSize:46,glow:82,contrast:58,saturation:80,vignette:30,bloom:48,diamonds:true,diamondCount:2,accent:92,accentCount:3,grain:50,grainSize:44,dust:16,scratches:true,scratchCount:6,sigilMarks:true,sigilMarkCount:6,sigilMarkSize:42,sigilMarkScatter:60,sigilFrame:false,sigilFrameDensity:50}},
+    {name:'STATIC',   cfg:{mood:'grey', density:40,smear:26,blobSize:40,glow:50,contrast:62,saturation:38,vignette:34,bloom:12,diamonds:false,diamondCount:1,accent:30,accentCount:1,grain:94,grainSize:64,dust:42,scratches:true,scratchCount:13,sigilMarks:true,sigilMarkCount:9,sigilMarkSize:38,sigilMarkScatter:66,sigilFrame:true,sigilFrameDensity:60}},
+    {name:'OBSIDIAN', cfg:{mood:'dark', density:28,smear:72,blobSize:72,glow:64,contrast:60,saturation:46,vignette:56,bloom:34,diamonds:true,diamondCount:1,accent:24,accentCount:1,grain:46,grainSize:52,dust:10,scratches:false,scratchCount:3,sigilMarks:true,sigilMarkCount:3,sigilMarkSize:52,sigilMarkScatter:40,sigilFrame:false,sigilFrameDensity:54}},
+    {name:'HAZE',     cfg:{mood:'cream',density:44,smear:58,blobSize:58,glow:52,contrast:46,saturation:54,vignette:26,bloom:22,diamonds:true,diamondCount:3,accent:48,accentCount:2,grain:54,grainSize:50,dust:14,scratches:true,scratchCount:6,sigilMarks:true,sigilMarkCount:5,sigilMarkSize:44,sigilMarkScatter:55,sigilFrame:false,sigilFrameDensity:50}},
+  ]; }
+
+  prng(a){ a=a>>>0; return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+  palettes(){
+    return {
+      dark:{ base:[6,7,9],
+        colors:[[214,226,220],[214,226,220],[196,212,210],[104,148,134],[40,74,86],[60,96,78],[186,138,146],[150,176,196],[150,140,84]],
+        diamondColors:[[226,234,229],[150,202,182],[120,172,192],[202,150,162],[110,164,142],[230,228,222]],
+        fleck:[236,241,239], smoke:[40,44,46],
+        accentColors:[[212,190,72],[80,182,172],[212,120,142]],
+        scratch:'rgb(206,212,212)', markerColors:[[120,132,128],[150,148,92],[92,144,154]], markerBg:[34,40,42], markerDot:[150,160,158],
+        blobCount:26, rMin:0.05, rMax:0.18, aMin:0.32, aMax:0.72, diamondAlpha:0.95, topSmudge:false, clearCenter:false },
+      cream:{ base:[233,231,220],
+        colors:[[233,231,220],[210,214,196],[176,200,158],[214,168,180],[150,150,176],[208,170,128],[180,176,96],[120,140,128],[96,112,134],[150,112,90],[110,116,118]],
+        diamondColors:[[150,176,134],[176,128,142],[120,134,168],[170,150,108],[206,224,190],[120,128,124]],
+        fleck:[252,250,244], smoke:[120,118,112],
+        accentColors:[[200,176,30],[70,168,176],[214,120,150]],
+        scratch:'rgb(96,94,88)', markerColors:[[120,114,96],[80,140,150],[150,110,96]], markerBg:[150,140,116], markerDot:[90,74,56],
+        blobCount:26, rMin:0.10, rMax:0.32, aMin:0.10, aMax:0.30, diamondAlpha:0.34, topSmudge:true, clearCenter:true },
+      grey:{ base:[204,198,192],
+        colors:[[120,116,112],[170,160,144],[190,150,158],[150,144,178],[180,172,108],[120,140,160],[44,72,56],[92,90,88],[150,110,86]],
+        diamondColors:[[120,134,120],[160,120,130],[118,124,156],[150,150,110],[90,96,92]],
+        fleck:[244,242,238], smoke:[100,98,96],
+        accentColors:[[196,176,40],[60,150,150],[206,120,148]],
+        scratch:'rgb(54,52,50)', markerColors:[[100,96,92],[80,130,140],[150,110,120]], markerBg:[120,114,108], markerDot:[56,54,52],
+        blobCount:40, rMin:0.08, rMax:0.26, aMin:0.18, aMax:0.46, diamondAlpha:0.4, topSmudge:false, clearCenter:false },
+    };
+  }
+
+  resolveMood(seed,mood){ if(mood!=='random') return mood; var r=this.prng(seed>>>0); return ['dark','cream','grey'][Math.floor(r()*3)]; }
+
+  paramSig(){ var s=this.state; return [s.mood,s.engine,s.gridCols,s.gridDensity,s.gridPerspective,s.gridMagnet,s.waveCount,s.waveAmp,s.waveDetail,s.waveTurbulence,s.wavePerspective,s.orbSize,s.orbSoft,s.orbHalftone,s.orbMelt,s.orbShade,s.soften,s.density,s.smear,s.grain,s.blobSize,s.glow,s.contrast,s.saturation,s.vignette,s.bloom,s.grainSize,s.dust,s.accent,s.accentCount,s.diamonds,s.diamondCount,s.diamondSize,s.diamondShape,s.sigilMarks,s.sigilMarkCount,s.sigilMarkSize,s.sigilMarkScatter,s.sigilFrame,s.sigilFrameDensity,s.scratches,s.scratchCount].join('|'); }
+  textSig(){ var s=this.state; return [s.showText,s.title,s.artist,s.textColor,s.textCase,s.distort,s.textX,s.textY,s.textAlign].join('|'); }
+  sig(){ return this.state.seed+'|'+this.paramSig()+'|'+this.textSig(); }
+  gallerySig(){ return this.paramSig()+'||'+this.state.gallerySeeds.join(','); }
+
+  componentDidMount(){
+    if(!this.state.gallerySeeds.length){ this.setState({gallerySeeds:this.makeSeeds(9)}); }
+    this.draw(); this.drawGallery(); this.bindDrag();
+    if(document.fonts&&document.fonts.ready){ document.fonts.ready.then(()=>{ this.draw(); this.drawGallery(); }); }
+  }
+  componentDidUpdate(){
+    if(this.state.mode==='animate'){ if(!this._raf) this.startAnim(); return; }
+    if(this._raf) this.stopAnim();
+    if(this.sig()!==this._sig) this.draw();
+    if(this.gallerySig()!==this._gsig) this.drawGallery();
+  }
+
+  draw(){ this._sig=this.sig(); var c=this.canvasRef.current; if(!c) return; var S=this.displaySize; c.width=S; c.height=S; this.renderTo(c,S,this.state); }
+
+  drawGallery(){ this._gsig=this.gallerySig(); var seeds=this.state.gallerySeeds; var T=156;
+    for(var i=0;i<seeds.length;i++){ var el=this.thumbEls[i]; if(!el) continue; el.width=T; el.height=T; this.renderTo(el,T,Object.assign({},this.state,{seed:seeds[i],showText:false})); } }
+
+  bindDrag(){ var c=this.canvasRef.current; if(!c||this._dragBound) return; this._dragBound=true; var self=this;
+    var norm=function(e){ var r=c.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width, y:(e.clientY-r.top)/r.height}; };
+    c.addEventListener('pointerdown',function(e){ if(!self.state.showText) return; var p=norm(e); var b=self._textBox;
+      if(b && p.x>=b.x-0.04 && p.x<=b.x+b.w+0.04 && p.y>=b.y-0.04 && p.y<=b.y+b.h+0.04){ self._drag={dx:p.x-self.state.textX, dy:p.y-self.state.textY}; c.setPointerCapture(e.pointerId); c.style.cursor='grabbing'; e.preventDefault(); } });
+    c.addEventListener('pointermove',function(e){ var p=norm(e);
+      if(self._drag){ var nx=Math.max(0.01,Math.min(0.99,p.x-self._drag.dx)), ny=Math.max(0.01,Math.min(0.99,p.y-self._drag.dy)); self.setState({textX:nx,textY:ny}); }
+      else if(self.state.showText && self._textBox){ var b=self._textBox; c.style.cursor=(p.x>=b.x-0.04&&p.x<=b.x+b.w+0.04&&p.y>=b.y-0.04&&p.y<=b.y+b.h+0.04)?'grab':'default'; } });
+    var end=function(e){ if(self._drag){ self._drag=null; c.style.cursor='grab'; } };
+    c.addEventListener('pointerup',end); c.addEventListener('pointercancel',end);
+  }
+
+  renderTo(canvas,S,p){
+    var ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,S,S);
+    var T=p._t||0, ANIM=!!p._anim;
+    var seed=(p.seed>>>0)||1;
+    var PAL=this.palettes();
+    var mood=this.resolveMood(seed,p.mood);
+    var cfg=PAL[mood];
+    var rB=this.prng(seed^0x9e3779b1), rD=this.prng(seed^0x1b56c4e9), rA=this.prng(seed^0x7f4a7c15),
+        rS=this.prng(seed^0x2c1b3d77), rM=this.prng(seed^0x53a7f0d3), rG=this.prng(seed^0x6d1f2a8b),
+        rT=this.prng(seed^0x3b9a73c1);
+
+    var rgb=function(c){ return 'rgb('+c[0]+','+c[1]+','+c[2]+')'; };
+    var rgba=function(c,a){ return 'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')'; };
+    var pick=function(rng,arr){ return arr[Math.floor(rng()*arr.length)]; };
+    var hsh=function(n){ var x=Math.sin(n*12.9898)*43758.5453; return x-Math.floor(x); };
+    var shiftHue=function(c,deg){ if(!deg) return c; var r=c[0]/255,g=c[1]/255,b=c[2]/255; var mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,h=0,s=0,dd=mx-mn; if(dd!==0){ s=l>0.5?dd/(2-mx-mn):dd/(mx+mn); if(mx===r)h=((g-b)/dd+(g<b?6:0)); else if(mx===g)h=((b-r)/dd+2); else h=((r-g)/dd+4); h*=60; } h=((h+deg)%360+360)%360; function h2(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; } var rr,gg,bb; if(s===0){ rr=gg=bb=l; } else { var q=l<0.5?l*(1+s):l+s-l*s, pp=2*l-q, hh=h/360; rr=h2(pp,q,hh+1/3); gg=h2(pp,q,hh); bb=h2(pp,q,hh-1/3); } return [Math.round(rr*255),Math.round(gg*255),Math.round(bb*255)]; };
+    var hue=ANIM?(p.animHue||0)/100:0, flick=ANIM?(p.animFlicker||0)/100:0;
+    var bps=(p.animBPM||128)/60, RT=p._rt||0, bp=ANIM?((RT*bps)%1):0;
+    var pumpE=Math.pow(1-bp,2.0), kickE=Math.pow(1-bp,3.4), strobeE=Math.pow(1-bp,11);
+    var pump=ANIM?(p.animPump||0)/100:0, kick=ANIM?(p.animKick||0)/100:0, drift=ANIM?(p.animDrift||0)/100:0, swirl=ANIM?(p.animSwirl||0)/100:0;
+    var smudge=function(g,x,y,r,sx,sy,rot,col,a){ g.save(); g.translate(x,y); g.rotate(rot); g.scale(sx,sy); var gr=g.createRadialGradient(0,0,0,0,0,r); gr.addColorStop(0,rgba(col,a)); gr.addColorStop(0.65,rgba(col,a*0.5)); gr.addColorStop(1,rgba(col,0)); g.fillStyle=gr; g.beginPath(); g.arc(0,0,r,0,6.2832); g.fill(); g.restore(); };
+
+    ctx.fillStyle=rgb(cfg.base); ctx.fillRect(0,0,S,S);
+
+    var eng=p.engine||'blob';
+    if(eng==='grid'){ this.fieldGrid(ctx,S,p,mood,cfg,seed,{T:T,ANIM:ANIM,kickE:kickE,kick:kick,hue:hue,drift:drift,swirl:swirl}); }
+    else if(eng==='waves'){ this.fieldWaves(ctx,S,p,mood,cfg,seed,{T:T,ANIM:ANIM,kickE:kickE,kick:kick,hue:hue,drift:drift}); }
+    else if(eng==='orb'){ this.fieldOrb(ctx,S,p,mood,cfg,seed,{T:T,ANIM:ANIM,kickE:kickE,pumpE:pumpE,kick:kick,pump:pump,hue:hue,drift:drift,swirl:swirl}); }
+    else {
+    var paint=document.createElement('canvas'); paint.width=S; paint.height=S;
+    var pc=paint.getContext('2d');
+    var paintD=document.createElement('canvas'); paintD.width=S; paintD.height=S;
+    var pcd=paintD.getContext('2d');
+
+    var samplePos=function(){ var x,y;
+      if(mood==='dark'){ if(rB()<0.16){ x=S*rB(); } else { x=S*(0.16+rB()*0.52); } y=S*rB(); }
+      else if(mood==='cream'){ var e=rB(); if(e<0.55){ x=S*rB(); y=S*(0.56+rB()*0.48); } else if(e<0.80){ x=(rB()<0.5)?S*rB()*0.2:S*(0.8+rB()*0.2); y=S*rB(); } else { x=S*rB(); y=S*(rB()*0.22); } }
+      else { x=S*rB(); y=S*rB(); }
+      return {x:x,y:y}; };
+
+    var bsz=0.55+(p.blobSize==null?50:p.blobSize)/100*1.25, glowF=0.6+(p.glow==null?55:p.glow)/100*0.95;
+    var nFree=Math.round(cfg.blobCount*(0.4+p.density/100*1.3));
+    var aDr=ANIM?S*0.055*((p.animDrift||0)/100):0, aSw=ANIM?((p.animSwirl||0)/100):0;
+    for(var i=0;i<nFree;i++){ var pos=samplePos(); var col=pick(rB,cfg.colors); var r=S*(cfg.rMin+rB()*(cfg.rMax-cfg.rMin))*bsz; var a=Math.min(1.1,(cfg.aMin+rB()*(cfg.aMax-cfg.aMin))*glowF);
+      var bx=pos.x, by=pos.y, br=1;
+      if(ANIM){ var ph=i*1.27;
+        if(aSw>0){ var rx=bx-S/2, ry=by-S/2, ang=T*0.18*aSw*(0.5+Math.hypot(rx,ry)/S), ca=Math.cos(ang), sa=Math.sin(ang); bx=S/2+rx*ca-ry*sa; by=S/2+rx*sa+ry*ca; }
+        var f1=0.35+hsh(i)*1.05, f2=0.22+hsh(i+5.3)*0.75, dir=hsh(i+2.1)*6.2832, amp=aDr*(0.45+hsh(i+3.7)*1.7), roam=aDr*1.5*(0.4+hsh(i+8.2)*1.2), rf=0.1+hsh(i+1.1)*0.22;
+        var wx=Math.sin(T*f1+ph)+0.6*Math.sin(T*f2*1.7+ph*1.6)+0.4*Math.cos(T*0.23+i);
+        var wy=Math.cos(T*f1*0.9+ph*1.1)+0.6*Math.cos(T*f2*1.5+ph*0.7)+0.4*Math.sin(T*0.19+i*1.3);
+        bx+=wx*amp*0.55 + Math.cos(dir)*Math.sin(T*rf)*roam;
+        by+=wy*amp*0.55 + Math.sin(dir)*Math.sin(T*rf*1.13+1.7)*roam;
+        br=(1+kick*0.3*kickE)*(1+0.06*Math.sin(T*f1*1.4+ph));
+        if(kick>0){ bx+=(bx-S/2)*kick*0.1*kickE; by+=(by-S/2)*kick*0.1*kickE; } }
+      var bcol=(hue>0)?shiftHue(col,T*36*hue+i*5):col;
+      smudge(pc,bx,by,r*br,0.55+rB()*0.9,0.55+rB()*0.9,rB()*6.28,bcol,a); }
+
+    if(cfg.topSmudge){ for(var t=0;t<5;t++){ smudge(pc,S*rB(),S*(rB()*0.16),S*(0.1+rB()*0.14),0.8+rB(),0.6+rB()*0.6,rB()*6.28,cfg.smoke,0.16+rB()*0.16); } }
+    if(cfg.clearCenter){ smudge(pc,S*(0.45+rB()*0.1),S*(0.38+rB()*0.1),S*0.52,1.25,1.05,0,cfg.base,0.92); }
+
+    if(p.diamonds){ var dSize=(p.diamondSize==null?50:p.diamondSize)/100, dShape=(p.diamondShape==null?50:p.diamondShape)/100, aH=1.5-dShape, aV=0.5+dShape;
+      for(var k=0;k<p.diamondCount;k++){ var cx=S*(0.26+rD()*0.46),cy=S*(0.10+rD()*0.70), Rb=S*(0.1+dSize*0.26)*(0.85+rD()*0.3);
+      var RW=Rb*aH, RH=Rb*aV, Rm=Math.min(RW,RH);
+      pcd.save(); pcd.beginPath(); pcd.moveTo(cx,cy-RH); pcd.lineTo(cx+RW,cy); pcd.lineTo(cx,cy+RH); pcd.lineTo(cx-RW,cy); pcd.closePath(); pcd.clip();
+      var n=16+Math.floor(rD()*18);
+      for(var j=0;j<n;j++){ var dx=cx+(rD()-0.5)*2*RW, dy=cy+(rD()-0.5)*2*RH; var dcol=pick(rD,cfg.diamondColors); var dr=Rm*(0.2+rD()*0.55); var da=cfg.diamondAlpha*(0.4+rD()*0.6); smudge(pcd,dx,dy,dr,0.5+rD()*0.9,0.5+rD()*0.9,rD()*6.28,dcol,da); }
+      var sp=12+Math.floor(rD()*18);
+      for(var f=0;f<sp;f++){ var fx=cx+(rD()-0.5)*2*RW, fy=cy+(rD()-0.5)*2*RH; smudge(pcd,fx,fy,Rm*(0.025+rD()*0.06),1,1,0,cfg.fleck,Math.min(0.9,(0.25+rD()*0.5)*cfg.diamondAlpha*1.8)); }
+      pcd.restore(); } }
+
+    for(var ac=0;ac<p.accentCount;ac++){ var acol=pick(rA,cfg.accentColors); var edge=Math.floor(rA()*4); var inten=p.accent/100; var aa=0.2+0.6*inten; var ax,ay,asx,asy; var AR=S*(0.12+rA()*0.16);
+      if(ANIM){ aa*=1+kick*0.9*kickE; }
+      if(hue>0){ acol=shiftHue(acol,T*36*hue+ac*40); }
+      if(edge===0){ ax=S*(0.9+rA()*0.08); ay=S*(0.15+rA()*0.6); asx=0.18+rA()*0.12; asy=1.6+rA()*1.2; }
+      else if(edge===1){ ax=S*(0.02+rA()*0.08); ay=S*(0.15+rA()*0.6); asx=0.18+rA()*0.12; asy=1.6+rA()*1.2; }
+      else if(edge===2){ ay=S*(0.9+rA()*0.08); ax=S*(0.15+rA()*0.6); asx=1.6+rA()*1.2; asy=0.18+rA()*0.12; }
+      else { ay=S*(0.02+rA()*0.08); ax=S*(0.15+rA()*0.6); asx=1.6+rA()*1.2; asy=0.18+rA()*0.12; }
+      smudge(pc,ax,ay,AR,asx,asy,0,acol,aa); }
+
+    var blurPx=S*(0.012+p.smear/100*0.055);
+    ctx.save(); ctx.filter='blur('+blurPx+'px)'; ctx.drawImage(paint,0,0); ctx.restore(); ctx.filter='none';
+
+    if(p.diamonds){ var dBlur=Math.max(0.5,blurPx*0.42); ctx.save(); ctx.filter='blur('+dBlur+'px)'; ctx.drawImage(paintD,0,0); ctx.restore(); ctx.filter='none'; }
+    }
+
+    if((p.soften||0)>0){ var sof=(p.soften||0)/100; var tb=document.createElement('canvas'); tb.width=S; tb.height=S; tb.getContext('2d').drawImage(ctx.canvas,0,0); ctx.clearRect(0,0,S,S); ctx.fillStyle=rgb(cfg.base); ctx.fillRect(0,0,S,S); ctx.save(); ctx.filter='blur('+(sof*S*0.05)+'px)'; ctx.drawImage(tb,0,0); ctx.restore(); ctx.filter='none'; }
+
+    if(p.scratches){ ctx.save(); ctx.lineWidth=Math.max(1,S*0.0011);
+      for(var sc=0;sc<p.scratchCount;sc++){ var sx=S*(0.08+rS()*0.84), sy=S*(rS()*0.08); ctx.beginPath(); ctx.moveTo(sx,sy); var steps=26, len=S*(0.6+rS()*0.38), dyy=len/steps;
+        for(var st=0;st<steps;st++){ sx+=(rS()-0.5)*S*0.004; sy+=dyy; ctx.lineTo(sx,sy); }
+        ctx.strokeStyle=cfg.scratch; ctx.globalAlpha=0.10+rS()*0.16; ctx.stroke(); }
+      ctx.restore(); ctx.globalAlpha=1; }
+
+    if(p.sigilMarks||p.sigilEmblem||p.sigilFrame){ this.drawSigil(ctx,S,p,mood,rM); }
+
+    if(!ANIM || p._bake){ this.postColor(ctx,S,p.contrast==null?50:p.contrast,p.saturation==null?50:p.saturation); }
+    var bloomAmt=(p.bloom||0); if(ANIM&&pump>0){ bloomAmt=Math.min(100, bloomAmt + pump*40*(1-pumpE)); }
+    if(bloomAmt>0){ this.bloom(ctx,S,bloomAmt); }
+    if(ANIM&&pump>0){ var dk=Math.round((1-pump*0.34*pumpE)*255); ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.fillStyle='rgb('+dk+','+dk+','+dk+')'; ctx.fillRect(0,0,S,S); ctx.restore(); }
+    if((p.vignette||0)>0){ this.vignette(ctx,S,p.vignette); }
+    if((p.grain||0)>0||(p.dust||0)>0){ this.grain(ctx,S,p.grain||0,p.grainSize==null?50:p.grainSize,p.dust||0,rG, ANIM&&flick>0); }
+    if(ANIM&&flick>0){ var fe=Math.max(0,0.5+0.5*Math.sin(T*8.0)+0.3*Math.sin(T*21.0)-0.5); ctx.save(); ctx.globalCompositeOperation='overlay'; ctx.fillStyle='rgba(255,255,255,'+(flick*0.22*fe).toFixed(3)+')'; ctx.fillRect(0,0,S,S); ctx.restore(); }
+    if(p.showText){ this.text(ctx,S,p,mood,rT); }
+  }
+
+  huerot(c,deg){ if(!deg) return c; var r=c[0]/255,g=c[1]/255,b=c[2]/255; var mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,h=0,s=0,dd=mx-mn; if(dd!==0){ s=l>0.5?dd/(2-mx-mn):dd/(mx+mn); if(mx===r)h=((g-b)/dd+(g<b?6:0)); else if(mx===g)h=((b-r)/dd+2); else h=((r-g)/dd+4); h*=60; } h=((h+deg)%360+360)%360; function h2(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; } var rr,gg,bb; if(s===0){ rr=gg=bb=l; } else { var q=l<0.5?l*(1+s):l+s-l*s, pp=2*l-q, hh=h/360; rr=h2(pp,q,hh+1/3); gg=h2(pp,q,hh); bb=h2(pp,q,hh-1/3); } return [Math.round(rr*255),Math.round(gg*255),Math.round(bb*255)]; }
+
+  fieldGrid(ctx,S,p,mood,cfg,seed,A){
+    var self=this, r=this.prng(seed^0x51a3c9d7); var rgb=function(c){return 'rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')';}; var pick=function(a){return a[Math.floor(r()*a.length)];};
+    var cols=Math.max(3,Math.round(p.gridCols==null?9:p.gridCols)), dens=(p.gridDensity==null?55:p.gridDensity)/100;
+    var persp=(p.gridPerspective==null?0:p.gridPerspective)/100, mag=(p.gridMagnet==null?0:p.gridMagnet)/100;
+    var pad=S*0.06, gw=S-pad*2, cell=gw/cols, T=A.ANIM?A.T:0, hue=A.hue||0, dr=A.ANIM?(A.drift||0):0;
+    var ax=S*0.5+(A.ANIM?Math.sin(T*0.5)*S*0.22:0), ay=S*0.5+(A.ANIM?Math.cos(T*0.42)*S*0.2:0);
+    var blob=function(g,bx,by,rad,rr){ var n=5+Math.floor(rr()*4), pts=[],i; for(i=0;i<n;i++){ var a=i/n*6.2832, rd=rad*(0.55+rr()*0.75); pts.push([bx+Math.cos(a)*rd, by+Math.sin(a)*rd]); } g.beginPath(); for(i=0;i<=n;i++){ var p0=pts[i%n], p1=pts[(i+1)%n], mx=(p0[0]+p1[0])/2, my=(p0[1]+p1[1])/2; if(i===0)g.moveTo(mx,my); else g.quadraticCurveTo(p0[0],p0[1],mx,my); } g.closePath(); g.fill(); };
+    for(var gy=0;gy<cols;gy++){ for(var gx=0;gx<cols;gx++){ if(r()>dens) continue;
+      var u=(gx+0.5)/cols, v=(gy+0.5)/cols, depth=1, vv=v;
+      if(persp>0){ vv=Math.pow(v,1+persp*1.8); depth=0.4+0.6*vv; }
+      var cxr=pad+u*gw, cyr=pad+vv*gw;
+      if(persp>0){ cxr=S*0.5+(cxr-S*0.5)*(0.5+0.5*depth); }
+      var sb=cell*0.42*depth;
+      if(mag>0){ var ddx=cxr-ax, ddy=cyr-ay, dist=Math.hypot(ddx,ddy)+0.001, pull=mag/(1+dist/(S*0.16)), sgn=(((gx+gy)%2)?1:-1);
+        cxr-=ddx/dist*pull*S*0.16*sgn; cyr-=ddy/dist*pull*S*0.16*sgn;
+        cxr+=(r()-0.5)*mag*cell*1.6; cyr+=(r()-0.5)*mag*cell*1.6; }
+      var ph=gx*0.7+gy*0.9;
+      if(A.ANIM){ cxr+=Math.sin(T*(0.7+((gx*7+gy*13)%5)*0.16)+ph)*cell*0.22*dr; cyr+=Math.cos(T*0.8+ph*1.3)*cell*0.22*dr; sb*=1+0.14*Math.sin(T*1.5+ph)+A.kick*0.2*A.kickE; }
+      var wave=A.ANIM?(0.4+0.6*(0.5+0.5*Math.sin(T*1.25+(gx+gy)*0.6))):1;
+      var col=pick(cfg.colors); if(hue>0) col=self.huerot(col,T*30*hue+gx*9+gy*5);
+      var al=(0.55+r()*0.45)*wave; if(A.ANIM && r()<0.4){ al*=(1-A.kick*0.7)+A.kick*0.7*A.kickE; }
+      ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,al)); ctx.fillStyle=rgb(col);
+      blob(ctx,cxr,cyr,sb*(0.8+r()*0.5),r);
+      if(r()<0.3){ var ox=(r()-0.5)*sb*2.2, oy=(r()-0.5)*sb*2.2; blob(ctx,cxr+ox,cyr+oy,sb*(0.3+r()*0.3),r); }
+      ctx.restore(); } }
+    ctx.globalAlpha=1;
+  }
+
+  fieldWaves(ctx,S,p,mood,cfg,seed,A){
+    var self=this, r=this.prng(seed^0x2bd1e44f); var rgb=function(c){return 'rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')';};
+    var lines=Math.max(8,Math.round(p.waveCount==null?60:p.waveCount)), amp=(p.waveAmp==null?50:p.waveAmp)/100*S*0.07, det=(p.waveDetail==null?45:p.waveDetail)/100;
+    var turb=(p.waveTurbulence==null?25:p.waveTurbulence)/100, persp=(p.wavePerspective==null?0:p.wavePerspective)/100;
+    var T=A.ANIM?A.T:0, hue=A.hue||0, dr=A.ANIM?(A.drift||0):0, comps=[], tc=[];
+    for(var k=0;k<4;k++){ comps.push({f:(0.6+r()*2.6)*(0.6+det*3)/S*6.2832, a:0.4+r()*1.0, ph:r()*6.28, sp:0.25+r()*0.8}); }
+    for(var k2=0;k2<3;k2++){ tc.push({f:(5+r()*12)/S*6.2832, a:0.3+r()*0.6, ph:r()*6.28, sp:0.7+r()*1.6}); }
+    var beatA=1+(A.ANIM?A.kick*0.8*A.kickE:0), step=Math.max(2,S/240);
+    for(var li=0;li<lines;li++){ var t01=li/lines, yp=persp>0?Math.pow(t01,1+persp*1.7):t01;
+      var baseY=S*(0.05+0.9*yp); if(A.ANIM){ baseY+=Math.sin(T*0.5+li*0.22)*amp*1.4*dr; }
+      var col=cfg.colors[Math.floor(r()*cfg.colors.length)]; if(hue>0) col=self.huerot(col,T*30*hue+li*3);
+      var ampSc=persp>0?(0.2+1.6*t01):1, ampL=amp*beatA*ampSc*(A.ANIM?(1+0.45*Math.sin(T*0.8+li*0.12)*dr):1);
+      ctx.beginPath();
+      for(var x=0;x<=S;x+=step){ var y=baseY; for(var c3=0;c3<comps.length;c3++){ var cc=comps[c3]; y+=Math.sin(x*cc.f+cc.ph+T*cc.sp*1.5+li*0.16)*ampL*cc.a/comps.length*2.2; }
+        if(turb>0){ for(var c4=0;c4<tc.length;c4++){ var tt=tc[c4]; y+=Math.sin(x*tt.f+tt.ph+T*tt.sp+li*0.5)*ampL*turb*tt.a*0.6; } }
+        if(x===0)ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+      ctx.strokeStyle=rgb(col); ctx.globalAlpha=0.28+r()*0.5; ctx.lineWidth=Math.max(0.6,S*0.0016*(0.6+r()*1.3)*(persp>0?(0.5+t01):1)); ctx.stroke(); }
+    ctx.globalAlpha=1;
+  }
+
+  fieldOrb(ctx,S,p,mood,cfg,seed,A){
+    var self=this, r=this.prng(seed^0x7a2b91c3);
+    var sz=(p.orbSize==null?55:p.orbSize)/100, soft=(p.orbSoft==null?55:p.orbSoft)/100, half=(p.orbHalftone==null?40:p.orbHalftone)/100, melt=(p.orbMelt==null?30:p.orbMelt)/100, shade=(p.orbShade==null?55:p.orbShade)/100;
+    var T=A.ANIM?A.T:0, hue=A.hue||0, dr=A.ANIM?(A.drift||0):0, R=S*(0.18+sz*0.32);
+    var cx=S*0.5+(A.ANIM?Math.sin(T*0.4)*S*(0.03+0.06*dr):0), cy=S*0.46+(A.ANIM?Math.cos(T*0.32)*S*(0.03+0.05*dr):0);
+    if(A.ANIM){ R*=1+0.06*Math.sin(T*0.8)*(0.5+dr)+(A.kick*0.16*A.kickE)+((A.pump||0)*0.08*(1-(A.pumpE||0))); }
+    var c1=cfg.colors[Math.floor(r()*cfg.colors.length)], c2=cfg.accentColors[Math.floor(r()*cfg.accentColors.length)];
+    if(hue>0){ c1=self.huerot(c1,T*30*hue); c2=self.huerot(c2,T*30*hue+40); }
+    var rgb=function(c){return 'rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')';};
+    var lite=function(c,s){return [Math.min(255,c[0]+105*s),Math.min(255,c[1]+105*s),Math.min(255,c[2]+105*s)];};
+    var drk=function(c,s){return [c[0]*(1-0.65*s),c[1]*(1-0.65*s),c[2]*(1-0.65*s)];};
+    var hp=[r()*6.28,r()*6.28,r()*6.28];
+    ctx.save();
+    if(soft>0) ctx.filter='blur('+(R*0.035*(0.3+soft))+'px)';
+    ctx.beginPath(); var N=150;
+    for(var i=0;i<=N;i++){ var ang=i/N*6.2832, warp=melt*(0.3*Math.sin(ang*3+hp[0]+T*0.5)+0.2*Math.sin(ang*5+hp[1]-T*0.35)+0.14*Math.sin(ang*2+hp[2])), rr=R*(1+warp), px=cx+Math.cos(ang)*rr, drip=(Math.sin(ang)>0?(1+melt*0.6*Math.sin(ang)):1), py=cy+Math.sin(ang)*rr*drip; if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); }
+    ctx.closePath(); ctx.clip(); ctx.filter='none';
+    var hx=cx-R*0.3*(0.4+shade), hy=cy-R*0.32*(0.4+shade);
+    var g=ctx.createRadialGradient(hx,hy,R*0.04,cx,cy,R*1.5);
+    g.addColorStop(0,rgb(lite(c1,shade*0.9))); g.addColorStop(0.4,rgb(c1)); g.addColorStop(0.8,rgb(c2)); g.addColorStop(1,rgb(drk(c2,shade)));
+    ctx.fillStyle=g; ctx.fillRect(cx-R*2,cy-R*2,R*4,R*4);
+    if(shade>0){ var sg=ctx.createRadialGradient(cx+R*0.34,cy+R*0.4,R*0.06,cx,cy,R*1.3); sg.addColorStop(0,'rgba(0,0,0,0)'); sg.addColorStop(0.65,'rgba(0,0,0,0)'); sg.addColorStop(1,'rgba(0,0,0,'+(0.6*shade).toFixed(3)+')'); ctx.fillStyle=sg; ctx.fillRect(cx-R*2,cy-R*2,R*4,R*4); }
+    if(half>0){ var dot=Math.max(3,S*0.014*(1.5-half)); ctx.fillStyle=(mood==='dark')?rgb(cfg.base):'rgba(18,18,22,0.9)';
+      for(var yy=cy-R*1.6;yy<cy+R*1.8;yy+=dot){ for(var xx=cx-R*1.6;xx<cx+R*1.6;xx+=dot){ var ddx=xx-cx,ddy=yy-cy,dist=Math.hypot(ddx,ddy); if(dist>R*1.5)continue; var sh=A.ANIM?(1+0.3*Math.sin(T*2.4-dist*0.06)):1, rad=dot*0.5*Math.min(1,dist/R)*half*1.5*sh; if(rad>0.4){ ctx.beginPath(); ctx.arc(xx,yy,rad,0,6.2832); ctx.fill(); } } } }
+    ctx.restore();
+  }
+
+  postColor(ctx,S,contrast,sat){
+    if(contrast===50&&sat===50) return;
+    var cc=1+((contrast-50)/50)*0.7, sf=sat/50;
+    var img=ctx.getImageData(0,0,S,S), d=img.data;
+    for(var i=0;i<d.length;i+=4){ var r=d[i],g=d[i+1],b=d[i+2];
+      r=(r-128)*cc+128; g=(g-128)*cc+128; b=(b-128)*cc+128;
+      var gray=0.299*r+0.587*g+0.114*b; r=gray+(r-gray)*sf; g=gray+(g-gray)*sf; b=gray+(b-gray)*sf;
+      d[i]=r<0?0:r>255?255:r; d[i+1]=g<0?0:g>255?255:g; d[i+2]=b<0?0:b>255?255:b; }
+    ctx.putImageData(img,0,0);
+  }
+
+  bloom(ctx,S,amount){ var b=amount/100; var t=document.createElement('canvas'); t.width=S; t.height=S; t.getContext('2d').drawImage(ctx.canvas,0,0);
+    ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.globalAlpha=0.42*b; ctx.filter='blur('+(S*0.018)+'px)'; ctx.drawImage(t,0,0); ctx.restore(); ctx.filter='none'; ctx.globalAlpha=1; }
+
+  vignette(ctx,S,amount){ var v=amount/100; var g=ctx.createRadialGradient(S/2,S*0.46,S*0.2,S/2,S/2,S*0.74); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,'+(0.7*v)+')'); ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.fillStyle=g; ctx.fillRect(0,0,S,S); ctx.restore(); }
+
+  drawSigil(ctx,S,p,mood,rng){
+    var dark = mood==='dark';
+    var main = dark? [231,233,231] : [24,24,26];
+    var ghost = dark? [120,124,124] : [104,102,100];
+    var rgb=function(c){ return 'rgb('+c[0]+','+c[1]+','+c[2]+')'; };
+    var mk=function(){ var c=document.createElement('canvas'); c.width=S; c.height=S; return c; };
+
+    function ribbonW(g,pts,ws){ var n=pts.length; if(n<2) return; var L=[],Rr=[],i;
+      for(i=0;i<n;i++){ var pp=pts[i], a=pts[i>0?i-1:0], b=pts[i<n-1?i+1:n-1]; var dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy)||1, nx=-dy/d, ny=dx/d, w=ws[i]/2; L.push([pp.x+nx*w,pp.y+ny*w]); Rr.push([pp.x-nx*w,pp.y-ny*w]); }
+      g.beginPath(); g.moveTo(L[0][0],L[0][1]); for(i=1;i<n;i++) g.lineTo(L[i][0],L[i][1]); for(i=n-1;i>=0;i--) g.lineTo(Rr[i][0],Rr[i][1]); g.closePath(); g.fill(); }
+
+    function thorn(g,x,y,ang,len,w,r){ var steps=7, pts=[], ws=[], cx=x, cy=y, a=ang, cv=(r()-0.5)*1.3; for(var i=0;i<=steps;i++){ var t=i/steps; pts.push({x:cx,y:cy}); ws.push(Math.max(0.3,w*Math.pow(1-t,1.4))); a+=cv/steps; cx+=Math.cos(a)*len/steps; cy+=Math.sin(a)*len/steps; } ribbonW(g,pts,ws); }
+
+    function spine(g,x,y,ang,len,w,curve,r,opts){ opts=opts||{}; var depth=opts.depth||0;
+      var steps=Math.max(7,Math.min(60,Math.round(len/(w*0.6+S*0.0035))));
+      var pts=[], ws=[], cx=x, cy=y, a=ang, dC=curve/steps, tp=opts.taperPow||1.5;
+      for(var i=0;i<=steps;i++){ var t=i/steps; pts.push({x:cx,y:cy}); ws.push(Math.max(0.3,w*Math.pow(1-t,tp))); a+=dC+(r()-0.5)*(opts.wobble||0); cx+=Math.cos(a)*len/steps; cy+=Math.sin(a)*len/steps; }
+      ribbonW(g,pts,ws);
+      var nb=opts.barbs==null?Math.round(steps*0.5):opts.barbs;
+      for(var b=0;b<nb;b++){ var i2=Math.floor((0.1+0.84*r())*steps); var pp=pts[i2]; if(!pp) continue;
+        var pa=pts[Math.max(0,i2-1)], pb=pts[Math.min(steps,i2+1)]; var tang=Math.atan2(pb.y-pa.y,pb.x-pa.x);
+        var sideSel = opts.side? opts.side : (r()<0.5?1:-1);
+        var bang=tang+sideSel*(Math.PI*0.3+r()*0.36);
+        var frac=1-i2/steps; var blen=len*(0.13+r()*0.22)*(0.4+frac); var bw=ws[i2]*(0.6+r()*0.4);
+        if(depth>0 && blen>S*0.025 && r()<0.45){ spine(g,pp.x,pp.y,bang,blen,bw,(r()-0.5)*1.5,r,{taperPow:1.7,barbs:Math.floor(r()*3),wobble:0.05,depth:depth-1,side:opts.side?sideSel:0}); }
+        else { thorn(g,pp.x,pp.y,bang,blen,Math.max(0.4,bw),r); }
+      }
+    }
+
+    function star(g,x,y,R){ var p2=[]; var i; g.beginPath();
+      for(i=0;i<3;i++){ var a=-Math.PI/2+i*2.0944; var px=x+Math.cos(a)*R, py=y+Math.sin(a)*R; i?g.lineTo(px,py):g.moveTo(px,py); } g.closePath();
+      for(i=0;i<3;i++){ var a2=Math.PI/2+i*2.0944; var px2=x+Math.cos(a2)*R, py2=y+Math.sin(a2)*R; i?g.lineTo(px2,py2):g.moveTo(px2,py2); } g.closePath();
+      g.lineWidth=Math.max(1,R*0.12); g.stroke(); }
+
+    var mirror=function(src,alpha,axes){ ctx.save(); ctx.globalAlpha=alpha;
+      ctx.drawImage(src,0,0);
+      ctx.save(); ctx.translate(S,0); ctx.scale(-1,1); ctx.drawImage(src,0,0); ctx.restore();
+      if(axes===4){ ctx.save(); ctx.translate(0,S); ctx.scale(1,-1); ctx.drawImage(src,0,0); ctx.restore();
+        ctx.save(); ctx.translate(S,S); ctx.scale(-1,-1); ctx.drawImage(src,0,0); ctx.restore(); }
+      ctx.restore(); };
+
+    // ----- barbed frame (4-way mirror, recessive ghost) -----
+    if(p.sigilFrame){ var fd=p.sigilFrameDensity/100; var inset=S*0.06;
+      var tf=mk(), fg=tf.getContext('2d'); fg.fillStyle=rgb(ghost); fg.strokeStyle=rgb(main);
+      spine(fg, S*0.5, inset, 0, S*0.45, S*0.011, 0.05, rng, {barbs:Math.round(9+fd*16),taperPow:1.15,depth:1,wobble:0.07,side:1});
+      spine(fg, inset, S*0.5, Math.PI*0.5, S*0.4, S*0.011, 0.05, rng, {barbs:Math.round(9+fd*14),taperPow:1.15,depth:1,wobble:0.07,side:1});
+      spine(fg, inset+S*0.02, inset+S*0.02, Math.PI*0.25, S*0.17, S*0.015, 0.5, rng, {barbs:Math.round(6+fd*8),taperPow:1.35,depth:1,wobble:0.06});
+      spine(fg, inset+S*0.02, inset+S*0.02, Math.PI*0.18, S*0.13, S*0.012, -0.5, rng, {barbs:6,depth:1,wobble:0.06});
+      mirror(tf, 0.8, 4);
+    }
+
+    // ----- small scattered sigil marks (default; keeps it simple) -----
+    if(p.sigilMarks){
+      var sparkle=function(g,x,y,R){ var nn=R*0.16, pts=[[0,-R],[nn,-nn],[R,0],[nn,nn],[0,R],[-nn,nn],[-R,0],[-nn,-nn]]; g.beginPath(); for(var q=0;q<8;q++){ var px=x+pts[q][0],py=y+pts[q][1]; q?g.lineTo(px,py):g.moveTo(px,py); } g.closePath(); g.fill(); };
+      var mark=function(g,x,y,R,r){ var ty=Math.floor(r()*5), rt=(r()-0.5)*0.8; g.save(); g.translate(x,y); g.rotate(rt);
+        if(ty===0){ sparkle(g,0,0,R*0.85); }
+        else if(ty===1){ spine(g,0,R*1.0,-Math.PI/2,R*2.2,R*0.1,0,r,{barbs:Math.round(3+r()*4),taperPow:1.85,depth:0,wobble:0.03,side:0}); }
+        else if(ty===2){ spine(g,-R*0.5,R*0.4,-Math.PI*0.42,R*1.9,R*0.085,0.5,r,{barbs:Math.round(3+r()*4),taperPow:1.6,depth:0,wobble:0.05}); }
+        else if(ty===3){ var a=-Math.PI/2-0.5; spine(g,0,R*0.2,a,R*1.4,R*0.075,0.4,r,{barbs:Math.round(2+r()*3),taperPow:1.7,depth:0,wobble:0.04}); spine(g,0,R*0.2,Math.PI*-0.5+0.5,R*1.4,R*0.075,-0.4,r,{barbs:Math.round(2+r()*3),taperPow:1.7,depth:0,wobble:0.04}); }
+        else { spine(g,0,R,-Math.PI/2,R*1.6,R*0.08,0,r,{barbs:2,taperPow:1.85,depth:0,wobble:0.02,side:0}); spine(g,0,0,-Math.PI*0.62,R*1.05,R*0.06,0.2,r,{barbs:1,taperPow:1.85,depth:0}); spine(g,0,0,-Math.PI*0.38,R*1.05,R*0.06,-0.2,r,{barbs:1,taperPow:1.85,depth:0}); }
+        g.restore(); };
+      var n=Math.max(0,Math.round(p.sigilMarkCount)); var scat=p.sigilMarkScatter/100; var ms=p.sigilMarkSize/100;
+      for(var i=0;i<n;i++){ var mx,my;
+        if(rng()<(0.15+scat*0.7)){ mx=S*(0.1+rng()*0.8); my=S*(0.1+rng()*0.8); }
+        else { var band=0.05+(1-scat)*0.08; var side=Math.floor(rng()*4);
+          if(side===0){ mx=S*(0.04+rng()*band*2); my=S*(0.1+rng()*0.8); }
+          else if(side===1){ mx=S*(1-0.04-rng()*band*2); my=S*(0.1+rng()*0.8); }
+          else if(side===2){ my=S*(0.04+rng()*band*2); mx=S*(0.1+rng()*0.8); }
+          else { my=S*(1-0.04-rng()*band*2); mx=S*(0.1+rng()*0.8); } }
+        var R=S*(0.014+ms*0.04); var col=rng()<0.5?main:ghost;
+        ctx.save(); ctx.globalAlpha=0.55+rng()*0.4; ctx.fillStyle=rgb(col); ctx.strokeStyle=rgb(col);
+        mark(ctx,mx,my,R,rng); ctx.restore(); }
+    }
+  }
+
+  marker(ctx,type,cx,cy,sz,col,rng){
+    var rgb='rgb('+col[0]+','+col[1]+','+col[2]+')';
+    var h=sz*0.64, rot=(rng()-0.5)*6.2832, W=sz*0.15;
+    ctx.save();
+    ctx.translate(cx,cy); ctx.rotate(rot);
+    ctx.fillStyle=rgb; ctx.strokeStyle=rgb; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.globalAlpha=0.6+rng()*0.34;
+    var sparkle=function(R,ox,oy){ ox=ox||0; oy=oy||0; var n=R*0.13;
+      var pts=[[0,-R],[n,-n],[R,0],[n,n],[0,R],[-n,n],[-R,0],[-n,-n]];
+      ctx.beginPath(); for(var i=0;i<8;i++){ var px=ox+pts[i][0],py=oy+pts[i][1]; if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py); } ctx.closePath(); ctx.fill(); };
+    var spike=function(ang,len,wid,ox,oy){ ox=ox||0; oy=oy||0; var dx=Math.cos(ang),dy=Math.sin(ang),nx=-dy*wid,ny=dx*wid;
+      ctx.beginPath(); ctx.moveTo(ox+dx*len,oy+dy*len); ctx.lineTo(ox+nx,oy+ny); ctx.lineTo(ox-nx,oy-ny); ctx.closePath(); ctx.fill(); };
+    var qS=function(x0,y0,c0,c1,x1,y1,st){ var a=[]; for(var i=0;i<=st;i++){ var t=i/st,u=1-t; a.push({x:u*u*x0+2*u*t*c0+t*t*x1, y:u*u*y0+2*u*t*c1+t*t*y1}); } return a; };
+    var ribbon=function(pts,wfn){ var nP=pts.length; if(nP<2)return; var L=[],Rr=[],i;
+      for(i=0;i<nP;i++){ var p=pts[i], a=pts[i>0?i-1:0], b=pts[i<nP-1?i+1:nP-1]; var dx=b.x-a.x,dy=b.y-a.y,dd=Math.hypot(dx,dy)||1, nx=-dy/dd, ny=dx/dd; var w=wfn(i/(nP-1))/2; L.push([p.x+nx*w,p.y+ny*w]); Rr.push([p.x-nx*w,p.y-ny*w]); }
+      ctx.beginPath(); ctx.moveTo(L[0][0],L[0][1]); for(i=1;i<nP;i++)ctx.lineTo(L[i][0],L[i][1]); for(i=nP-1;i>=0;i--)ctx.lineTo(Rr[i][0],Rr[i][1]); ctx.closePath(); ctx.fill(); };
+    var taper=function(t){ return W*(1-t); };
+    var spindle=function(t){ return W*Math.sin(t*Math.PI)*1.2; };
+    var even=function(){ return W*0.55; };
+    var i,k,ang,sp,yy;
+    switch(type){
+      case 0: sparkle(h); break;
+      case 1: ribbon(qS(0,h, h*0.62,0, 0,-h, 20),spindle); ribbon(qS(0,h, -h*0.62,0, 0,-h, 20),spindle); sparkle(h*0.16,0,-h*0.04); break;
+      case 2: sp=5+Math.floor(rng()*2); for(i=0;i<sp;i++){ ang=i/sp*6.2832; spike(ang,h*(0.85+rng()*0.25),W*0.7); } sparkle(h*0.22); break;
+      case 3: ribbon(qS(-h,h*0.5, -h*0.05,-h*0.15, h,-h*0.55, 16),taper); spike(0.62,h*0.34,W*0.55,h,-h*0.55); ribbon(qS(-h*0.1,h*0.08, -h*0.42,h*0.08, -h*0.56,-h*0.34, 10),taper); break;
+      case 4: ribbon(qS(0,h, h*0.72,h*0.1, h*0.2,-h, 22),taper); sparkle(h*0.18,h*0.2,-h); break;
+      case 5: ribbon(qS(0,-h, h*0.95,0, 0,h, 24),spindle); break;
+      case 6: ribbon(qS(-h*0.2,h, h*0.72,h*0.3, 0,0, 14),taper); ribbon(qS(0,0, -h*0.72,-h*0.3, h*0.2,-h, 14),taper); sparkle(h*0.13,h*0.2,-h); sparkle(h*0.1,-h*0.2,h); break;
+      case 7: ribbon([{x:0,y:h},{x:0,y:-h*0.2}],even); ribbon(qS(0,-h*0.2,0,-h*0.7,0,-h,8),taper); ribbon(qS(0,-h*0.2,-h*0.56,-h*0.5,-h*0.6,-h*0.95,10),taper); ribbon(qS(0,-h*0.2,h*0.56,-h*0.5,h*0.6,-h*0.95,10),taper); break;
+      case 8: ribbon([{x:-h*0.42,y:-h},{x:h*0.16,y:-h*0.18},{x:-h*0.2,y:h*0.12},{x:h*0.38,y:h}],function(t){return W*(1-0.55*t);}); break;
+      case 9: for(k=0;k<3;k++){ yy=-h*0.55+k*h*0.55; ribbon([{x:-h*0.7,y:yy+h*0.34},{x:0,y:yy-h*0.2},{x:h*0.7,y:yy+h*0.34}],even); } break;
+    }
+    ctx.restore();
+  }
+
+  grain(ctx,S,amount,gsize,dust,rng,boil){
+    if(amount>0){
+      var gw=Math.max(48,Math.round((S/1.2)/(0.7+(gsize/100)*3.2)));
+      var k2=S+'|'+amount+'|'+gsize, nz;
+      if(!boil && this._noise && this._noise.k===k2){ nz=this._noise.c; }
+      else { nz=document.createElement('canvas'); nz.width=gw; nz.height=gw;
+        var nc=nz.getContext('2d'); var img=nc.createImageData(gw,gw); var d=img.data; var amp=amount/100;
+        for(var i=0;i<d.length;i+=4){ var v=128+((boil?Math.random():rng())-0.5)*amp*185; d[i]=v; d[i+1]=v; d[i+2]=v; d[i+3]=255; }
+        nc.putImageData(img,0,0); if(!boil) this._noise={k:k2,c:nz}; }
+      ctx.save(); ctx.globalCompositeOperation='overlay'; ctx.imageSmoothingEnabled=false; ctx.drawImage(nz,0,0,S,S); ctx.restore();
+    }
+    if(dust>0){ var n=Math.round(dust/100*S*0.9); ctx.save();
+      for(var z=0;z<n;z++){ var x=rng()*S,y=rng()*S, rr=S*(0.0005+rng()*0.0022), br=rng()<0.5;
+        ctx.globalAlpha=0.1+rng()*0.4; ctx.fillStyle=br?'#f4f2ee':'#0a0a0a'; ctx.beginPath(); ctx.arc(x,y,rr,0,6.2832); ctx.fill(); }
+      ctx.restore(); ctx.globalAlpha=1; }
+  }
+
+  startAnim(){ if(this._raf) return; var self=this; var c=this.canvasRef.current; if(!c) return; var S=this.displaySize; c.width=S; c.height=S; var t0=performance.now();
+    self.renderTo(c,S,Object.assign({}, self.state, {_anim:true,_t:0,_rt:0,_bake:false}));
+    var loop=function(now){ if(self.state.mode!=='animate'){ self._raf=null; return; }
+      var sp=0.3+(self.state.animSpeed/100)*1.7; var rt=(now-t0)/1000; var t=rt*sp; var bake=!!self.state.recording;
+      var p=Object.assign({}, self.state, {_anim:true, _t:t, _rt:rt, _bake:bake});
+      self.renderTo(c,S,p);
+      if(bake){ c.style.filter='none'; } else { var cc=1+((self.state.contrast-50)/50)*0.7, sf=self.state.saturation/50; c.style.filter='contrast('+cc.toFixed(3)+') saturate('+sf.toFixed(3)+')'; }
+      self._raf=requestAnimationFrame(loop);
+    };
+    self._raf=requestAnimationFrame(loop);
+  }
+  stopAnim(){ if(this._raf){ cancelAnimationFrame(this._raf); this._raf=null; } var c=this.canvasRef.current; if(c) c.style.filter='none'; this._sig=null; this._gsig=null; this.draw(); var self=this; requestAnimationFrame(function(){ self.drawGallery(); }); }
+  componentWillUnmount(){ if(this._raf){ cancelAnimationFrame(this._raf); this._raf=null; } if(this._rec){ try{ this._rec.stop(); }catch(e){} this._rec=null; } }
+
+  record(){ if(this._rec) return; var c=this.canvasRef.current; if(!c||!c.captureStream){ return; } var self=this;
+    this.setState({recording:true});
+    setTimeout(function(){ var stream=c.captureStream(30), rec, mime='video/webm';
+      var want=['video/mp4;codecs=h264','video/mp4','video/webm;codecs=vp9','video/webm'];
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported){ for(var w=0;w<want.length;w++){ if(MediaRecorder.isTypeSupported(want[w])){ mime=want[w]; break; } } }
+      try{ rec=new MediaRecorder(stream,{mimeType:mime}); }catch(e){ try{ rec=new MediaRecorder(stream); mime='video/webm'; }catch(e2){ self.setState({recording:false}); return; } }
+      var ext=mime.indexOf('mp4')>=0?'mp4':'webm';
+      var chunks=[]; rec.ondataavailable=function(e){ if(e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop=function(){ var blob=new Blob(chunks,{type:mime.split(';')[0]}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='akacovart_'+(self.state.seed>>>0)+'.'+ext; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },4000); self.setState({recording:false}); };
+      self._rec=rec; rec.start();
+      setTimeout(function(){ if(self._rec){ try{ self._rec.stop(); }catch(e){} self._rec=null; } }, 6200);
+    }, 60);
+  }
+
+  text(ctx,S,p,mood,rng){
+    var base=S*0.019, col, sh;
+    if(p.textColor==='auto'){ if(mood==='dark'){ col='rgba(233,233,236,0.95)'; sh='rgba(0,0,0,0.40)'; } else { col='rgba(22,22,24,0.92)'; sh='rgba(255,255,255,0.35)'; } }
+    else if(p.textColor==='light'){ col='rgba(244,244,246,0.96)'; sh='rgba(0,0,0,0.40)'; }
+    else { col='rgba(18,18,20,0.94)'; sh='rgba(255,255,255,0.35)'; }
+    var caseFn=function(t){ t=(t||'')+''; if(p.textCase==='lower'){ return t.toLowerCase(); } if(p.textCase==='upper'){ return t.toUpperCase(); }
+      if(p.textCase==='manic'){ var o=''; for(var i=0;i<t.length;i++){ o+= rng()<0.5 ? t[i].toLowerCase() : t[i].toUpperCase(); } return o; } return t; };
+    var title=caseFn(p.title), artist=caseFn(p.artist);
+    var d=Math.max(0,Math.min(1,(p.distort||0)/100));
+    var align=p.textAlign||'left';
+    var ax=(p.textX==null?0.05:p.textX)*S, ay=(p.textY==null?0.85:p.textY)*S;
+    var gap=base*1.5, ls=base*0.18;
+
+    var tc=document.createElement('canvas'); tc.width=S; tc.height=S; var g=tc.getContext('2d');
+    g.fillStyle=col; g.textAlign='left'; g.textBaseline='alphabetic';
+    var box={minX:1e9,maxX:-1e9,minY:1e9,maxY:-1e9};
+    var line=function(str,baseY,weight,sizePx,alpha){
+      g.font=weight+' '+sizePx+"px 'IBM Plex Mono'";
+      var chs=(str+'').split(''), widths=[], total=0, i;
+      for(i=0;i<chs.length;i++){ var w=g.measureText(chs[i]).width; widths.push(w); total+=w+ls; }
+      total-=ls; if(total<0) total=0;
+      var cxp = align==='center' ? ax-total/2 : align==='right' ? ax-total : ax;
+      box.minX=Math.min(box.minX,cxp); box.maxX=Math.max(box.maxX,cxp+total);
+      box.minY=Math.min(box.minY,baseY-sizePx); box.maxY=Math.max(box.maxY,baseY+sizePx*0.18);
+      for(i=0;i<chs.length;i++){
+        var jx=(rng()-0.5)*d*sizePx*0.45, jy=(rng()-0.5)*d*sizePx*0.55, jr=(rng()-0.5)*d*0.4;
+        var ca=alpha; if(rng()<d*0.18){ ca*=0.18+rng()*0.4; }
+        g.save(); g.translate(cxp+jx,baseY+jy); g.rotate(jr); g.globalAlpha=ca; g.fillText(chs[i],0,0);
+        if(rng()<d*0.12){ g.globalAlpha=ca*0.5; g.fillText(chs[i],(rng()-0.5)*sizePx*0.45,(rng()-0.5)*sizePx*0.3); }
+        g.restore();
+        cxp+=widths[i]+ls;
+      }
+    };
+    var ty1=ay+base, ty2=ty1+gap;
+    line(title,ty1,'600',base,1);
+    line(artist,ty2,'400',base*0.82,0.68);
+
+    this._textBox={ x:box.minX/S, y:box.minY/S, w:(box.maxX-box.minX)/S, h:(box.maxY-box.minY)/S };
+
+    var src=tc;
+    if(d>0.01){ var o=document.createElement('canvas'); o.width=S; o.height=S; var og=o.getContext('2d');
+      var slices=Math.floor(8+d*22), sh2=S/slices;
+      for(var s2=0;s2<slices;s2++){ var ox=(rng()<0.45)?(rng()-0.5)*d*S*0.05:0; og.drawImage(tc,0,s2*sh2,S,sh2,ox,s2*sh2,S,sh2); }
+      src=o; }
+
+    ctx.save();
+    ctx.shadowColor=sh; ctx.shadowBlur=S*0.004;
+    if(d>0.02){ var off=d*S*0.01;
+      var tint=function(s3,color){ var t=document.createElement('canvas'); t.width=S; t.height=S; var tg=t.getContext('2d'); tg.drawImage(s3,0,0); tg.globalCompositeOperation='source-in'; tg.fillStyle=color; tg.fillRect(0,0,S,S); return t; };
+      ctx.globalAlpha=0.45*d; ctx.drawImage(tint(src,'rgb(255,40,70)'),-off,0); ctx.drawImage(tint(src,'rgb(0,210,255)'),off,0); ctx.globalAlpha=1; }
+    ctx.drawImage(src,0,0);
+    ctx.restore();
+  }
+
+  download(){
+    if(this.state.rendering) return;
+    this.setState({rendering:true});
+    var self=this;
+    var go=function(){ try{ var S=3000; var off=document.createElement('canvas'); off.width=S; off.height=S; self.renderTo(off,S,self.state);
+      off.toBlob(function(blob){ var url=URL.createObjectURL(blob); var a=document.createElement('a'); var mood=self.resolveMood(self.state.seed>>>0,self.state.mood); a.href=url; a.download='albumart_'+mood+'_'+(self.state.seed>>>0)+'.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },3000); self.setState({rendering:false}); },'image/png'); }
+      catch(err){ console.error(err); self.setState({rendering:false}); } };
+    if(document.fonts&&document.fonts.ready){ document.fonts.ready.then(function(){ requestAnimationFrame(go); }); } else { requestAnimationFrame(go); }
+  }
+
+  renderVals(){
+    var s=this.state;
+    var seg=function(active){ return {flex:'1',padding:'8px 0',font:"500 9px/1 'IBM Plex Mono'",letterSpacing:'.12em',textAlign:'center',cursor:'pointer',border:'1px solid '+(active?'#3a3a42':'#202024'),background:active?'#2a2a31':'transparent',color:active?'#ececef':'#6a6a6e',borderRadius:'3px',textTransform:'uppercase',transition:'all .12s'}; };
+    var tog=function(on){ return {display:'inline-flex',alignItems:'center',padding:'5px 12px',cursor:'pointer',border:'1px solid '+(on?'#3a3a42':'#202024'),background:on?'#2a2a31':'transparent',color:on?'#ececef':'#6a6a6e',borderRadius:'999px',font:"600 9px/1 'IBM Plex Mono'",letterSpacing:'.14em'}; };
+    var moodOpts=['dark','cream','grey','random'].map(function(v){ return {val:v,key:'mood',label:v.toUpperCase(),style:seg(s.mood===v)}; });
+    var colorOpts=['auto','light','dark'].map(function(v){ return {val:v,key:'textColor',label:v.toUpperCase(),style:seg(s.textColor===v)}; });
+    var caseOpts=[['upper','UPPER'],['lower','lower'],['asis','As-Is'],['manic','ManIC']].map(function(p){ return {val:p[0],key:'textCase',label:p[1],style:seg(s.textCase===p[0])}; });
+    var chip=function(){ return {padding:'9px 4px',font:"600 8px/1 'IBM Plex Mono'",letterSpacing:'.08em',textAlign:'center',cursor:'pointer',border:'1px solid #202024',background:'#141417',color:'#bcbcc2',borderRadius:'3px'}; };
+    var presetChips=this.presets().map(function(pp,i){ return {i:i,name:pp.name,style:chip()}; });
+    var gallery=s.gallerySeeds.map(function(sd,i){ return {seed:sd,i:i}; });
+    var cols=[{x:0.05,a:'left'},{x:0.5,a:'center'},{x:0.95,a:'right'}];
+    var rows=[0.06,0.45,0.84];
+    var anchors=[];
+    for(var ri=0;ri<3;ri++){ for(var ci=0;ci<3;ci++){ var cx=cols[ci], ry=rows[ri];
+      var on=Math.abs(s.textX-cx.x)<0.02 && Math.abs(s.textY-ry)<0.02 && s.textAlign===cx.a;
+      anchors.push({x:cx.x,y:ry,align:cx.a, style:{aspectRatio:'1.4',cursor:'pointer',border:'1px solid '+(on?'#3a3a42':'#202024'),background:on?'#2a2a31':'#141417',borderRadius:'3px',display:'flex',alignItems:cx.a==='left'?'flex-start':cx.a==='right'?'flex-end':'center',justifyContent:ri===0?'flex-start':ri===2?'flex-end':'center',padding:'5px'},
+        dot:{width:'4px',height:'4px',borderRadius:'50%',background:on?'#ececef':'#55555a'}}); } }
+    var resolved=this.resolveMood(s.seed>>>0,s.mood);
+    var g=function(b){ return b?'\u2212':'+'; };
+    return {
+      libOpen:s.open.library, palOpen:s.open.palette, compOpen:s.open.composition, texOpen:s.open.texture, sigOpen:s.open.sigil, typeOpen:s.open.type,
+      libGlyph:g(s.open.library), palGlyph:g(s.open.palette), compGlyph:g(s.open.composition), texGlyph:g(s.open.texture), sigGlyph:g(s.open.sigil), typeGlyph:g(s.open.type),
+      toggleSec:function(e){ var k=e.currentTarget.dataset.sec; this.setState(function(st){ var o=Object.assign({},st.open); o[k]=!o[k]; return {open:o}; }); }.bind(this),
+      canvasRef:this.canvasRef,
+      seed:s.seed, density:s.density, smear:s.smear, grain:s.grain, accent:s.accent,
+      blobSize:s.blobSize, glow:s.glow, contrast:s.contrast, saturation:s.saturation, vignette:s.vignette, bloom:s.bloom,
+      gridCols:s.gridCols, gridDensity:s.gridDensity, gridPerspective:s.gridPerspective, gridMagnet:s.gridMagnet, waveCount:s.waveCount, waveAmp:s.waveAmp, waveDetail:s.waveDetail, waveTurbulence:s.waveTurbulence, wavePerspective:s.wavePerspective, orbSize:s.orbSize, orbSoft:s.orbSoft, orbHalftone:s.orbHalftone, orbMelt:s.orbMelt, orbShade:s.orbShade, soften:s.soften,
+      engBlob:s.engine==='blob', engGrid:s.engine==='grid', engWaves:s.engine==='waves', engOrb:s.engine==='orb',
+      engineOpts:[['blob','BLOB'],['grid','GRID'],['waves','WAVE'],['orb','ORB']].map(function(e){ var st=seg(s.engine===e[0]); return {val:e[0],label:e[1],style:st}; }),
+      setEngine:function(ev){ this.setState({engine:ev.currentTarget.dataset.val}); }.bind(this),
+      grainSize:s.grainSize, dust:s.dust,
+      sigilMarkCount:s.sigilMarkCount, sigilMarkSize:s.sigilMarkSize, sigilMarkScatter:s.sigilMarkScatter,
+      sigilFrameDensity:s.sigilFrameDensity,
+      animSpeed:s.animSpeed, animDrift:s.animDrift, animSwirl:s.animSwirl, animHue:s.animHue, animFlicker:s.animFlicker,
+      animBPM:s.animBPM, animPump:s.animPump, animKick:s.animKick, mode:s.mode,
+      accentCount:s.accentCount, diamondCount:s.diamondCount, diamondSize:s.diamondSize, diamondShape:s.diamondShape, scratchCount:s.scratchCount,
+      distort:s.distort, title:s.title, artist:s.artist,
+      moodOpts:moodOpts, colorOpts:colorOpts, caseOpts:caseOpts, presetChips:presetChips, gallery:gallery, anchors:anchors,
+      applyPreset:function(e){ var i=+e.currentTarget.dataset.i; var cfg=this.presets()[i].cfg; this.setState(Object.assign({},cfg,{seed:(Math.random()*1e9)|0,gallerySeeds:this.makeSeeds(9)})); }.bind(this),
+      reshuffle:function(){ this.setState({gallerySeeds:this.makeSeeds(9)}); }.bind(this),
+      pickThumb:function(e){ this.setState({seed:Number(e.currentTarget.dataset.seed)}); }.bind(this),
+      pickAnchor:function(e){ var t=e.currentTarget.dataset; this.setState({textX:Number(t.x),textY:Number(t.y),textAlign:t.align}); }.bind(this),
+      thumbRef:function(el){ if(el){ this.thumbEls[el.dataset.gi]=el; } }.bind(this),
+      stDiamonds:tog(s.diamonds), stMarks:tog(s.sigilMarks), stFrame:tog(s.sigilFrame), stScratches:tog(s.scratches), stText:tog(s.showText),
+      diamondsLabel:s.diamonds?'ON':'OFF', marksLabel:s.sigilMarks?'ON':'OFF', frameLabel:s.sigilFrame?'ON':'OFF', scratchesLabel:s.scratches?'ON':'OFF', textLabel:s.showText?'ON':'OFF',
+      moodResolved:(s.mood==='random'?('RANDOM → '+resolved.toUpperCase()):resolved.toUpperCase()),
+      dlLabel:s.rendering?'RENDERING…':'DOWNLOAD PNG · 3000²',
+      spinStyle:{display:(s.rendering||s.recording)?'inline-block':'none',animation:'spin .8s linear infinite'},
+      stillMode:s.mode==='still', animMode:s.mode==='animate',
+      stillBtn:seg(s.mode==='still'), animBtn:seg(s.mode==='animate'),
+      actionLabel: s.mode==='animate' ? (s.recording?'RECORDING…':'EXPORT VIDEO LOOP') : (s.rendering?'RENDERING…':'DOWNLOAD PNG · 3000²'),
+      setMode:function(e){ this.setState({mode:e.currentTarget.dataset.mode}); }.bind(this),
+      primaryAction:function(){ if(this.state.mode==='animate'){ this.record(); } else { this.download(); } }.bind(this),
+      onRange:function(e){ var k=e.target.dataset.key; this.setState((function(o){o[k]=Number(e.target.value);return o;})({})); }.bind(this),
+      onText:function(e){ var k=e.target.dataset.key, val=e.target.value; this.setState((function(o){o[k]=val;return o;})({})); }.bind(this),
+      onToggle:function(e){ var k=e.currentTarget.dataset.key; this.setState(function(st){ var o={}; o[k]=!st[k]; return o; }); }.bind(this),
+      onPick:function(e){ var k=e.currentTarget.dataset.key, v=e.currentTarget.dataset.val; this.setState((function(o){o[k]=v;return o;})({})); }.bind(this),
+      newSeed:function(){ this.setState({seed:(Math.random()*1e9)|0}); }.bind(this),
+      download:function(){ this.download(); }.bind(this),
+    };
+  }
+}
+</script>
+</body>
+</html>

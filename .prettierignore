@@ -1,0 +1,12 @@
+node_modules
+.next
+dist
+.turbo
+coverage
+pnpm-lock.yaml
+# Frozen prototype — do not reformat
+index.html
+support.js
+server.js
+Album Art Engine.dc.html
+uploads

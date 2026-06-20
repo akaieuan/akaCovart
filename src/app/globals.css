@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+/* Design tokens ported from the prototype (index.html). Dark studio palette. */
+@theme {
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* Surfaces */
+  --color-bg: #0a0a0b;
+  --color-panel: #0c0c0e;
+  --color-border: #18181b;
+  --color-border-soft: #161619;
+
+  /* Ink */
+  --color-ink: #e8e8ea;
+
+  /* Prototype grey scale */
+  --color-grey-950: #0c0c0e;
+  --color-grey-900: #121215;
+  --color-grey-880: #141417;
+  --color-grey-850: #1c1c20;
+  --color-grey-800: #202024;
+  --color-grey-780: #222226;
+  --color-grey-700: #26262a;
+  --color-grey-600: #2a2a31;
+  --color-grey-500: #3a3a42;
+  --color-grey-450: #48484c;
+  --color-grey-400: #55555a;
+  --color-grey-350: #6a6a6e;
+  --color-grey-300: #8a8a8e;
+  --color-grey-250: #9a9aa0;
+  --color-grey-200: #bcbcc2;
+  --color-grey-150: #d8d8da;
+  --color-grey-100: #ececef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+}
+
+body {
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* ── Range inputs (ported from prototype) ───────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+  height: 12px;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #26262a;
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #e8e8ea;
+  margin-top: -4.5px;
+}
+input[type="range"]::-moz-range-track {
+  height: 2px;
+  background: #26262a;
+  border-radius: 2px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: none;
+  border-radius: 50%;
+  background: #e8e8ea;
+}
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 0.3;
+}
+::placeholder {
+  color: #48484c;
+  letter-spacing: 0.1em;
+}
+
+/* ── Panel scrollbar (ported from prototype) ────────────────────────── */
+.pnl::-webkit-scrollbar {
+  width: 9px;
+}
+.pnl::-webkit-scrollbar-track {
+  background: #0c0c0e;
+}
+.pnl::-webkit-scrollbar-thumb {
+  background: #222226;
+  border-radius: 5px;
+  border: 2px solid #0c0c0e;
+}
+
+/* ── Keyframes (ported from prototype) ──────────────────────────────── */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
