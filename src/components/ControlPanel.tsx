@@ -14,6 +14,7 @@ import {
   type SegOption,
 } from "./primitives";
 import Gallery from "./Gallery";
+import SectionNav, { SECTION_IDS } from "./SectionNav";
 
 // Engine tabs: prefer the registry, fall back to the known four so the panel is
 // usable while the engine stubs are empty.
@@ -103,12 +104,15 @@ export default function ControlPanel({
         </button>
       </div>
 
+      {/* Section navigator (still mode only) */}
+      {s.mode === "still" && <SectionNav />}
+
       {/* Scrolling body */}
       <div className="pnl min-h-0 flex-1 overflow-y-auto">
         {s.mode === "still" ? (
           <>
             {/* STARTING POINTS */}
-            <Section title="STARTING POINTS" {...sec("library")}>
+            <Section title="STARTING POINTS" id={SECTION_IDS.library} {...sec("library")}>
               <GroupLabel variant="sub">PRESETS</GroupLabel>
               <div className="mb-4 grid grid-cols-4 gap-[6px]">
                 {presets.length === 0 ? (
@@ -139,7 +143,7 @@ export default function ControlPanel({
             </Section>
 
             {/* PALETTE · MOOD */}
-            <Section title="PALETTE · MOOD" {...sec("palette")}>
+            <Section title="PALETTE · MOOD" id={SECTION_IDS.palette} {...sec("palette")}>
               <Segmented
                 value={s.mood}
                 options={["dark", "cream", "grey", "random"].map((v) => ({
@@ -151,7 +155,7 @@ export default function ControlPanel({
             </Section>
 
             {/* COMPOSITION (engine-specific) */}
-            <Section title="COMPOSITION" {...sec("composition")}>
+            <Section title="COMPOSITION" id={SECTION_IDS.composition} {...sec("composition")}>
               {s.engine === "blob" && (
                 <div>
                   <Slider label="BLOB DENSITY" min={0} max={100} value={s.density} onChange={(v) => set({ density: v })} />
@@ -203,7 +207,7 @@ export default function ControlPanel({
             </Section>
 
             {/* TEXTURE */}
-            <Section title="TEXTURE" {...sec("texture")}>
+            <Section title="TEXTURE" id={SECTION_IDS.texture} {...sec("texture")}>
               <Slider label="FILM GRAIN" min={0} max={100} value={s.grain} onChange={(v) => set({ grain: v })} />
               <Slider label="GRAIN SIZE" min={0} max={100} value={s.grainSize} onChange={(v) => set({ grainSize: v })} />
               <Slider label="DUST / SPECKS" min={0} max={100} value={s.dust} onChange={(v) => set({ dust: v })} />
@@ -212,7 +216,7 @@ export default function ControlPanel({
             </Section>
 
             {/* SIGIL */}
-            <Section title="SIGIL" {...sec("sigil")}>
+            <Section title="SIGIL" id={SECTION_IDS.sigil} {...sec("sigil")}>
               <Toggle label="SIGIL MARKS" value={s.sigilMarks} onChange={(v) => set({ sigilMarks: v })} />
               <Slider label="DENSITY" min={0} max={20} sub value={s.sigilMarkCount} onChange={(v) => set({ sigilMarkCount: v })} />
               <Slider label="SIZE" min={0} max={100} sub value={s.sigilMarkSize} onChange={(v) => set({ sigilMarkSize: v })} />
@@ -223,7 +227,7 @@ export default function ControlPanel({
             </Section>
 
             {/* TYPE OVERLAY */}
-            <Section title="TYPE OVERLAY" {...sec("type")}>
+            <Section title="TYPE OVERLAY" id={SECTION_IDS.type} {...sec("type")}>
               <Toggle label="RENDER TEXT" value={s.showText} onChange={(v) => set({ showText: v })} />
               <TextInput value={s.title} placeholder="TITLE" onChange={(v) => set({ title: v })} />
               <TextInput value={s.artist} placeholder="ARTIST" artist onChange={(v) => set({ artist: v })} />

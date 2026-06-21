@@ -55,13 +55,17 @@ input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  background: transparent;
+  /* Default track colour; the Slider primitive overrides this with a
+     min→value filled gradient via an inline style. */
+  background: #26262a;
+  border-radius: 2px;
   cursor: pointer;
-  height: 12px;
+  height: 2px;
+  margin: 5px 0;
 }
 input[type="range"]::-webkit-slider-runnable-track {
   height: 2px;
-  background: #26262a;
+  background: transparent;
   border-radius: 2px;
 }
 input[type="range"]::-webkit-slider-thumb {
@@ -75,7 +79,7 @@ input[type="range"]::-webkit-slider-thumb {
 }
 input[type="range"]::-moz-range-track {
   height: 2px;
-  background: #26262a;
+  background: transparent;
   border-radius: 2px;
 }
 input[type="range"]::-moz-range-thumb {
@@ -104,6 +108,12 @@ input[type="number"]::-webkit-inner-spin-button {
   background: #222226;
   border-radius: 5px;
   border: 2px solid #0c0c0e;
+}
+
+/* ── Section anchors ────────────────────────────────────────────────── */
+/* Keep the sticky section header from covering a scrolled-to section. */
+.section-anchor {
+  scroll-margin-top: 0;
 }
 
 /* ── Keyframes (ported from prototype) ──────────────────────────────── */

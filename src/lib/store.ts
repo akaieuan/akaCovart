@@ -123,8 +123,10 @@ export interface StudioState {
   // actions
   setState: (patch: Partial<StudioState>) => void;
   toggleSection: (key: keyof OpenSections) => void;
+  setAllSections: (open: boolean) => void;
   newSeed: () => void;
   rerollGallery: () => void;
+  resetParams: () => void;
 }
 
 export function randSeed(): number {
@@ -249,8 +251,31 @@ export const useStudio = create<StudioState>((set) => ({
   setState: (patch) => set((s) => ({ ...s, ...patch })),
   toggleSection: (key) =>
     set((s) => ({ open: { ...s.open, [key]: !s.open[key] } })),
+  setAllSections: (open) =>
+    set((s) => {
+      const next = { ...s.open };
+      (Object.keys(next) as (keyof OpenSections)[]).forEach((k) => {
+        next[k] = open;
+      });
+      return { open: next };
+    }),
   newSeed: () => set({ seed: randSeed() }),
   rerollGallery: () => set({ gallerySeeds: makeSeeds(9) }),
+  resetParams: () =>
+    set(() => {
+      // Reset all generation/animation params to their defaults, but keep the
+      // current seed, mode, open sections, gallerySeeds, and process flags.
+      const {
+        mode: _mode,
+        rendering: _rendering,
+        recording: _recording,
+        ...paramDefaults
+      } = defaults;
+      void _mode;
+      void _rendering;
+      void _recording;
+      return paramDefaults;
+    }),
 }));
 
 // ── Render-param projection ─────────────────────────────────────────────────

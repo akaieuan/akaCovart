@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // ── Micro-label ──────────────────────────────────────────────────────────────
 export function Label({
@@ -31,18 +31,20 @@ export function Section({
   open,
   onToggle,
   children,
+  id,
 }: {
   title: string;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
+  id?: string;
 }) {
   return (
-    <div className="border-b border-[#161619]">
+    <div id={id} className="section-anchor border-b border-[#161619]">
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between bg-transparent px-5 py-[15px] font-mono text-[9px] font-semibold tracking-[0.22em] text-grey-250"
+        className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-transparent bg-panel px-5 py-[15px] font-mono text-[9px] font-semibold tracking-[0.22em] text-grey-250"
       >
         {title}
         <span className="font-mono text-[14px] font-normal text-grey-350">
@@ -74,15 +76,74 @@ export function Slider({
   last?: boolean;
   onChange: (v: number) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  // Clamp to [min,max] and snap to step (relative to min, like a range input).
+  const clampSnap = (raw: number): number => {
+    if (Number.isNaN(raw)) return value;
+    let v = Math.min(max, Math.max(min, raw));
+    if (step > 0) v = min + Math.round((v - min) / step) * step;
+    v = Math.min(max, Math.max(min, v));
+    // Normalize float noise from stepping.
+    return Math.round(v * 1e6) / 1e6;
+  };
+
+  const commit = () => {
+    onChange(clampSnap(Number(draft)));
+    setEditing(false);
+  };
+
+  const startEdit = () => {
+    setDraft(String(value));
+    setEditing(true);
+  };
+
+  // Filled progress track: lighter grey from min→value, darker for the rest.
+  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  const fill = Math.min(100, Math.max(0, pct));
+  const trackBg = `linear-gradient(to right, #48484c 0%, #48484c ${fill}%, #26262a ${fill}%, #26262a 100%)`;
+
   return (
     <div className={last ? "mb-0" : "mb-4"}>
       <div className="mb-2 flex items-baseline justify-between">
         <Label sub={sub} className="!text-grey-300">
           <span dangerouslySetInnerHTML={{ __html: label }} />
         </Label>
-        <span className="font-mono text-[10px] font-medium text-grey-150">
-          {value}
-        </span>
+        {editing ? (
+          <input
+            ref={inputRef}
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              else if (e.key === "Escape") setEditing(false);
+            }}
+            className="w-[44px] rounded-[2px] border border-grey-600 bg-grey-880 px-1 text-right font-mono text-[10px] font-medium text-grey-100 outline-none"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={startEdit}
+            className="cursor-text bg-transparent font-mono text-[10px] font-medium text-grey-150 hover:text-grey-100"
+            title="Click to edit"
+          >
+            {value}
+          </button>
+        )}
       </div>
       <input
         type="range"
@@ -91,6 +152,7 @@ export function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
+        style={{ background: trackBg }}
       />
     </div>
   );
