@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* Design tokens ported from the prototype (index.html). Dark studio palette. */
 @theme {
@@ -120,5 +124,147 @@ input[type="number"]::-webkit-inner-spin-button {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@theme inline {
+  /* Keep IBM Plex as the shadcn font tokens too (defined in the @theme block
+     above as --font-sans / --font-mono). Do NOT re-alias --font-sans here or
+     it shadows the prototype definition. */
+  --font-heading: var(--font-plex-sans), system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ── shadcn variables, mapped to the akaCOVART dark palette ──────────────
+   The app is dark by ALWAYS. We set the dark values directly on :root so
+   shadcn components are correct even before any class hydrates, and we add
+   <html class="dark"> in layout.tsx so shadcn's `dark:` utility variants
+   (used inside the component variants) also engage. :root and .dark are
+   intentionally identical — there is no light theme.
+
+   Palette reference:
+     bg / canvas        #0a0a0b
+     surface / card     #0c0c0e   (popover/sheet slightly raised #121215)
+     border hairline    #18181b   (matches --color-bg token; very dark)
+     input border       #1f1f23
+     ink / foreground   #e8e8ea
+     muted text         #8a8a8e   muted-foreground
+     primary action     #ececef   on #0a0a0b text
+     radius             5px (small) */
+:root {
+  --background: #0a0a0b;
+  --foreground: #e8e8ea;
+  --card: #0c0c0e;
+  --card-foreground: #e8e8ea;
+  --popover: #121215;
+  --popover-foreground: #e8e8ea;
+  --primary: #ececef;
+  --primary-foreground: #0a0a0b;
+  --secondary: #18181b;
+  --secondary-foreground: #e8e8ea;
+  --muted: #121215;
+  --muted-foreground: #8a8a8e;
+  --accent: #1c1c20;
+  --accent-foreground: #e8e8ea;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #18181b;
+  --input: #1f1f23;
+  --ring: #6a6a6e;
+  --chart-1: #ececef;
+  --chart-2: #bcbcc2;
+  --chart-3: #8a8a8e;
+  --chart-4: #55555a;
+  --chart-5: #26262a;
+  --radius: 5px;
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #e8e8ea;
+  --sidebar-primary: #ececef;
+  --sidebar-primary-foreground: #0a0a0b;
+  --sidebar-accent: #1c1c20;
+  --sidebar-accent-foreground: #e8e8ea;
+  --sidebar-border: #18181b;
+  --sidebar-ring: #6a6a6e;
+}
+
+.dark {
+  --background: #0a0a0b;
+  --foreground: #e8e8ea;
+  --card: #0c0c0e;
+  --card-foreground: #e8e8ea;
+  --popover: #121215;
+  --popover-foreground: #e8e8ea;
+  --primary: #ececef;
+  --primary-foreground: #0a0a0b;
+  --secondary: #18181b;
+  --secondary-foreground: #e8e8ea;
+  --muted: #121215;
+  --muted-foreground: #8a8a8e;
+  --accent: #1c1c20;
+  --accent-foreground: #e8e8ea;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #18181b;
+  --input: #1f1f23;
+  --ring: #6a6a6e;
+  --chart-1: #ececef;
+  --chart-2: #bcbcc2;
+  --chart-3: #8a8a8e;
+  --chart-4: #55555a;
+  --chart-5: #26262a;
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #e8e8ea;
+  --sidebar-primary: #ececef;
+  --sidebar-primary-foreground: #0a0a0b;
+  --sidebar-accent: #1c1c20;
+  --sidebar-accent-foreground: #e8e8ea;
+  --sidebar-border: #18181b;
+  --sidebar-ring: #6a6a6e;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
   }
 }

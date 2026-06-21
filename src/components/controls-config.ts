@@ -1,0 +1,273 @@
+import type { StudioState } from "@/lib/store";
+
+// ── Data-driven control config ───────────────────────────────────────────────
+// Every repetitive control row is described as DATA here, then rendered by a
+// generic mapper in Controls.tsx. No copy-pasted slider/toggle JSX.
+//
+// `key` is a numeric/boolean/string field on the Zustand store. `kind` selects
+// the primitive. Ranges/steps mirror src/lib/store.ts defaults and the engine
+// param expectations.
+
+// Keys that hold a numeric value on the store.
+type NumKey = {
+  [K in keyof StudioState]: StudioState[K] extends number ? K : never;
+}[keyof StudioState];
+
+// Keys that hold a boolean value on the store.
+type BoolKey = {
+  [K in keyof StudioState]: StudioState[K] extends boolean ? K : never;
+}[keyof StudioState];
+
+// Keys that hold a string value on the store.
+type StrKey = {
+  [K in keyof StudioState]: StudioState[K] extends string ? K : never;
+}[keyof StudioState];
+
+export interface SegOption {
+  value: string;
+  label: string;
+}
+
+export interface SliderControl {
+  kind: "slider";
+  key: NumKey;
+  label: string;
+  min: number;
+  max: number;
+  step?: number;
+  /** Render as a quieter "sub" row (indented child of a toggle group). */
+  sub?: boolean;
+}
+
+export interface ToggleControl {
+  kind: "toggle";
+  key: BoolKey;
+  label: string;
+}
+
+export interface SegmentedControl {
+  kind: "segmented";
+  key: StrKey;
+  label?: string;
+  options: SegOption[];
+}
+
+export interface TextControl {
+  kind: "text";
+  key: StrKey;
+  placeholder?: string;
+  /** Slightly muted styling for the secondary (artist) field. */
+  muted?: boolean;
+}
+
+export type Control =
+  | SliderControl
+  | ToggleControl
+  | SegmentedControl
+  | TextControl;
+
+// A labelled run of controls inside a section (e.g. "ACCENT STREAKS").
+export interface ControlGroup {
+  /** Optional sub-heading shown above the run. */
+  heading?: string;
+  controls: Control[];
+}
+
+// ── Engine identity ──────────────────────────────────────────────────────────
+export const ENGINE_TAB_LABELS: Record<string, string> = {
+  blob: "BLOB",
+  grid: "GRID",
+  waves: "WAVE",
+  orb: "ORB",
+};
+
+export const FALLBACK_ENGINES: SegOption[] = [
+  { value: "blob", label: "BLOB" },
+  { value: "grid", label: "GRID" },
+  { value: "waves", label: "WAVE" },
+  { value: "orb", label: "ORB" },
+];
+
+// ── PALETTE / MOOD ───────────────────────────────────────────────────────────
+export const MOOD_OPTIONS: SegOption[] = [
+  { value: "dark", label: "DARK" },
+  { value: "cream", label: "CREAM" },
+  { value: "grey", label: "GREY" },
+  { value: "random", label: "RANDOM" },
+];
+
+// ── COMPOSITION (per-engine) ─────────────────────────────────────────────────
+// Each engine contributes its own groups; a shared FINISH group is appended for
+// all engines by the renderer.
+export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
+  blob: [
+    {
+      controls: [
+        { kind: "slider", key: "density", label: "BLOB DENSITY", min: 0, max: 100 },
+        { kind: "slider", key: "smear", label: "SMEAR / BLUR", min: 0, max: 100 },
+        { kind: "slider", key: "blobSize", label: "BLOB SIZE", min: 0, max: 100 },
+        { kind: "slider", key: "glow", label: "GLOW", min: 0, max: 100 },
+      ],
+    },
+    {
+      controls: [
+        { kind: "toggle", key: "diamonds", label: "DIAMOND ZONES" },
+        { kind: "slider", key: "diamondCount", label: "COUNT", min: 0, max: 4, sub: true },
+        { kind: "slider", key: "diamondSize", label: "SIZE", min: 0, max: 100, sub: true },
+        { kind: "slider", key: "diamondShape", label: "SHAPE WIDE–TALL", min: 0, max: 100, sub: true },
+      ],
+    },
+    {
+      heading: "ACCENT STREAKS",
+      controls: [
+        { kind: "slider", key: "accent", label: "INTENSITY", min: 0, max: 100, sub: true },
+        { kind: "slider", key: "accentCount", label: "COUNT", min: 0, max: 4, sub: true },
+      ],
+    },
+  ],
+  grid: [
+    {
+      controls: [
+        { kind: "slider", key: "gridCols", label: "COLUMNS", min: 3, max: 18 },
+        { kind: "slider", key: "gridDensity", label: "FILL DENSITY", min: 0, max: 100 },
+        { kind: "slider", key: "gridPerspective", label: "3D PLANE", min: 0, max: 100 },
+        { kind: "slider", key: "gridMagnet", label: "MAGNET · SCATTER", min: 0, max: 100 },
+      ],
+    },
+  ],
+  waves: [
+    {
+      controls: [
+        { kind: "slider", key: "waveCount", label: "LINES", min: 10, max: 160 },
+        { kind: "slider", key: "waveAmp", label: "AMPLITUDE", min: 0, max: 100 },
+        { kind: "slider", key: "waveDetail", label: "DETAIL", min: 0, max: 100 },
+        { kind: "slider", key: "waveTurbulence", label: "TURBULENCE", min: 0, max: 100 },
+        { kind: "slider", key: "wavePerspective", label: "PERSPECTIVE", min: 0, max: 100 },
+      ],
+    },
+  ],
+  orb: [
+    {
+      controls: [
+        { kind: "slider", key: "orbSize", label: "ORB SIZE", min: 0, max: 100 },
+        { kind: "slider", key: "orbSoft", label: "SOFTNESS", min: 0, max: 100 },
+        { kind: "slider", key: "orbHalftone", label: "HALFTONE", min: 0, max: 100 },
+        { kind: "slider", key: "orbMelt", label: "MELT", min: 0, max: 100 },
+        { kind: "slider", key: "orbShade", label: "3D SHADE", min: 0, max: 100 },
+      ],
+    },
+  ],
+};
+
+// Shared FINISH group, appended to every engine's COMPOSITION section.
+export const FINISH_GROUP: ControlGroup = {
+  heading: "FINISH",
+  controls: [
+    { kind: "slider", key: "contrast", label: "CONTRAST", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "saturation", label: "SATURATION", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "vignette", label: "VIGNETTE", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "bloom", label: "BLOOM", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "soften", label: "SOFTEN · BLUR", min: 0, max: 100, sub: true },
+  ],
+};
+
+// ── TEXTURE ──────────────────────────────────────────────────────────────────
+export const TEXTURE_GROUPS: ControlGroup[] = [
+  {
+    controls: [
+      { kind: "slider", key: "grain", label: "FILM GRAIN", min: 0, max: 100 },
+      { kind: "slider", key: "grainSize", label: "GRAIN SIZE", min: 0, max: 100 },
+      { kind: "slider", key: "dust", label: "DUST / SPECKS", min: 0, max: 100 },
+    ],
+  },
+  {
+    controls: [
+      { kind: "toggle", key: "scratches", label: "SCRATCH LINES" },
+      { kind: "slider", key: "scratchCount", label: "COUNT", min: 0, max: 16, sub: true },
+    ],
+  },
+];
+
+// ── SIGIL ────────────────────────────────────────────────────────────────────
+export const SIGIL_GROUPS: ControlGroup[] = [
+  {
+    controls: [
+      { kind: "toggle", key: "sigilMarks", label: "SIGIL MARKS" },
+      { kind: "slider", key: "sigilMarkCount", label: "DENSITY", min: 0, max: 20, sub: true },
+      { kind: "slider", key: "sigilMarkSize", label: "SIZE", min: 0, max: 100, sub: true },
+      { kind: "slider", key: "sigilMarkScatter", label: "SCATTER", min: 0, max: 100, sub: true },
+    ],
+  },
+  {
+    controls: [
+      { kind: "toggle", key: "sigilFrame", label: "BARB FRAME" },
+      { kind: "slider", key: "sigilFrameDensity", label: "FRAME DENSITY", min: 0, max: 100, sub: true },
+    ],
+  },
+];
+
+// ── TYPE OVERLAY ─────────────────────────────────────────────────────────────
+export const TEXT_CASE_OPTIONS: SegOption[] = [
+  { value: "upper", label: "UPPER" },
+  { value: "lower", label: "lower" },
+  { value: "asis", label: "As-Is" },
+  { value: "manic", label: "ManIC" },
+];
+
+export const TEXT_COLOR_OPTIONS: SegOption[] = [
+  { value: "auto", label: "AUTO" },
+  { value: "light", label: "LIGHT" },
+  { value: "dark", label: "DARK" },
+];
+
+// 3x3 position grid: column carries x + align, rows carry y.
+export const POS_COLS = [
+  { x: 0.05, align: "left" },
+  { x: 0.5, align: "center" },
+  { x: 0.95, align: "right" },
+] as const;
+export const POS_ROWS = [0.06, 0.45, 0.84] as const;
+
+// ── ANIMATE: BEAT / DRIFT / MOTION ───────────────────────────────────────────
+export const BEAT_GROUP: ControlGroup = {
+  heading: "BEAT",
+  controls: [
+    { kind: "slider", key: "animBPM", label: "BPM", min: 90, max: 160 },
+    { kind: "slider", key: "animPump", label: "PUMP", min: 0, max: 100 },
+    { kind: "slider", key: "animKick", label: "KICK", min: 0, max: 100 },
+  ],
+};
+
+export const DRIFT_GROUP: ControlGroup = {
+  heading: "DRIFT",
+  controls: [
+    { kind: "slider", key: "animSpeed", label: "SPEED", min: 0, max: 100 },
+    { kind: "slider", key: "animDrift", label: "WANDER", min: 0, max: 100 },
+    { kind: "slider", key: "animSwirl", label: "SWIRL", min: 0, max: 100 },
+  ],
+};
+
+// Per-engine MOTION. blob has none (rendered as a muted note instead).
+export const MOTION_BY_ENGINE: Record<string, Control[]> = {
+  orb: [
+    { kind: "slider", key: "orbSpin", label: "SPIN", min: 0, max: 100 },
+    { kind: "slider", key: "orbWobble", label: "WOBBLE", min: 0, max: 100 },
+    { kind: "slider", key: "orbBounce", label: "BOUNCE", min: 0, max: 100 },
+    { kind: "slider", key: "orbBreath", label: "BREATH", min: 0, max: 100 },
+    { kind: "slider", key: "orbChurn", label: "CHURN", min: 0, max: 100 },
+  ],
+  waves: [
+    { kind: "slider", key: "waveFlow", label: "FLOW", min: 0, max: 100 },
+    { kind: "slider", key: "waveSwell", label: "SWELL", min: 0, max: 100 },
+    { kind: "slider", key: "waveSurge", label: "SURGE", min: 0, max: 100 },
+    { kind: "slider", key: "waveChurn", label: "CHURN", min: 0, max: 100 },
+    { kind: "slider", key: "waveUndulate", label: "UNDULATE", min: 0, max: 100 },
+  ],
+  grid: [
+    { kind: "slider", key: "gridRipple", label: "RIPPLE", min: 0, max: 100 },
+    { kind: "slider", key: "gridBob", label: "BOB", min: 0, max: 100 },
+    { kind: "slider", key: "gridPop", label: "POP", min: 0, max: 100 },
+    { kind: "slider", key: "gridOrbit", label: "ORBIT", min: 0, max: 100 },
+    { kind: "slider", key: "gridFlow", label: "FLOW", min: 0, max: 100 },
+  ],
+};

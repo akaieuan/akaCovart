@@ -1,70 +1,69 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { Slider as UISlider } from "@/components/ui/slider";
+import { Switch as UISwitch } from "@/components/ui/switch";
+import { Input as UIInput } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+// Shared mono micro-typography for every label/value in the panel.
+const MICRO = "font-mono text-[9px] font-medium tracking-[0.14em] uppercase";
 
 // ── Micro-label ──────────────────────────────────────────────────────────────
 export function Label({
   children,
   sub,
-  className = "",
+  className,
 }: {
   children: ReactNode;
   sub?: boolean;
   className?: string;
 }) {
   return (
-    <span
-      className={
-        "font-mono text-[9px] font-medium tracking-[0.14em] " +
-        (sub ? "text-grey-350 " : "text-grey-300 ") +
-        className
-      }
-    >
+    <span className={cn(MICRO, sub ? "text-grey-350" : "text-grey-300", className)}>
       {children}
     </span>
   );
 }
 
-// ── Collapsible section ──────────────────────────────────────────────────────
-export function Section({
-  title,
-  open,
-  onToggle,
+// ── Group sub-heading ────────────────────────────────────────────────────────
+export function GroupLabel({
   children,
-  id,
+  variant = "default",
 }: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
   children: ReactNode;
-  id?: string;
+  variant?: "default" | "sub" | "beat";
 }) {
-  return (
-    <div id={id} className="section-anchor border-b border-[#161619]">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="sticky top-0 z-10 flex w-full items-center justify-between border-b border-transparent bg-panel px-5 py-[15px] font-mono text-[9px] font-semibold tracking-[0.22em] text-grey-250"
+  if (variant === "sub") {
+    return <div className={cn(MICRO, "mb-2 text-grey-350")}>{children}</div>;
+  }
+  if (variant === "beat") {
+    return (
+      <div
+        className={cn(
+          "mb-[14px] font-mono text-[9px] font-semibold tracking-[0.18em] text-grey-350 uppercase",
+        )}
       >
-        {title}
-        <span className="font-mono text-[14px] font-normal text-grey-350">
-          {open ? "−" : "+"}
-        </span>
-      </button>
-      {open && <div className="px-5 pb-[18px]">{children}</div>}
-    </div>
-  );
+        {children}
+      </div>
+    );
+  }
+  return <div className={cn(MICRO, "mt-[18px] mb-3 text-grey-300")}>{children}</div>;
 }
 
-// ── Slider ───────────────────────────────────────────────────────────────────
-export function Slider({
+export function Divider() {
+  return <div className="my-4 h-px bg-border-soft" />;
+}
+
+// ── Slider row (shadcn Slider + click-to-edit value) ─────────────────────────
+export function SliderRow({
   label,
   value,
   min,
   max,
   step = 1,
   sub,
-  last,
   onChange,
 }: {
   label: string;
@@ -73,7 +72,6 @@ export function Slider({
   max: number;
   step?: number;
   sub?: boolean;
-  last?: boolean;
   onChange: (v: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -93,7 +91,6 @@ export function Slider({
     let v = Math.min(max, Math.max(min, raw));
     if (step > 0) v = min + Math.round((v - min) / step) * step;
     v = Math.min(max, Math.max(min, v));
-    // Normalize float noise from stepping.
     return Math.round(v * 1e6) / 1e6;
   };
 
@@ -107,16 +104,11 @@ export function Slider({
     setEditing(true);
   };
 
-  // Filled progress track: lighter grey from min→value, darker for the rest.
-  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
-  const fill = Math.min(100, Math.max(0, pct));
-  const trackBg = `linear-gradient(to right, #48484c 0%, #48484c ${fill}%, #26262a ${fill}%, #26262a 100%)`;
-
   return (
-    <div className={last ? "mb-0" : "mb-4"}>
+    <div className="mb-4">
       <div className="mb-2 flex items-baseline justify-between">
         <Label sub={sub} className="!text-grey-300">
-          <span dangerouslySetInnerHTML={{ __html: label }} />
+          {label}
         </Label>
         {editing ? (
           <input
@@ -138,28 +130,29 @@ export function Slider({
           <button
             type="button"
             onClick={startEdit}
-            className="cursor-text bg-transparent font-mono text-[10px] font-medium text-grey-150 hover:text-grey-100"
             title="Click to edit"
+            className="cursor-text bg-transparent font-mono text-[10px] font-medium text-grey-150 hover:text-grey-100"
           >
             {value}
           </button>
         )}
       </div>
-      <input
-        type="range"
+      <UISlider
+        value={[value]}
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ background: trackBg }}
+        onValueChange={(v) => {
+          const n = Array.isArray(v) ? v[0] : v;
+          if (typeof n === "number") onChange(n);
+        }}
       />
     </div>
   );
 }
 
-// ── Toggle ───────────────────────────────────────────────────────────────────
-export function Toggle({
+// ── Toggle row (label + shadcn Switch) ───────────────────────────────────────
+export function ToggleRow({
   label,
   value,
   onChange,
@@ -169,25 +162,14 @@ export function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="my-[18px] mb-3 flex items-center justify-between">
+    <div className="mt-[18px] mb-3 flex items-center justify-between">
       <Label className="!text-grey-300">{label}</Label>
-      <button
-        type="button"
-        onClick={() => onChange(!value)}
-        className={
-          "inline-flex items-center rounded-full border px-3 py-[5px] font-mono text-[9px] font-semibold tracking-[0.14em] " +
-          (value
-            ? "border-grey-500 bg-grey-600 text-grey-100"
-            : "border-grey-800 bg-transparent text-grey-350")
-        }
-      >
-        {value ? "ON" : "OFF"}
-      </button>
+      <UISwitch checked={value} onCheckedChange={onChange} />
     </div>
   );
 }
 
-// ── Segmented control ────────────────────────────────────────────────────────
+// ── Segmented control (shadcn ToggleGroup, single-select) ─────────────────────
 export interface SegOption {
   value: string;
   label: string;
@@ -197,7 +179,7 @@ export function Segmented({
   value,
   options,
   onChange,
-  className = "",
+  className,
 }: {
   value: string;
   options: SegOption[];
@@ -205,86 +187,60 @@ export function Segmented({
   className?: string;
 }) {
   return (
-    <div className={"flex gap-[6px] " + className}>
-      {options.map((op) => {
-        const active = value === op.value;
-        return (
-          <button
-            key={op.value}
-            type="button"
-            onClick={() => onChange(op.value)}
-            className={
-              "flex-1 rounded-[3px] border px-0 py-2 text-center font-mono text-[9px] font-medium tracking-[0.12em] uppercase transition-colors " +
-              (active
-                ? "border-grey-500 bg-grey-600 text-grey-100"
-                : "border-grey-800 bg-transparent text-grey-350 hover:border-grey-500")
-            }
-          >
-            {op.label}
-          </button>
-        );
-      })}
-    </div>
+    <ToggleGroup
+      value={[value]}
+      onValueChange={(vals) => {
+        const next = vals[0];
+        // Ignore deselect (clicking the active segment) — keep one selected.
+        if (typeof next === "string") onChange(next);
+      }}
+      spacing={6}
+      className={cn("w-full", className)}
+    >
+      {options.map((op) => (
+        <ToggleGroupItem
+          key={op.value}
+          value={op.value}
+          variant="outline"
+          className={cn(
+            "h-auto flex-1 rounded-[3px] border-grey-800 bg-transparent px-0 py-2 font-mono text-[9px] font-medium tracking-[0.12em] uppercase text-grey-350",
+            "hover:border-grey-500 hover:bg-transparent hover:text-grey-200",
+            "data-pressed:border-grey-500 data-pressed:bg-grey-600 data-pressed:text-grey-100",
+            "aria-pressed:border-grey-500 aria-pressed:bg-grey-600 aria-pressed:text-grey-100",
+          )}
+        >
+          {op.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }
 
-// ── Text input ───────────────────────────────────────────────────────────────
-export function TextInput({
+// ── Text input (shadcn Input, mono micro-type) ───────────────────────────────
+export function TextRow({
   value,
   placeholder,
-  artist,
+  muted,
   onChange,
+  className,
 }: {
   value: string;
   placeholder?: string;
-  artist?: boolean;
+  muted?: boolean;
   onChange: (v: string) => void;
+  className?: string;
 }) {
   return (
-    <input
+    <UIInput
       type="text"
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className={
-        "h-[38px] w-full rounded-[3px] border border-grey-780 bg-grey-880 px-3 font-mono text-[11px] tracking-[0.1em] text-ink outline-none " +
-        (artist
-          ? "mb-[14px] font-normal !text-[#b8b8bc]"
-          : "mb-[9px] font-semibold")
-      }
+      className={cn(
+        "h-[38px] rounded-[3px] border-grey-780 bg-grey-880 px-3 font-mono text-[11px] tracking-[0.1em] text-ink",
+        muted ? "font-normal text-grey-200" : "font-semibold",
+        className,
+      )}
     />
   );
-}
-
-// ── Group label / divider ────────────────────────────────────────────────────
-export function GroupLabel({
-  children,
-  variant,
-}: {
-  children: ReactNode;
-  variant?: "sub" | "beat";
-}) {
-  if (variant === "sub") {
-    return (
-      <div className="mb-2 font-mono text-[9px] font-medium tracking-[0.14em] text-grey-350">
-        {children}
-      </div>
-    );
-  }
-  if (variant === "beat") {
-    return (
-      <div className="mb-[14px] font-mono text-[9px] font-semibold tracking-[0.18em] text-grey-350">
-        {children}
-      </div>
-    );
-  }
-  return (
-    <div className="my-[18px] mb-3 font-mono text-[9px] font-medium tracking-[0.14em] text-grey-300">
-      {children}
-    </div>
-  );
-}
-
-export function Divider() {
-  return <div className="my-4 h-px bg-[#161619]" />;
 }

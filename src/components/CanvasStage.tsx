@@ -245,8 +245,8 @@ export default function CanvasStage({
   };
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-[18px] bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] p-[34px]">
-      <div className="relative aspect-square w-[min(74vh,720px)] bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65),0_0_0_1px_#1c1c20]">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] px-4 pt-16 pb-44 sm:gap-[18px] sm:px-8 lg:py-8">
+      <div className="relative aspect-square w-full max-w-[min(82vh,760px)] bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65),0_0_0_1px_#1c1c20]">
         <canvas
           ref={canvasRef}
           className="block h-full w-full touch-none"
