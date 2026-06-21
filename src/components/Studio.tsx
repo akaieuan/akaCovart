@@ -193,8 +193,8 @@ export default function Studio() {
         <CanvasStage canvasRef={canvasRef} />
       </main>
 
-      {/* ── DESKTOP SIDEBAR (lg+) ─────────────────────────────────────── */}
-      <aside className="hidden w-[380px] flex-none flex-col border-l border-border bg-panel lg:flex xl:w-[400px]">
+      {/* ── DESKTOP SIDEBAR (md+) ─────────────────────────────────────── */}
+      <aside className="hidden w-[320px] flex-none flex-col border-l border-border bg-panel md:flex lg:w-[380px] xl:w-[400px]">
         {/* Engine selector + seed/generate (sticky header zone) */}
         <div className="flex flex-none flex-col gap-3 border-b border-border px-5 pt-5 pb-4">
           <EngineSelector />
@@ -216,8 +216,8 @@ export default function Studio() {
         </div>
       </aside>
 
-      {/* ── MOBILE / TABLET FLOATING CONTROLS (below lg) ──────────────── */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 p-4 lg:hidden">
+      {/* ── PHONE FLOATING CONTROLS (below md) ────────────────────────── */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 p-4 md:hidden">
         {/* Engine selector stays reachable without opening the sheet */}
         <div className="pointer-events-auto rounded-[6px] border border-border bg-panel/95 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-sm">
           <EngineSelector />

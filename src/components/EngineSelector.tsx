@@ -57,26 +57,27 @@ export default function EngineSelector({ className }: { className?: string }) {
         className,
       )}
     >
-      {engines.map(({ value, label, Icon }) => {
-        const active = value === engine;
-        return (
-          <ToggleGroupItem
-            key={value}
-            value={value}
-            aria-label={label}
-            className={cn(
-              "flex h-11 flex-col items-center justify-center gap-[3px] rounded-[3px] border-0 font-mono text-[9px] font-semibold tracking-[0.18em] transition-colors",
-              "hover:bg-grey-850 hover:text-grey-150",
-              active
-                ? "bg-grey-100 text-bg hover:bg-grey-100 hover:text-bg"
-                : "bg-transparent text-grey-300",
-            )}
-          >
-            <Icon className="size-[15px]" />
-            {label}
-          </ToggleGroupItem>
-        );
-      })}
+      {engines.map(({ value, label, Icon }) => (
+        <ToggleGroupItem
+          key={value}
+          value={value}
+          aria-label={label}
+          className={cn(
+            "flex h-11 flex-col items-center justify-center gap-[3px] rounded-[3px] border-0 bg-transparent font-mono text-[9px] font-semibold tracking-[0.18em] text-grey-300 transition-colors",
+            // idle hover
+            "hover:bg-grey-850 hover:text-grey-150",
+            // SELECTED: override the shadcn/base-ui default (data-[state=on]:bg-muted /
+            // aria-pressed:bg-muted = grey) so the active engine reads as a white pill.
+            "data-[state=on]:bg-grey-100 data-[state=on]:text-bg",
+            "data-[state=on]:hover:bg-grey-100 data-[state=on]:hover:text-bg",
+            "aria-pressed:bg-grey-100 aria-pressed:text-bg",
+            "aria-pressed:hover:bg-grey-100 aria-pressed:hover:text-bg",
+          )}
+        >
+          <Icon className="size-[15px]" />
+          {label}
+        </ToggleGroupItem>
+      ))}
     </ToggleGroup>
   );
 }
