@@ -84,6 +84,7 @@ export interface StudioState {
   artist: string;
   textColor: string;
   textCase: string;
+  textFont: string;
   distort: number;
   textX: number;
   textY: number;
@@ -210,6 +211,7 @@ const defaults = {
   artist: "V/A",
   textColor: "auto",
   textCase: "upper",
+  textFont: "Space Grotesk",
   distort: 0,
   textX: 0.05,
   textY: 0.85,

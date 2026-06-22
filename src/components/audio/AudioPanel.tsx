@@ -10,7 +10,7 @@ import {
   transport,
 } from "@/audio";
 import { useStudio, MAX_CLIP } from "@/lib/store";
-import { GroupLabel, SliderRow, ToggleRow } from "./primitives";
+import { GroupLabel, SliderRow, ToggleRow } from "@/components/controls/primitives";
 import Waveform from "./Waveform";
 
 const ACCEPT = "audio/mpeg,audio/wav,.mp3,.wav";
@@ -34,8 +34,6 @@ export default function AudioPanel() {
   const audioDuration = useStudio((s) => s.audioDuration);
   const clipStart = useStudio((s) => s.clipStart);
   const clipEnd = useStudio((s) => s.clipEnd);
-  const audioReactive = useStudio((s) => s.audioReactive);
-  const audioIntensity = useStudio((s) => s.audioIntensity);
   const audioPlaying = useStudio((s) => s.audioPlaying);
   const setState = useStudio((s) => s.setState);
 
@@ -263,17 +261,12 @@ export default function AudioPanel() {
       {/* ── AUDIO REACT ─────────────────────────────────────────────────── */}
       <div className="mt-6">
         <GroupLabel variant="beat">Audio react</GroupLabel>
-        <ToggleRow
-          label="Reactive"
-          value={audioReactive}
-          onChange={(v) => setState({ audioReactive: v })}
-        />
+        <ToggleRow label="Reactive" paramKey="audioReactive" />
         <SliderRow
           label="Intensity"
+          paramKey="audioIntensity"
           min={0}
           max={100}
-          value={audioIntensity}
-          onChange={(v) => setState({ audioIntensity: v })}
         />
       </div>
     </div>

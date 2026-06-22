@@ -6,7 +6,9 @@ import { useStudio, renderParams, type StudioState } from "@/lib/store";
 
 const THUMB = 156;
 
-// Only image-affecting params (no text/seed) plus the seed list.
+// Only image-affecting params (no text/seed) plus the seed list. This derived
+// signature is what the gallery SUBSCRIBES to — so the component re-renders only
+// when something that changes the thumbnails changes, not on a text/seed tick.
 function gallerySig(s: StudioState): string {
   return [
     s.mood,
@@ -61,33 +63,41 @@ export default function Gallery() {
   const refs = useRef<(HTMLCanvasElement | null)[]>([]);
   const lastSig = useRef<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const state = useStudio();
+
+  // Subscribe narrowly to the derived signature + seed list. The component now
+  // re-renders ONLY when a thumbnail-affecting param actually changes — a slider
+  // tick that doesn't touch these (or a text edit) does nothing here.
+  const sig = useStudio(gallerySig);
+  const gallerySeeds = useStudio((s) => s.gallerySeeds);
   const setState = useStudio((s) => s.setState);
   const rerollGallery = useStudio((s) => s.rerollGallery);
 
   useEffect(() => {
+    // Read the full param bag lazily — we don't subscribe to it, so this effect
+    // re-runs only when `sig` changes (its dependency below).
+    const state = useStudio.getState();
     // Only render thumbnails in still mode.
     if (state.mode !== "still") return;
-    const s = gallerySig(state);
-    if (s === lastSig.current) return;
+    if (sig === lastSig.current) return;
     // Debounce: rendering 9 thumbnails (blur + getImageData each) is expensive,
     // so only do it once params settle — NOT on every slider tick. This is the
     // big drag-fluidity win.
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      lastSig.current = s;
-      state.gallerySeeds.forEach((seed, i) => {
+      const cur = useStudio.getState();
+      lastSig.current = sig;
+      cur.gallerySeeds.forEach((seed, i) => {
         const el = refs.current[i];
         if (!el) return;
         el.width = THUMB;
         el.height = THUMB;
-        renderTo(el, THUMB, { ...renderParams(state), seed, showText: false });
+        renderTo(el, THUMB, { ...renderParams(cur), seed, showText: false });
       });
     }, 200);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [state]);
+  }, [sig]);
 
   return (
     <div>
@@ -104,7 +114,7 @@ export default function Gallery() {
         </button>
       </div>
       <div className="grid grid-cols-3 gap-[6px]">
-        {state.gallerySeeds.map((seed, i) => (
+        {gallerySeeds.map((seed, i) => (
           <button
             key={i}
             type="button"

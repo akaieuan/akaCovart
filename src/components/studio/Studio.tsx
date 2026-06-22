@@ -1,159 +1,24 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import {
-  Download,
-  Film,
-  Loader2,
-  RefreshCw,
-  RotateCcw,
-  SlidersHorizontal,
-} from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 
-import CanvasStage from "./CanvasStage";
-import Controls from "./Controls";
+import { CanvasStage } from "@/components/canvas";
+import { Controls } from "@/components/controls";
 import EngineSelector from "./EngineSelector";
 import TopBar from "./TopBar";
+import { SeedRow } from "./SeedRow";
+import { ModeToggle } from "./ModeToggle";
+import { ResetButton } from "./ResetButton";
+import { ExportButton } from "./ExportButton";
 import { useStudio } from "@/lib/store";
 import { exportPng, exportVideo } from "@/lib/export";
-import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
-// ── Shared studio chrome bits (used in both desktop sidebar + mobile sheet) ──
-
-/** Seed number field + GENERATE (new random seed). */
-function SeedRow() {
-  const seed = useStudio((s) => s.seed);
-  const setState = useStudio((s) => s.setState);
-  const newSeed = useStudio((s) => s.newSeed);
-
-  return (
-    <div className="flex gap-2">
-      <input
-        type="number"
-        value={seed}
-        onChange={(e) => setState({ seed: Number(e.target.value) })}
-        aria-label="Seed"
-        className="h-10 min-w-0 flex-1 rounded-[4px] border border-grey-780 bg-grey-880 px-3 text-[12px] font-normal text-ink outline-none transition-colors focus:border-grey-500"
-      />
-      <button
-        type="button"
-        onClick={newSeed}
-        className="flex h-10 flex-none items-center gap-[7px] rounded-[4px] bg-grey-100 px-[18px] text-[12px] font-medium whitespace-nowrap text-bg transition-colors hover:bg-white"
-      >
-        <RefreshCw className="size-[13px]" />
-        Generate
-      </button>
-    </div>
-  );
-}
-
-/** STILL / ANIMATE / AUDIO mode toggle. */
-function ModeToggle({ className }: { className?: string }) {
-  const mode = useStudio((s) => s.mode);
-  const setState = useStudio((s) => s.setState);
-  const opts: { value: "still" | "animate" | "audio"; label: string }[] = [
-    { value: "still", label: "Still" },
-    { value: "animate", label: "Animate" },
-    { value: "audio", label: "Audio" },
-  ];
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-3 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
-        className,
-      )}
-    >
-      {opts.map((o) => {
-        const active = mode === o.value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => setState({ mode: o.value })}
-            className={cn(
-              "flex h-9 items-center justify-center rounded-[3px] px-1 text-[12px] font-normal transition-colors",
-              active
-                ? "bg-grey-100 text-bg"
-                : "bg-transparent text-grey-300 hover:bg-grey-850 hover:text-grey-150",
-            )}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** RESET — restore all generation/animation params to their defaults. */
-function ResetButton({ className }: { className?: string }) {
-  const resetParams = useStudio((s) => s.resetParams);
-  return (
-    <button
-      type="button"
-      onClick={resetParams}
-      title="Reset all parameters to defaults"
-      className={cn(
-        "flex h-9 flex-none items-center justify-center gap-[6px] rounded-[5px] border border-grey-800 bg-grey-880 px-4 text-[12px] font-normal text-grey-300 transition-colors hover:border-grey-500 hover:text-grey-100",
-        className,
-      )}
-    >
-      <RotateCcw className="size-[12px]" />
-      Reset
-    </button>
-  );
-}
-
-/** Primary export button (DOWNLOAD PNG / EXPORT VIDEO LOOP) with busy spinner. */
-function ExportButton({
-  onExport,
-  className,
-}: {
-  onExport: () => void;
-  className?: string;
-}) {
-  const mode = useStudio((s) => s.mode);
-  const rendering = useStudio((s) => s.rendering);
-  const recording = useStudio((s) => s.recording);
-  const busy = rendering || recording;
-
-  const isVideo = mode === "animate" || mode === "audio";
-
-  const label = isVideo
-    ? recording
-      ? "Recording…"
-      : "Export video loop"
-    : rendering
-      ? "Rendering…"
-      : "Download PNG · 3000²";
-
-  return (
-    <button
-      type="button"
-      onClick={onExport}
-      disabled={busy}
-      className={cn(
-        "flex h-11 w-full items-center justify-center gap-[9px] rounded-[4px] bg-grey-100 text-[12px] font-medium text-bg transition-colors hover:bg-white disabled:opacity-70",
-        className,
-      )}
-    >
-      {busy ? (
-        <Loader2 className="size-[14px] animate-spin" />
-      ) : isVideo ? (
-        <Film className="size-[14px]" />
-      ) : (
-        <Download className="size-[14px]" />
-      )}
-      {label}
-    </button>
-  );
-}
 
 export default function Studio() {
   const canvasRef = useRef<HTMLCanvasElement>(null);

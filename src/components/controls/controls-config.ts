@@ -1,4 +1,4 @@
-import type { StudioState } from "@/lib/store";
+import type { NumKey, BoolKey, StrKey } from "./primitives";
 
 // ── Data-driven control config ───────────────────────────────────────────────
 // Every repetitive control row is described as DATA here, then rendered by a
@@ -6,22 +6,7 @@ import type { StudioState } from "@/lib/store";
 //
 // `key` is a numeric/boolean/string field on the Zustand store. `kind` selects
 // the primitive. Ranges/steps mirror src/lib/store.ts defaults and the engine
-// param expectations.
-
-// Keys that hold a numeric value on the store.
-type NumKey = {
-  [K in keyof StudioState]: StudioState[K] extends number ? K : never;
-}[keyof StudioState];
-
-// Keys that hold a boolean value on the store.
-type BoolKey = {
-  [K in keyof StudioState]: StudioState[K] extends boolean ? K : never;
-}[keyof StudioState];
-
-// Keys that hold a string value on the store.
-type StrKey = {
-  [K in keyof StudioState]: StudioState[K] extends string ? K : never;
-}[keyof StudioState];
+// param expectations. Each rendered row self-subscribes to its own store slice.
 
 export interface SegOption {
   value: string;

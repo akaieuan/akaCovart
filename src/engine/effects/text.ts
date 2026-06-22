@@ -12,6 +12,9 @@ export function drawText(
 ): TextBox {
   const S = size;
   const base = S * 0.019;
+  // Cover typeface — a curated, browser-loaded font (canvas-safe family name).
+  // Falls back to Space Grotesk / system if the chosen font is unavailable.
+  const fam = "'" + (params.textFont || "Space Grotesk") + "', system-ui, sans-serif";
   let col: string, sh: string;
   if (params.textColor === "auto") {
     if (mood === "dark") {
@@ -68,7 +71,7 @@ export function drawText(
     sizePx: number,
     alpha: number,
   ): void => {
-    g.font = weight + " " + sizePx + "px 'IBM Plex Mono'";
+    g.font = weight + " " + sizePx + "px " + fam;
     const chs = (str + "").split("");
     const widths: number[] = [];
     let total = 0;

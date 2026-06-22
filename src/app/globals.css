@@ -1,3 +1,6 @@
+/* Cover-art typefaces (drawn onto the canvas; real family names so they render
+   AND export from canvas). UI font stays Geist — these are only for artwork text. */
+@import url("https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Serif&family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
