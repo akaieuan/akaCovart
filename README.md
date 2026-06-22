@@ -6,7 +6,7 @@
 
 **akaCOVART** (working name **akaTOOL**) is a browser-based studio for generating album art. You pick a field engine, give it a seed, and shape the result with palettes, composition controls, film texture, and a type overlay — then export a 3000×3000 PNG or a looping video. Every image is deterministic: the same seed and parameters always produce the same artwork, so a result you like is always reproducible and shareable as data.
 
-It is aimed at musicians, labels, and designers who want distinctive cover art fast, and at developers who want a clean, framework-agnostic generative engine to build on. Built by [Ubik Studio](https://ubik.studio) as a single Next.js + Tailwind app, with the generative core isolated as a pure module under [`src/engine`](./src/engine).
+It is aimed at musicians, labels, and designers who want distinctive cover art fast, and at developers who want a clean, framework-agnostic generative engine to build on. Built by Ieuan King (akaBuild) as a single Next.js + Tailwind app, with the generative core isolated as a pure module under [`src/engine`](./src/engine).
 
 ---
 
