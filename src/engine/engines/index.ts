@@ -3,5 +3,7 @@ import "./blob";
 import "./grid";
 import "./waves";
 import "./orb";
-// WebGL engine — registers a DATA-ONLY descriptor (no three import here).
-import "./orb3d";
+// 3D/WebGL engine "orb3d" is intentionally NOT registered (hidden from the
+// selector). The dormant code remains in src/engine/engines/orb3d.ts and
+// src/components/canvas/WebGLStage.tsx if it's ever wanted back.
+// import "./orb3d";

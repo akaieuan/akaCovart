@@ -1,6 +1,6 @@
 "use client";
 
-import { Circle, Grid3x3, Waves, Droplet, Box } from "lucide-react";
+import { Circle, Grid3x3, Waves, Droplet } from "lucide-react";
 import { listEngines } from "@/engine";
 import { useStudio } from "@/lib/store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -19,7 +19,6 @@ const ENGINE_DEFS: EngineDef[] = [
   { value: "grid", label: "Grid", Icon: Grid3x3 },
   { value: "waves", label: "Wave", Icon: Waves },
   { value: "orb", label: "Orb", Icon: Circle },
-  { value: "orb3d", label: "3D", Icon: Box },
 ];
 
 const DEF_BY_ID = new Map(ENGINE_DEFS.map((d) => [d.value, d]));
@@ -54,7 +53,7 @@ export default function EngineSelector({ className }: { className?: string }) {
       }}
       spacing={0}
       className={cn(
-        "grid w-full grid-cols-5 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
+        "grid w-full grid-cols-4 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
         className,
       )}
     >
