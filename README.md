@@ -29,6 +29,28 @@ It is aimed at musicians, labels, and designers who want distinctive cover art f
 
 ---
 
+## Looks
+
+The hero above is the **Blob** engine. Here are two more of the four:
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/engine-grid.webp" alt="akaCOVART Grid engine — glowing cells on a grid"></td>
+    <td width="50%"><img src="docs/engine-wave.webp" alt="akaCOVART Waves engine — stacked line waves"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Grid</b> — organic cells on a grid, recolored + bloomed</sub></td>
+    <td align="center"><sub><b>Waves</b> — layered sine lines with film texture</sub></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/cover-wave.webp" alt="A finished akaCOVART Waves cover" width="460"><br>
+  <sub>A finished <b>Waves</b> cover (the 3000² canvas, no UI)</sub>
+</p>
+
+---
+
 ## Quick start
 
 ### Prerequisites
@@ -361,6 +383,8 @@ Alongside these the state carries `drift`, `swirl`, `speed`, and timing (`t`, `r
 
 ### Control groups
 
+<img src="docs/panel-animate.png" align="right" width="300" alt="Animate-mode controls — Beat, Drift, per-engine Motion, and Auto">
+
 In **Animate** mode the panel exposes:
 
 - **Beat** — `BPM` (90–160, default 128), `Pump`, `Kick`. These feed the envelopes above.
@@ -369,6 +393,8 @@ In **Animate** mode the panel exposes:
 - **Auto** — a toggle + `Intensity`. Auto-evolves a curated set of look params around your current slider values so the frame stays alive on its own (see [`autoModulate.ts`](./src/components/canvas/autoModulate.ts)). It only wanders around your base — it never writes back to the store.
 
 ### Audio reactivity
+
+<img src="docs/panel-audio.png" align="right" width="300" alt="Audio mode — import a track, trim a clip window, set reactivity">
 
 In **Audio** mode you import an MP3/WAV and the art moves to the track:
 
