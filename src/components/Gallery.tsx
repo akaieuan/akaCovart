@@ -60,23 +60,33 @@ function gallerySig(s: StudioState): string {
 export default function Gallery() {
   const refs = useRef<(HTMLCanvasElement | null)[]>([]);
   const lastSig = useRef<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const state = useStudio();
   const setState = useStudio((s) => s.setState);
   const rerollGallery = useStudio((s) => s.rerollGallery);
 
   useEffect(() => {
-    // Pause thumbnail work while the main stage animates.
-    if (state.mode === "animate") return;
+    // Only render thumbnails in still mode.
+    if (state.mode !== "still") return;
     const s = gallerySig(state);
     if (s === lastSig.current) return;
-    lastSig.current = s;
-    state.gallerySeeds.forEach((seed, i) => {
-      const el = refs.current[i];
-      if (!el) return;
-      el.width = THUMB;
-      el.height = THUMB;
-      renderTo(el, THUMB, { ...renderParams(state), seed, showText: false });
-    });
+    // Debounce: rendering 9 thumbnails (blur + getImageData each) is expensive,
+    // so only do it once params settle — NOT on every slider tick. This is the
+    // big drag-fluidity win.
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      lastSig.current = s;
+      state.gallerySeeds.forEach((seed, i) => {
+        const el = refs.current[i];
+        if (!el) return;
+        el.width = THUMB;
+        el.height = THUMB;
+        renderTo(el, THUMB, { ...renderParams(state), seed, showText: false });
+      });
+    }, 200);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [state]);
 
   return (

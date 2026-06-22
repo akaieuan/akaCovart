@@ -8,6 +8,9 @@ import { audioSession, transport, zeroFeatures } from "@/audio";
 import type { AudioFeatures } from "@/audio";
 
 const DISPLAY = 880;
+// Cheaper backing-store size used for "draft" frames while params are actively
+// changing; we snap back to DISPLAY (full quality) once the value settles.
+const DRAFT = 560;
 
 // ── Audio reactivity tuning ────────────────────────────────────────────────
 // Fixed-timestep physics step. We accumulate real delta-time and step springs
@@ -132,6 +135,10 @@ export default function CanvasStage({
   const t0Ref = useRef(0);
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
 
+  // Coalesced still-render scheduling (rAF + draft-while-interacting).
+  const drawRafRef = useRef<number | null>(null);
+  const lastChangeRef = useRef(0);
+
   // ── Audio reactivity loop state ───────────────────────────────────────────
   const audioRafRef = useRef<number | null>(null);
   const audioLastNowRef = useRef(0);
@@ -148,17 +155,47 @@ export default function CanvasStage({
   const kickImpulseRef = useRef(0);
   const prevBeatRef = useRef(0);
 
-  // ── Still render (signature-diffed) ───────────────────────────────────────
+  // ── Still render (signature-diffed, rAF-coalesced, draft-while-interacting) ─
+  // Render at an explicit backing-store size. Smaller = cheaper "draft" frame;
+  // the canvas is CSS-scaled to the stage so a draft just looks slightly soft.
+  const drawAt = useCallback(
+    (size: number) => {
+      const c = canvasRef.current;
+      if (!c) return;
+      c.width = size;
+      c.height = size;
+      const res = renderTo(c, size, renderParams(stateRef.current));
+      textBoxRef.current = res.textBox;
+    },
+    [canvasRef],
+  );
+
+  // Full-quality immediate draw (mount / settle / after an anim loop stops).
   const draw = useCallback(() => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const s = stateRef.current;
-    lastSig.current = sig(s);
-    c.width = DISPLAY;
-    c.height = DISPLAY;
-    const res = renderTo(c, DISPLAY, renderParams(s));
-    textBoxRef.current = res.textBox;
-  }, [canvasRef]);
+    lastSig.current = sig(stateRef.current);
+    drawAt(DISPLAY);
+  }, [drawAt]);
+
+  // While params change rapidly, paint cheap DRAFT frames coalesced to one per
+  // animation frame; once nothing has changed for a beat, paint one full-res
+  // frame. Keeps dragging ~60fps and crisp at rest.
+  const scheduleDraw = useCallback(() => {
+    lastChangeRef.current = performance.now();
+    if (drawRafRef.current != null) return;
+    const run = () => {
+      drawRafRef.current = null;
+      const s = stateRef.current;
+      if (s.mode !== "still") return;
+      if (performance.now() - lastChangeRef.current >= 130) {
+        lastSig.current = sig(s);
+        drawAt(DISPLAY);
+      } else {
+        drawAt(DRAFT);
+        drawRafRef.current = requestAnimationFrame(run);
+      }
+    };
+    drawRafRef.current = requestAnimationFrame(run);
+  }, [drawAt]);
 
   // ── Animation loop (beat-synced; NO flicker — CSS filter only) ─────────────
   const stopAnim = useCallback(() => {
@@ -404,12 +441,18 @@ export default function CanvasStage({
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       if (audioRafRef.current != null) cancelAnimationFrame(audioRafRef.current);
+      if (drawRafRef.current != null) cancelAnimationFrame(drawRafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // React to state changes (subscribe to the whole store).
   useEffect(() => {
+    // Cancel any pending still-draft loop when leaving still mode.
+    if (state.mode !== "still" && drawRafRef.current != null) {
+      cancelAnimationFrame(drawRafRef.current);
+      drawRafRef.current = null;
+    }
     // AUDIO mode: run the audio-reactive loop. Stop the BPM loop if it is up.
     if (state.mode === "audio") {
       if (rafRef.current != null) {
@@ -434,8 +477,8 @@ export default function CanvasStage({
       stopAnim();
       return;
     }
-    if (sig(state) !== lastSig.current) draw();
-  }, [state, draw, startAnim, stopAnim, startAudio, stopAudio]);
+    if (sig(state) !== lastSig.current) scheduleDraw();
+  }, [state, draw, scheduleDraw, startAnim, stopAnim, startAudio, stopAudio]);
 
   // ── Drag-to-move text on canvas ───────────────────────────────────────────
   const norm = (e: React.PointerEvent<HTMLCanvasElement>) => {
