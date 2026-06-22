@@ -14,6 +14,7 @@ import {
   SliderRow,
   ToggleRow,
   Segmented,
+  ColorPicker,
   FontPicker,
   TextRow,
 } from "./primitives";
@@ -25,7 +26,7 @@ import {
   type Control,
   type ControlGroup,
   MOOD_OPTIONS,
-  COLOR_GROUP,
+  COLOR_TONE_GROUP,
   COMPOSITION_BY_ENGINE,
   FINISH_GROUP,
   TEXTURE_GROUPS,
@@ -201,7 +202,8 @@ export default function Controls() {
       {/* PALETTE / MOOD */}
       <PanelSection value="palette" title="Palette · mood">
         <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
-        {renderGroups([COLOR_GROUP])}
+        <ColorPicker paramKey="colorPick" label="Color" />
+        {renderGroups([COLOR_TONE_GROUP])}
       </PanelSection>
 
       {/* COMPOSITION (engine-specific + shared FINISH) */}

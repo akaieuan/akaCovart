@@ -93,14 +93,14 @@ export const MOOD_OPTIONS: SegOption[] = [
   { value: "random", label: "Random" },
 ];
 
-// Color transform: recolours the whole palette (all engines). Tone below 50
-// darkens — including the background — which is the readability fix.
-export const COLOR_GROUP: ControlGroup = {
-  heading: "Color",
+// Color transform: a real colour picker (rendered directly in Controls.tsx)
+// shifts the whole palette toward a picked colour, plus a Tone slider that runs
+// the palette light<->dark. Tone below 50 darkens — including the background —
+// which is the readability fix. (Hue/Saturation sliders were replaced by the
+// picker, which sets store `colorPick`.)
+export const COLOR_TONE_GROUP: ControlGroup = {
   controls: [
     { kind: "slider", key: "colorTone", label: "Tone dark–light", min: 0, max: 100 },
-    { kind: "slider", key: "colorHue", label: "Hue shift", min: 0, max: 100 },
-    { kind: "slider", key: "colorSat", label: "Saturation", min: 0, max: 100 },
   ],
 };
 

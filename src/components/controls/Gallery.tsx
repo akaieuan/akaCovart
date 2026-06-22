@@ -13,8 +13,7 @@ function gallerySig(s: StudioState): string {
   return [
     s.mood,
     s.colorTone,
-    s.colorHue,
-    s.colorSat,
+    s.colorPick,
     s.engine,
     s.gridCols,
     s.gridDensity,

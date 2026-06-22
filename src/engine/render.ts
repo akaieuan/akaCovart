@@ -1,7 +1,7 @@
 import type { AnimState, Mood, RenderResult } from "./types";
 import { getEngine } from "./registry";
 import { isWebGLEngine } from "./types";
-import { palettes, resolveMood, transformPalette } from "./palettes";
+import { palettes, recolorPalette, resolveMood, transformPalette } from "./palettes";
 import { prng } from "./prng";
 import { rgb } from "./color";
 import {
@@ -108,15 +108,21 @@ export function renderTo(
 
   const seed = (params.seed >>> 0) || 1;
   const mood: Mood = resolveMood(seed, (params.mood ?? "random") as Mood | "random");
-  // Apply the Color controls to the resolved palette so tone/hue/saturation
-  // affect EVERY engine (base fill, field, and cfg-driven effects below). At
-  // default values this returns the palette unchanged (byte-identical output).
-  const cfg = transformPalette(
-    palettes[mood],
-    params.colorTone ?? 50,
-    params.colorHue ?? 0,
-    params.colorSat ?? 50,
-  );
+  // Apply the Color controls to the resolved palette so they affect EVERY engine
+  // (base fill, field, and cfg-driven effects below). Order: base mood palette ->
+  // recolour toward the picked colour (if any) -> Tone (light<->dark). The picker
+  // owns hue/saturation now, so transformPalette runs with neutral hue/sat (0/50)
+  // and only applies Tone. At defaults (colorPick null, tone 50) both steps are
+  // no-ops and the output is byte-identical to before this feature existed.
+  const picked =
+    typeof params.colorPick === "string" && params.colorPick
+      ? params.colorPick
+      : null;
+  const moodPalette = palettes[mood];
+  const recolored = picked
+    ? recolorPalette(moodPalette, picked)
+    : moodPalette;
+  const cfg = transformPalette(recolored, params.colorTone ?? 50, 0, 50);
   const anim = buildAnim(params);
 
   // Base fill.

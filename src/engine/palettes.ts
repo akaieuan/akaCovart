@@ -193,6 +193,98 @@ function transformColor(c: number[], deg: number, sat: number, t: number): numbe
   ];
 }
 
+// ── Recolour toward a picked colour ──────────────────────────────────────────
+// `recolorPalette` shifts every rgb colour in a palette to a TARGET hue +
+// saturation while PRESERVING each original colour's lightness. The art keeps
+// its full light->dark variation (highlights stay light, shadows stay dark) but
+// adopts the picked colour across that range — it is NOT a flat single colour
+// and NOT a relative hue rotation. Driven by the UI colour picker (store
+// `colorPick`); when that is null the picker is off and this is never called.
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const mx = Math.max(r, g, b);
+  const mn = Math.min(r, g, b);
+  const l = (mx + mn) / 2;
+  let h = 0;
+  let s = 0;
+  const dd = mx - mn;
+  if (dd !== 0) {
+    s = l > 0.5 ? dd / (2 - mx - mn) : dd / (mx + mn);
+    if (mx === r) h = (g - b) / dd + (g < b ? 6 : 0);
+    else if (mx === g) h = (b - r) / dd + 2;
+    else h = (r - g) / dd + 4;
+    h *= 60;
+  }
+  return [h, s, l];
+}
+
+function hue2rgb(p: number, q: number, t: number): number {
+  if (t < 0) t += 1;
+  if (t > 1) t -= 1;
+  if (t < 1 / 6) return p + (q - p) * 6 * t;
+  if (t < 1 / 2) return q;
+  if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+  return p;
+}
+
+function hslToRgb(h: number, s: number, l: number): number[] {
+  if (s === 0) {
+    const v = Math.round(clamp255(l * 255));
+    return [v, v, v];
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hh = (((h % 360) + 360) % 360) / 360;
+  return [
+    Math.round(clamp255(hue2rgb(p, q, hh + 1 / 3) * 255)),
+    Math.round(clamp255(hue2rgb(p, q, hh) * 255)),
+    Math.round(clamp255(hue2rgb(p, q, hh - 1 / 3) * 255)),
+  ];
+}
+
+// Parse "#rgb" / "#rrggbb" -> [r,g,b]. Returns null for anything unparseable so
+// callers can fall back to the original palette (no recolour).
+export function parseHex(hex: string): number[] | null {
+  if (!hex) return null;
+  let h = hex.trim().replace(/^#/, "");
+  if (h.length === 3) {
+    h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  }
+  if (h.length !== 6 || /[^0-9a-fA-F]/.test(h)) return null;
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+export function recolorPalette(cfg: Palette, hex: string): Palette {
+  const target = parseHex(hex);
+  if (!target) return cfg;
+  const [th, ts] = rgbToHsl(target[0], target[1], target[2]);
+
+  // Recolour ONE rgb triple: take the picked hue, blend saturation (mostly the
+  // target's, with a touch of the original so vivid art doesn't go monochrome),
+  // and KEEP the original lightness so the light->dark range is preserved.
+  const recolor = (c: number[]): number[] => {
+    const [, os, ol] = rgbToHsl(c[0], c[1], c[2]);
+    const s = ts * 0.7 + os * 0.3;
+    return hslToRgb(th, s, ol);
+  };
+
+  return {
+    ...cfg,
+    base: recolor(cfg.base),
+    colors: cfg.colors.map(recolor),
+    diamondColors: cfg.diamondColors.map(recolor),
+    fleck: recolor(cfg.fleck),
+    smoke: recolor(cfg.smoke),
+    accentColors: cfg.accentColors.map(recolor),
+  };
+}
+
 export function transformPalette(
   cfg: Palette,
   tone: number,

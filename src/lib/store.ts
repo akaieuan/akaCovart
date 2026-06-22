@@ -28,9 +28,11 @@ export interface StudioState {
 
   // palette transform (Color controls) — applied to the RESOLVED palette before
   // rendering, so they recolour ALL engines. Defaults are no-ops.
+  // colorPick: a "#rrggbb" the whole palette is shifted toward (hue + sat) while
+  // keeping each colour's lightness, so the art adopts the colour across its
+  // light->dark range. null = use the mood palette's original colours.
+  colorPick: string | null;
   colorTone: number; // 0..100; 50 = neutral. <50 darkens (incl. base), >50 lightens.
-  colorHue: number; // 0..100; 0 = none. Maps to a 0..360deg hue rotation.
-  colorSat: number; // 0..100; 50 = neutral. 0 = grayscale, 100 = ~2x vivid.
 
   // engine + engine-specific composition params
   engine: string;
@@ -202,9 +204,8 @@ const defaults = {
   mood: "random" as MoodSel,
 
   // palette transform (Color controls) — neutral defaults => unchanged output.
+  colorPick: null as string | null,
   colorTone: 50,
-  colorHue: 0,
-  colorSat: 50,
 
   engine: "blob",
   gridCols: 9,

@@ -41,7 +41,7 @@ import {
   type ShaderMaterial,
 } from "three";
 
-import { palettes, prng, resolveMood, transformPalette } from "@/engine";
+import { palettes, prng, recolorPalette, resolveMood, transformPalette } from "@/engine";
 import type { Mood } from "@/engine";
 import { useStudio } from "@/lib/store";
 
@@ -393,8 +393,7 @@ export default function WebGLStage() {
   const shape = useStudio((s) => s.orb3dShape);
   const detail = useStudio((s) => s.orb3dDetail);
   const colorTone = useStudio((s) => s.colorTone);
-  const colorHue = useStudio((s) => s.colorHue);
-  const colorSat = useStudio((s) => s.colorSat);
+  const colorPick = useStudio((s) => s.colorPick);
   const bgMode = useStudio((s) => s.orb3dBg);
 
   const supported = useMemo(() => hasWebGL2(), []);
@@ -412,7 +411,14 @@ export default function WebGLStage() {
 
   const { baseColor, accentColor, bg, seedOffset } = useMemo(() => {
     const mood: Mood = resolveMood(seed, moodSel);
-    const pal = transformPalette(palettes[mood], colorTone, colorHue, colorSat);
+    // Same order as the 2D path (render.ts): base mood palette -> recolour toward
+    // the picked colour (if any) -> Tone, with neutral hue/sat since the picker
+    // now owns colour. Keeps the 3D shape in the same recoloured world.
+    const recolored =
+      typeof colorPick === "string" && colorPick
+        ? recolorPalette(palettes[mood], colorPick)
+        : palettes[mood];
+    const pal = transformPalette(recolored, colorTone, 0, 50);
     // Deterministic colour picks + a seeded noise offset, all from one PRNG so
     // the same seed always yields the same look (no Math.random in the path).
     const r = prng((seed >>> 0) ^ 0x3da5f17b);
@@ -435,7 +441,7 @@ export default function WebGLStage() {
       bg: bgCol,
       seedOffset: off,
     };
-  }, [seed, moodSel, colorTone, colorHue, colorSat, bgMode]);
+  }, [seed, moodSel, colorTone, colorPick, bgMode]);
 
   if (!supported) {
     return (
