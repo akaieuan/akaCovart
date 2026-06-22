@@ -183,6 +183,20 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
         { kind: "slider", key: "orb3dShade", label: "Shade", min: 0, max: 100 },
       ],
     },
+    {
+      heading: "Background",
+      controls: [
+        {
+          kind: "segmented",
+          key: "orb3dBg",
+          options: [
+            { value: "studio", label: "Dark" },
+            { value: "palette", label: "Palette" },
+            { value: "light", label: "Light" },
+          ],
+        },
+      ],
+    },
   ],
 };
 

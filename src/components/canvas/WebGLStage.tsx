@@ -395,6 +395,7 @@ export default function WebGLStage() {
   const colorTone = useStudio((s) => s.colorTone);
   const colorHue = useStudio((s) => s.colorHue);
   const colorSat = useStudio((s) => s.colorSat);
+  const bgMode = useStudio((s) => s.orb3dBg);
 
   const supported = useMemo(() => hasWebGL2(), []);
 
@@ -420,13 +421,21 @@ export default function WebGLStage() {
     const base = colors[Math.floor(r() * colors.length)] ?? pal.base;
     const accent = accents[Math.floor(r() * accents.length)] ?? base;
     const off = r() * 100;
+    // Backdrop: dark "studio" by default (matches the rest of the app), or the
+    // palette base, or a light card — selectable via the Background control.
+    const bgCol: number[] =
+      bgMode === "palette"
+        ? norm255(pal.base)
+        : bgMode === "light"
+          ? [0.906, 0.906, 0.918]
+          : [0.039, 0.039, 0.043];
     return {
       baseColor: norm255(base),
       accentColor: norm255(accent),
-      bg: norm255(pal.base),
+      bg: bgCol,
       seedOffset: off,
     };
-  }, [seed, moodSel, colorTone, colorHue, colorSat]);
+  }, [seed, moodSel, colorTone, colorHue, colorSat, bgMode]);
 
   if (!supported) {
     return (
@@ -444,8 +453,8 @@ export default function WebGLStage() {
       gl={{ antialias: true }}
       style={{ width: "100%", height: "100%", display: "block" }}
     >
-      {/* Background = palette base so the shape sits in the akaCOVART world. */}
-      <color attach="background" args={bg} />
+      {/* Backdrop — dark studio by default; Palette/Light selectable. */}
+      <color attach="background" args={bg as [number, number, number]} />
       <LiquidShape
         geometry={geometry}
         baseColor={baseColor}

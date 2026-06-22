@@ -55,6 +55,7 @@ export interface StudioState {
   orb3dDetail: number; // 0..100 noise frequency / octaves
   orb3dRotate: number; // 0..100 continuous rotation rate
   orb3dShade: number; // 0..100 rim / shadow strength
+  orb3dBg: string; // backdrop: "studio" (dark) | "palette" | "light"
 
   // seed
   seed: number;
@@ -227,6 +228,7 @@ const defaults = {
   orb3dDetail: 50,
   orb3dRotate: 35,
   orb3dShade: 55,
+  orb3dBg: "studio",
 
   soften: 0,
   density: 60,
