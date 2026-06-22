@@ -223,7 +223,7 @@ export default function CanvasStage({
 
   // Decide, this frame, whether motion is driven by the imported track. The
   // track only drives when the user picked it AND an analyzed timeline exists.
-  const useTrackNow = useCallback((s: StudioState): boolean => {
+  const trackActive = useCallback((s: StudioState): boolean => {
     const tl = audioSession.timeline;
     return s.animSource === "track" && !!tl && tl.duration > 0;
   }, []);
@@ -274,7 +274,7 @@ export default function CanvasStage({
     resetAudioTransients();
     // Track which driver ran last frame so we can re-settle the audio springs
     // when the source flips to "track" mid-run.
-    let wasTrack = useTrackNow(stateRef.current);
+    let wasTrack = trackActive(stateRef.current);
 
     // Paint one immediate frame so the canvas is never blank before the first
     // requestAnimationFrame fires (e.g. if the tab is briefly backgrounded).
@@ -297,7 +297,7 @@ export default function CanvasStage({
         return;
       }
       const bake = !!s.recording;
-      const useTrack = useTrackNow(s);
+      const useTrack = trackActive(s);
       // Re-settle the audio springs the moment we switch INTO the track driver
       // so it eases in from rest instead of snapping from stale state.
       if (useTrack && !wasTrack) resetAudioTransients();
@@ -485,7 +485,7 @@ export default function CanvasStage({
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
-  }, [canvasRef, useTrackNow, resetAudioTransients]);
+  }, [canvasRef, trackActive, resetAudioTransients]);
 
   // ── Mount + reactive sync ─────────────────────────────────────────────────
   useEffect(() => {
