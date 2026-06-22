@@ -145,12 +145,12 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
   contours: [
     {
       controls: [
-        { kind: "slider", key: "contourLines", label: "Lines", min: 0, max: 100 },
+        { kind: "slider", key: "contourLines", label: "Ridges", min: 0, max: 100 },
         { kind: "slider", key: "contourWeight", label: "Line weight", min: 0, max: 100 },
-        { kind: "slider", key: "contourScale", label: "Field scale", min: 0, max: 100 },
+        { kind: "slider", key: "contourScale", label: "Terrain scale", min: 0, max: 100 },
         { kind: "slider", key: "contourDetail", label: "Detail", min: 0, max: 100 },
         { kind: "slider", key: "contourWarp", label: "Warp", min: 0, max: 100 },
-        { kind: "slider", key: "contourRelief", label: "Relief", min: 0, max: 100 },
+        { kind: "slider", key: "contourRelief", label: "Height", min: 0, max: 100 },
       ],
     },
   ],
@@ -246,7 +246,7 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
   ],
   contours: [
     { kind: "slider", key: "contourMorph", label: "Morph speed", min: 0, max: 100 },
-    { kind: "slider", key: "contourFlow", label: "Flow", min: 0, max: 100 },
+    { kind: "slider", key: "contourFlow", label: "Fly forward", min: 0, max: 100 },
   ],
   waves: [
     { kind: "slider", key: "waveFlow", label: "Flow", min: 0, max: 100 },

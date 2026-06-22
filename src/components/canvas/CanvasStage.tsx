@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { renderTo } from "@/engine";
 import type { TextBox } from "@/engine";
 import { useStudio, renderParams, type StudioState } from "@/lib/store";
+import { getFormat } from "@/lib/formats";
 import { ensureCoverFont } from "@/lib/fonts";
 import { audioSession, transport, zeroFeatures } from "@/audio";
 import type { AudioFeatures } from "@/audio";
@@ -539,11 +540,18 @@ export default function CanvasStage({
   }, [state, draw, scheduleDraw, startAnim, stopAnim]);
 
   // ── Drag-to-move text on canvas ───────────────────────────────────────────
+  // The canvas backing store is SQUARE but displayed with object-cover inside the
+  // active-format frame, so the square is scaled to the frame's longer edge and
+  // centre-cropped. Undo that here so pointer coords map back to square-space
+  // [0,1] (matching the textBox), keeping drag accurate in every format.
   const norm = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
+    const side = Math.max(r.width, r.height);
+    const offX = (r.width - side) / 2;
+    const offY = (r.height - side) / 2;
     return {
-      x: (e.clientX - r.left) / r.width,
-      y: (e.clientY - r.top) / r.height,
+      x: (e.clientX - r.left - offX) / side,
+      y: (e.clientY - r.top - offY) / side,
     };
   };
 
@@ -588,12 +596,27 @@ export default function CanvasStage({
     }
   };
 
+  // Active delivery format — the square render is shown via object-cover inside a
+  // frame of this aspect ratio. We size by WIDTH only (height follows from
+  // aspect-ratio) and cap that width three ways so it always fits without ever
+  // breaking the ratio: the container (100%), the viewport height (82vh × aspect,
+  // so tall formats stay within the stage), and a hard 760px ceiling.
+  const fmt = getFormat(state.format);
+  const aspect = fmt.w / fmt.h;
+  const frameStyle: React.CSSProperties = {
+    aspectRatio: `${fmt.w} / ${fmt.h}`,
+    width: `min(100%, calc(82vh * ${aspect}), 760px)`,
+  };
+
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] px-4 pt-16 pb-44 sm:gap-[18px] sm:px-8 md:py-8">
-      <div className="relative aspect-square w-full max-w-[min(82vh,760px)] bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65),0_0_0_1px_#1c1c20]">
+      <div
+        className="relative overflow-hidden bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65),0_0_0_1px_#1c1c20] transition-[width,height] duration-300 ease-out"
+        style={frameStyle}
+      >
         <canvas
           ref={canvasRef}
-          className="block h-full w-full touch-none"
+          className="block h-full w-full touch-none object-cover"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -601,7 +624,8 @@ export default function CanvasStage({
         />
       </div>
       <div className="font-sans text-[11px] tabular-nums text-grey-400">
-        3000 × 3000 px&nbsp;&nbsp;·&nbsp;&nbsp;Seed&nbsp;{state.seed >>> 0}
+        {fmt.w} × {fmt.h} px&nbsp;&nbsp;·&nbsp;&nbsp;{fmt.label}&nbsp;{fmt.ratio}
+        &nbsp;&nbsp;·&nbsp;&nbsp;Seed&nbsp;{state.seed >>> 0}
       </div>
     </section>
   );

@@ -3,6 +3,7 @@
 import { Download, Film, Loader2 } from "lucide-react";
 
 import { useStudio } from "@/lib/store";
+import { getFormat } from "@/lib/formats";
 import { cn } from "@/lib/utils";
 
 /** Primary export button (DOWNLOAD PNG / EXPORT VIDEO LOOP) with busy spinner. */
@@ -17,12 +18,17 @@ export function ExportButton({
   const animSource = useStudio((s) => s.animSource);
   const rendering = useStudio((s) => s.rendering);
   const recording = useStudio((s) => s.recording);
+  const format = useStudio((s) => s.format);
   const busy = rendering || recording;
 
   // Animate exports video for BOTH drivers: a looping clip (BPM) or a synced clip
-  // (Track). Still exports a 3000² PNG.
+  // (Track). Still exports a PNG in the active delivery format.
   const isVideo = mode === "animate";
   const trackSynced = isVideo && animSource === "track";
+  const f = getFormat(format);
+  // Square keeps its familiar "3000²" wording; other formats show their size.
+  const stillLabel =
+    f.id === "square" ? "Download PNG · 3000²" : `Download PNG · ${f.w}×${f.h}`;
 
   const label = isVideo
     ? recording
@@ -32,7 +38,7 @@ export function ExportButton({
         : "Export video loop"
     : rendering
       ? "Rendering…"
-      : "Download PNG · 3000²";
+      : stillLabel;
 
   return (
     <button

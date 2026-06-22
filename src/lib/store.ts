@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import { DEFAULT_FORMAT } from "@/lib/formats";
+
 // ── Studio state ───────────────────────────────────────────────────────────
 // All params are mirrored from the prototype defaults (index.html). The store
 // is a flat bag of generation params plus UI flags. `renderTo` receives the
@@ -159,6 +161,12 @@ export interface StudioState {
   gallerySeeds: number[];
   rendering: boolean;
   recording: boolean;
+
+  // delivery format (output aspect ratio). The engine renders square; this is a
+  // cover-crop applied to the live edit frame + export. See src/lib/formats.ts.
+  format: string;
+  // multi-format bento overlay open?
+  showFormats: boolean;
 
   // actions
   setState: (patch: Partial<StudioState>) => void;
@@ -325,6 +333,8 @@ export const useStudio = create<StudioState>((set) => ({
     type: false,
   },
   gallerySeeds: INITIAL_GALLERY,
+  format: DEFAULT_FORMAT,
+  showFormats: false,
 
   setState: (patch) => set((s) => ({ ...s, ...patch })),
   toggleSection: (key) =>

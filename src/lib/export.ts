@@ -2,20 +2,49 @@ import { renderTo, resolveMood } from "@/engine";
 import type { Mood } from "@/engine";
 import { renderParams, type StudioState } from "@/lib/store";
 import { ensureCoverFont } from "@/lib/fonts";
+import { coverCrop, getFormat, type Format } from "@/lib/formats";
 
-// ── PNG export at 3000² (offscreen renderTo -> toBlob -> download) ───────────
-export function exportPng(
+// Render the square art at `side`px then cover-crop it into `dest` (whose width/
+// height must already be set to the target format size). Shared by the live
+// bento previews and the export path so what you see is what you download.
+export function paintFormat(
+  dest: HTMLCanvasElement,
+  side: number,
+  f: Format,
+  params: Record<string, unknown>,
+): void {
+  const ctx = dest.getContext("2d");
+  if (!ctx) return;
+  // Square render is the engine's native output; fast-path it with no crop.
+  if (f.w === f.h && side === f.w) {
+    renderTo(dest, side, params);
+    return;
+  }
+  const off = document.createElement("canvas");
+  off.width = side;
+  off.height = side;
+  renderTo(off, side, params);
+  const { sx, sy, sw, sh } = coverCrop(side, f);
+  ctx.clearRect(0, 0, dest.width, dest.height);
+  ctx.drawImage(off, sx, sy, sw, sh, 0, 0, dest.width, dest.height);
+}
+
+// ── PNG export for a given format (offscreen square render -> cover-crop -> download) ─
+export function exportFormat(
   state: StudioState,
+  f: Format,
   done: () => void,
 ): void {
   const go = () => {
     try {
-      const S = 3000;
-      const off = document.createElement("canvas");
-      off.width = S;
-      off.height = S;
-      renderTo(off, S, renderParams(state));
-      off.toBlob((blob) => {
+      // Render the square at the format's LONGEST edge so the cropped result is
+      // full-resolution on every axis.
+      const side = Math.max(f.w, f.h);
+      const dest = document.createElement("canvas");
+      dest.width = f.w;
+      dest.height = f.h;
+      paintFormat(dest, side, f, renderParams(state));
+      dest.toBlob((blob) => {
         if (!blob) {
           done();
           return;
@@ -26,8 +55,10 @@ export function exportPng(
           state.seed >>> 0,
           state.mood as Mood | "random",
         );
+        // Square keeps the legacy name; other formats append their id.
+        const suffix = f.id === "square" ? "" : `_${f.id}`;
         a.href = url;
-        a.download = `albumart_${mood}_${state.seed >>> 0}.png`;
+        a.download = `albumart_${mood}_${state.seed >>> 0}${suffix}.png`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -39,9 +70,14 @@ export function exportPng(
       done();
     }
   };
-  // Make sure the chosen cover font is downloaded before rendering the 3000²
-  // frame (canvas can't paint a web font the browser hasn't fetched).
+  // Make sure the chosen cover font is downloaded before rendering (canvas can't
+  // paint a web font the browser hasn't fetched).
   ensureCoverFont(state.textFont).then(() => requestAnimationFrame(go));
+}
+
+// Still PNG export of the currently-active format (used by the sidebar button).
+export function exportPng(state: StudioState, done: () => void): void {
+  exportFormat(state, getFormat(state.format), done);
 }
 
 // ── Video export (MediaRecorder over the live animated canvas) ───────────────

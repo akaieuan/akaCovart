@@ -5,3 +5,5 @@ export { SeedRow } from "./SeedRow";
 export { ModeToggle } from "./ModeToggle";
 export { ResetButton } from "./ResetButton";
 export { ExportButton } from "./ExportButton";
+export { FormatsButton } from "./FormatsButton";
+export { default as Formats } from "./Formats";

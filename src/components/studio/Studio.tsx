@@ -12,8 +12,11 @@ import { SeedRow } from "./SeedRow";
 import { ModeToggle } from "./ModeToggle";
 import { ResetButton } from "./ResetButton";
 import { ExportButton } from "./ExportButton";
+import { FormatsButton } from "./FormatsButton";
+import Formats from "./Formats";
 import { useStudio } from "@/lib/store";
 import { exportPng, exportVideo } from "@/lib/export";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -26,6 +29,10 @@ export default function Studio() {
 
   // Landing gate: show the intro until the user clicks Start, then the studio.
   const [started, setStarted] = useState(false);
+
+  // Multi-format bento overlay — when open, the sidebar slides away and the
+  // floating mobile controls hide so the bento owns the screen.
+  const showFormats = useStudio((s) => s.showFormats);
 
   // Randomize seed + gallery after hydration (initial values are deterministic
   // to avoid an SSR/client mismatch). Gives fresh art on every load.
@@ -74,7 +81,13 @@ export default function Studio() {
       </main>
 
       {/* ── DESKTOP SIDEBAR (md+) ─────────────────────────────────────── */}
-      <aside className="hidden w-[320px] flex-none flex-col border-l border-border bg-panel md:flex lg:w-[380px] xl:w-[400px]">
+      {/* Slides out to the right when the format bento is open. */}
+      <aside
+        className={cn(
+          "hidden w-[320px] flex-none flex-col border-l border-border bg-panel transition-transform duration-300 ease-out md:flex lg:w-[380px] xl:w-[400px]",
+          showFormats && "translate-x-full",
+        )}
+      >
         {/* Engine selector + seed/generate (sticky header zone) */}
         <div className="flex flex-none flex-col gap-3 border-b border-border px-5 pt-5 pb-4">
           <EngineSelector />
@@ -86,18 +99,24 @@ export default function Studio() {
           <Controls />
         </div>
 
-        {/* Sticky action footer: mode + reset + export */}
+        {/* Sticky action footer: mode + reset + formats + export */}
         <div className="flex flex-none flex-col gap-[9px] border-t border-border px-5 py-4">
           <div className="flex gap-2">
             <ModeToggle className="flex-1" />
             <ResetButton />
           </div>
+          <FormatsButton />
           <ExportButton onExport={handleExport} />
         </div>
       </aside>
 
       {/* ── PHONE FLOATING CONTROLS (below md) ────────────────────────── */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 p-4 md:hidden">
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 p-4 transition-opacity duration-300 md:hidden",
+          showFormats && "opacity-0",
+        )}
+      >
         {/* Engine selector stays reachable without opening the sheet */}
         <div className="pointer-events-auto rounded-[6px] border border-border bg-panel/95 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-sm">
           <EngineSelector />
@@ -136,8 +155,9 @@ export default function Studio() {
               <div className="pnl min-h-0 flex-1 overflow-y-auto">
                 <Controls />
               </div>
-              {/* Sheet footer: export */}
-              <div className="flex flex-none flex-col border-t border-border px-5 py-4">
+              {/* Sheet footer: formats + export */}
+              <div className="flex flex-none flex-col gap-[9px] border-t border-border px-5 py-4">
+                <FormatsButton />
                 <ExportButton onExport={handleExport} />
               </div>
             </SheetContent>
@@ -149,6 +169,11 @@ export default function Studio() {
           </div>
         </div>
       </div>
+
+      {/* ── MULTI-FORMAT BENTO OVERLAY ────────────────────────────────── */}
+      {/* Always mounted (after Start) so it fades/scales in and out; previews
+          only render while it's open. */}
+      <Formats />
     </div>
   );
 }
