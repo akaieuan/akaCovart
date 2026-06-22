@@ -5,7 +5,6 @@ import { prng } from "./prng";
 import { rgb } from "./color";
 import {
   bloom,
-  drawSigil,
   drawText,
   grain,
   postColor,
@@ -128,10 +127,6 @@ export function renderTo(
 
   if (params.scratches) {
     scratches(ctx, S, params.scratchCount == null ? 6 : params.scratchCount, prng(seed ^ 0x2c1b3d77), cfg);
-  }
-
-  if (params.sigilMarks || params.sigilEmblem || params.sigilFrame) {
-    drawSigil(ctx, S, params, mood, prng(seed ^ 0x53a7f0d3), anim);
   }
 
   // postColor is baked when still (or when an animation bake/export is requested).

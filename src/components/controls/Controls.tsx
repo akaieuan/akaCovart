@@ -28,7 +28,6 @@ import {
   COMPOSITION_BY_ENGINE,
   FINISH_GROUP,
   TEXTURE_GROUPS,
-  SIGIL_GROUPS,
   TEXT_CASE_OPTIONS,
   TEXT_COLOR_OPTIONS,
   TEXT_FONT_OPTIONS,
@@ -107,7 +106,6 @@ const DEFAULT_OPEN = [
   "palette",
   "composition",
   "texture",
-  "sigil",
   "type",
 ];
 
@@ -213,13 +211,6 @@ export default function Controls() {
       {/* TEXTURE */}
       <PanelSection value="texture" title="Texture">
         {renderGroups(TEXTURE_GROUPS)}
-      </PanelSection>
-
-      {/* SIGIL */}
-      <PanelSection value="sigil" title="Sigil">
-        {renderGroups([SIGIL_GROUPS[0]])}
-        <Divider />
-        {renderGroups([SIGIL_GROUPS[1]])}
       </PanelSection>
 
       {/* TYPE OVERLAY */}
