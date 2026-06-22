@@ -120,6 +120,11 @@ export interface StudioState {
   animKick: number;
 
   // per-engine motion params (group: "motion") — eased + space-only
+  blobFlow: number;
+  blobSwirl: number;
+  blobPulse: number;
+  blobWander: number;
+  blobMorph: number;
   orbSpin: number;
   orbWobble: number;
   orbBounce: number;
@@ -259,6 +264,11 @@ const defaults = {
   animKick: 50,
 
   // per-engine motion params (group: "motion")
+  blobFlow: 55,
+  blobSwirl: 35,
+  blobPulse: 55,
+  blobWander: 50,
+  blobMorph: 45,
   orbSpin: 25,
   orbWobble: 40,
   orbBounce: 50,

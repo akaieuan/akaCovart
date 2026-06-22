@@ -131,7 +131,7 @@ export function renderTo(
   }
 
   if (params.sigilMarks || params.sigilEmblem || params.sigilFrame) {
-    drawSigil(ctx, S, params, mood, prng(seed ^ 0x53a7f0d3));
+    drawSigil(ctx, S, params, mood, prng(seed ^ 0x53a7f0d3), anim);
   }
 
   // postColor is baked when still (or when an animation bake/export is requested).

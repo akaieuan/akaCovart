@@ -135,8 +135,7 @@ function MotionPanel() {
           MOTION_BY_ENGINE[engine].map((c) => renderControl(c))
         ) : (
           <div className="font-sans text-[11px] leading-[1.7] text-grey-400">
-            The Blob engine has no per-shape motion — it rides the Beat and
-            Drift above.
+            This engine rides the Beat and Drift above.
           </div>
         )}
 

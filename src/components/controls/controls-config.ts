@@ -241,8 +241,15 @@ export const DRIFT_GROUP: ControlGroup = {
   ],
 };
 
-// Per-engine MOTION. blob has none (rendered as a muted note instead).
+// Per-engine MOTION. Every engine has a dedicated, space-only motion set.
 export const MOTION_BY_ENGINE: Record<string, Control[]> = {
+  blob: [
+    { kind: "slider", key: "blobFlow", label: "Flow", min: 0, max: 100 },
+    { kind: "slider", key: "blobSwirl", label: "Swirl", min: 0, max: 100 },
+    { kind: "slider", key: "blobPulse", label: "Pulse", min: 0, max: 100 },
+    { kind: "slider", key: "blobWander", label: "Wander", min: 0, max: 100 },
+    { kind: "slider", key: "blobMorph", label: "Morph", min: 0, max: 100 },
+  ],
   orb: [
     { kind: "slider", key: "orbSpin", label: "Spin", min: 0, max: 100 },
     { kind: "slider", key: "orbWobble", label: "Wobble", min: 0, max: 100 },

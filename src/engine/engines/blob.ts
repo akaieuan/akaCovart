@@ -4,8 +4,22 @@ import { prng } from "../prng";
 import { rgba } from "../color";
 
 // BLOB field — ported from the else-branch of the prototype `renderTo`
-// (paint / diamonds / accents / blur). Motion comes from AnimState only:
-// drift/swirl wander on SPACE, kickEnv pulses blob radius. No hue/flicker/strobe.
+// (paint / diamonds / accents / blur).
+//
+// MOTION MODEL (eased, SPACE-ONLY, flicker-free — never modulates hue/alpha/
+// brightness with time or beat). All motion is gated by anim.anim; when off the
+// still render is byte-identical. Randomness is derived from the seed (prng /
+// hsh); time (anim.t) drives the motion, so a given (seed, t) is deterministic.
+//
+//   Flow   — a SHARED low-frequency, curl-like flow field advects every blob,
+//            diamond and accent TOGETHER so the whole field drifts cohesively.
+//   Wander — per-blob individual roam with a distinct per-blob phase.
+//   Swirl  — slow rotation of the entire field around the centre.
+//   Pulse  — springy, visible beat response on blob radius via kickEnv +
+//            kickSpring (signed overshoot/settle).
+//   Morph  — each blob's radius breathes over time on a per-blob phase.
+// Diamond zones drift with the flow, slowly rotate, and pulse with the beat.
+// Accent streaks slide along their edge over time with a gentle beat scale.
 const blob: FieldEngine = {
   id: "blob",
   label: "Blob",
@@ -53,8 +67,55 @@ const blob: FieldEngine = {
     const ANIM = anim.anim;
     const T = ANIM ? anim.t : 0;
     const kickEnv = anim.kickEnv; // pre-eased beat envelope (0..~slider)
+    const kickSpring = anim.kickSpring; // signed damped bounce
     const driftAmt = ANIM ? anim.drift : 0;
-    const swirlAmt = ANIM ? anim.swirl : 0;
+    // Global swirl (Drift > Swirl slider / audio high-band) rides along with the
+    // dedicated Swirl control as a shared baseline rotation of the field.
+    const gSwirl = ANIM ? anim.swirl : 0;
+
+    // Dedicated BLOB motion params (group "motion"). 0..1; defaults match the
+    // store. Gated by ANIM so the still render is unaffected by them entirely.
+    const flowM = ANIM ? (p.blobFlow == null ? 55 : p.blobFlow) / 100 : 0;
+    const swirlM = ANIM ? (p.blobSwirl == null ? 35 : p.blobSwirl) / 100 : 0;
+    const pulseM = ANIM ? (p.blobPulse == null ? 55 : p.blobPulse) / 100 : 0;
+    const wanderM = ANIM ? (p.blobWander == null ? 50 : p.blobWander) / 100 : 0;
+    const morphM = ANIM ? (p.blobMorph == null ? 45 : p.blobMorph) / 100 : 0;
+
+    // Seed-derived constant phase offsets for the shared flow field so the field
+    // pattern differs per seed yet stays deterministic. (prng stream consumed up
+    // front, before the blob loop, so blob sampling RNG is unaffected.)
+    const rF: RNG = prng(seed ^ 0x2f6b1d3f);
+    const fpx = rF() * 6.2832,
+      fpy = rF() * 6.2832,
+      fpz = rF() * 6.2832;
+
+    // Shared, smooth, curl-like flow field. Sum of low-frequency sin/cos terms
+    // over normalised position + time. Returns a displacement in PIXELS so every
+    // element advects TOGETHER (cohesive drift). amp scales the overall strength.
+    const flowAt = (px: number, py: number, amp: number): { fx: number; fy: number } => {
+      if (amp <= 0) return { fx: 0, fy: 0 };
+      const nx = px / S,
+        ny = py / S;
+      // Curl of a scalar potential ~ (∂/∂y, -∂/∂x) of layered sines → smooth,
+      // divergence-light swirling advection (no sources/sinks, reads as fluid).
+      const a = Math.sin(nx * 2.4 + T * 0.31 + fpx) + Math.cos(ny * 2.0 - T * 0.24 + fpy);
+      const b = Math.sin((nx + ny) * 1.7 - T * 0.19 + fpz) + Math.cos(nx * 1.3 - ny * 1.9 + T * 0.27);
+      const fx = Math.cos(ny * 3.1 + T * 0.23 + fpy) * 0.7 + a * 0.5;
+      const fy = -Math.sin(nx * 3.3 - T * 0.21 + fpx) * 0.7 - b * 0.5;
+      return { fx: fx * amp, fy: fy * amp };
+    };
+    // Slow whole-field rotation around centre.
+    const fieldAng = swirlM > 0 ? T * 0.12 * swirlM : 0;
+    const fCos = Math.cos(fieldAng),
+      fSin = Math.sin(fieldAng);
+    const rotateField = (x: number, y: number): { x: number; y: number } => {
+      if (swirlM <= 0) return { x, y };
+      const rx = x - S / 2,
+        ry = y - S / 2;
+      return { x: S / 2 + rx * fCos - ry * fSin, y: S / 2 + rx * fSin + ry * fCos };
+    };
+    // Master flow amplitude in pixels (clearly visible yet smooth).
+    const flowPx = S * 0.06 * flowM;
 
     const paint = document.createElement("canvas");
     paint.width = S;
@@ -96,8 +157,9 @@ const blob: FieldEngine = {
     const bsz = 0.55 + ((p.blobSize == null ? 50 : p.blobSize) / 100) * 1.25;
     const glowF = 0.6 + ((p.glow == null ? 55 : p.glow) / 100) * 0.95;
     const nFree = Math.round(cfg.blobCount * (0.4 + (p.density / 100) * 1.3));
-    const aDr = ANIM ? S * 0.055 * driftAmt : 0;
-    const aSw = ANIM ? swirlAmt : 0;
+    // Legacy global drift still rides along (Wander control above scales the
+    // dedicated per-blob roam; animDrift adds the shared global wander baseline).
+    const aDr = ANIM ? S * 0.04 * (driftAmt + wanderM * 1.1) : 0;
 
     for (let i = 0; i < nFree; i++) {
       const pos = samplePos();
@@ -109,15 +171,22 @@ const blob: FieldEngine = {
         br = 1;
       if (ANIM) {
         const ph = i * 1.27;
-        if (aSw > 0) {
-          const rx = bx - S / 2,
-            ry = by - S / 2,
-            ang = T * 0.18 * aSw * (0.5 + Math.hypot(rx, ry) / S),
-            ca = Math.cos(ang),
-            sa = Math.sin(ang);
-          bx = S / 2 + rx * ca - ry * sa;
-          by = S / 2 + rx * sa + ry * ca;
+        // SWIRL — rotate this blob's rest position around the centre with the
+        // whole field (shared angle), plus a tiny radius-dependent lead so the
+        // field reads as a slow cohesive turn rather than a rigid spin.
+        if (swirlM > 0) {
+          const rot = rotateField(bx, by);
+          bx = rot.x;
+          by = rot.y;
         }
+        // FLOW — advect by the SHARED curl-like field so all blobs drift TOGETHER.
+        if (flowPx > 0) {
+          const fl = flowAt(bx, by, flowPx);
+          bx += fl.fx;
+          by += fl.fy;
+        }
+        // WANDER — per-blob individual roam (distinct per-blob phase). Eased sum
+        // of a few low-freq terms; amplitude scaled by Wander (via aDr).
         const f1 = 0.35 + hsh(i) * 1.05,
           f2 = 0.22 + hsh(i + 5.3) * 0.75,
           dir = hsh(i + 2.1) * 6.2832,
@@ -132,11 +201,17 @@ const blob: FieldEngine = {
           0.4 * Math.sin(T * 0.19 + i * 1.3);
         bx += wx * amp * 0.55 + Math.cos(dir) * Math.sin(T * rf) * roam;
         by += wy * amp * 0.55 + Math.sin(dir) * Math.sin(T * rf * 1.13 + 1.7) * roam;
-        // kickEnv only displaces / scales — never brightness.
-        br = (1 + kickEnv * 0.3) * (1 + 0.06 * Math.sin(T * f1 * 1.4 + ph));
+        // PULSE — springy, visible beat response on radius/scale. kickSpring is
+        // signed (overshoot/settle); kickEnv is the calm attack-decay. SPACE only.
+        const pulse = 1 + (kickEnv * 0.34 + kickSpring * 0.26) * (0.5 + pulseM);
+        // MORPH — per-blob radius breathing on its own phase (eased LFO).
+        const morph = 1 + morphM * (0.16 * Math.sin(T * (0.7 + f1 * 0.6) + ph * 1.4));
+        br = pulse * morph;
+        // Beat also gently expands the field outward from centre (space, not glow).
         if (kickEnv > 0) {
-          bx += (bx - S / 2) * kickEnv * 0.1;
-          by += (by - S / 2) * kickEnv * 0.1;
+          const ek = kickEnv * (0.06 + 0.08 * pulseM);
+          bx += (bx - S / 2) * ek;
+          by += (by - S / 2) * ek;
         }
       }
       smudge(pc, bx, by, r * br, 0.55 + rB() * 0.9, 0.55 + rB() * 0.9, rB() * 6.28, col, a);
@@ -167,13 +242,42 @@ const blob: FieldEngine = {
         aH = 1.5 - dShape,
         aV = 0.5 + dShape;
       for (let k = 0; k < p.diamondCount; k++) {
-        const cx = S * (0.26 + rD() * 0.46),
-          cy = S * (0.1 + rD() * 0.7),
-          Rb = S * (0.1 + dSize * 0.26) * (0.85 + rD() * 0.3);
-        const RW = Rb * aH,
-          RH = Rb * aV,
+        // Rest position/size (same rD() draws as the still render — determinism).
+        let cx = S * (0.26 + rD() * 0.46),
+          cy = S * (0.1 + rD() * 0.7);
+        const Rb = S * (0.1 + dSize * 0.26) * (0.85 + rD() * 0.3);
+        // ANIMATE the diamond zone: drift centre with the SHARED flow, pulse its
+        // size with the beat, and slowly rotate the diamond shape. All eased,
+        // space-only. The clip path + contents rotate together via a transform
+        // about the (drifted) centre, so the marks stay inside the diamond.
+        let dPulse = 1,
+          dAng = 0;
+        if (ANIM) {
+          const dph = k * 2.39;
+          if (swirlM > 0) {
+            const rot = rotateField(cx, cy);
+            cx = rot.x;
+            cy = rot.y;
+          }
+          if (flowPx > 0) {
+            const fl = flowAt(cx, cy, flowPx);
+            cx += fl.fx;
+            cy += fl.fy;
+          }
+          // gentle individual sway so the two zones don't move in lock-step.
+          cx += Math.sin(T * 0.33 + dph) * S * 0.012 * (wanderM + 0.4);
+          cy += Math.cos(T * 0.29 + dph * 1.3) * S * 0.012 * (wanderM + 0.4);
+          dPulse = 1 + (kickEnv * 0.16 + kickSpring * 0.1) * (0.5 + pulseM) + morphM * 0.05 * Math.sin(T * 0.8 + dph);
+          dAng = T * 0.1 * swirlM + 0.18 * swirlM * Math.sin(T * 0.5 + dph);
+        }
+        const RW = Rb * aH * dPulse,
+          RH = Rb * aV * dPulse,
           Rm = Math.min(RW, RH);
         pcd.save();
+        // Rotate the whole diamond (clip + contents) about its centre.
+        pcd.translate(cx, cy);
+        pcd.rotate(dAng);
+        pcd.translate(-cx, -cy);
         pcd.beginPath();
         pcd.moveTo(cx, cy - RH);
         pcd.lineTo(cx + RW, cy);
@@ -214,13 +318,11 @@ const blob: FieldEngine = {
       const acol = pick(rA, cfg.accentColors);
       const edge = Math.floor(rA() * 4);
       const inten = p.accent / 100;
-      let aa = 0.2 + 0.6 * inten;
+      // Alpha is TIME-INDEPENDENT (no brightness flash → no flicker). The beat
+      // reads through optical SCALE only (aScale below).
+      const aa = 0.2 + 0.6 * inten;
       let ax: number, ay: number, asx: number, asy: number;
       const AR = S * (0.12 + rA() * 0.16);
-      if (ANIM) {
-        // kickEnv pulses accent intensity slightly via optical scale, not brightness flash.
-        aa *= 1 + kickEnv * 0.9;
-      }
       if (edge === 0) {
         ax = S * (0.9 + rA() * 0.08);
         ay = S * (0.15 + rA() * 0.6);
@@ -242,7 +344,24 @@ const blob: FieldEngine = {
         asx = 1.6 + rA() * 1.2;
         asy = 0.18 + rA() * 0.12;
       }
-      smudge(pc, ax, ay, AR, asx, asy, 0, acol, aa);
+      // ANIMATE the accent streak: slide it ALONG its edge over time, ride the
+      // shared flow a touch, and a gentle beat SCALE. Move/scale only — no
+      // brightness change, so it never flashes.
+      let aScale = 1;
+      if (ANIM) {
+        const aph = ac * 1.93;
+        const vertical = edge === 0 || edge === 1; // streak runs vertically
+        const slide = S * 0.08 * (0.5 + wanderM) * Math.sin(T * 0.45 + aph);
+        if (vertical) ay += slide;
+        else ax += slide;
+        if (flowPx > 0) {
+          const fl = flowAt(ax, ay, flowPx * 0.5);
+          ax += fl.fx;
+          ay += fl.fy;
+        }
+        aScale = 1 + (kickEnv * 0.22 + kickSpring * 0.16) * (0.5 + pulseM);
+      }
+      smudge(pc, ax, ay, AR * aScale, asx, asy, 0, acol, aa);
     }
 
     const blurPx = S * (0.012 + (p.smear / 100) * 0.055);

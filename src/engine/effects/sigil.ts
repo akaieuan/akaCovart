@@ -1,4 +1,4 @@
-import type { Mood, RNG } from "../types";
+import type { AnimState, Mood, RNG } from "../types";
 import { rgb } from "../color";
 
 interface Pt {
@@ -21,8 +21,18 @@ export function drawSigil(
   params: Record<string, any>,
   mood: Mood,
   rng: RNG,
+  anim?: AnimState,
 ): void {
   if (!params.sigilMarks && !params.sigilEmblem && !params.sigilFrame) return;
+
+  // Subtle, eased, SPACE-ONLY animation of the scattered marks: a slow drift +
+  // twinkle (small scale oscillation). Driven by a slow LFO + anim.drift + a
+  // gentle beat scale (kickEnv). Never touches alpha/colour, so no flicker. When
+  // anim is off (or absent) every term is zero and the render is identical.
+  const ANIM = !!anim?.anim;
+  const ST = ANIM ? anim!.t : 0;
+  const sDrift = ANIM ? anim!.drift : 0;
+  const sKick = ANIM ? anim!.kickEnv : 0;
 
   const S = size;
   const dark = mood === "dark";
@@ -324,8 +334,19 @@ export function drawSigil(
           mx = S * (0.1 + rng() * 0.8);
         }
       }
-      const R = S * (0.014 + ms * 0.04);
+      let R = S * (0.014 + ms * 0.04);
       const col = rng() < 0.5 ? main : ghost;
+      if (ANIM) {
+        // Distinct per-mark phase (deterministic from index) so marks twinkle
+        // out of lock-step. Drift is a slow figure-eight; twinkle is a small
+        // scale LFO with a gentle beat lift on top.
+        const ph = i * 1.7;
+        const dAmp = S * 0.01 * (0.5 + sDrift);
+        mx += Math.sin(ST * 0.6 + ph) * dAmp + Math.cos(ST * 0.37 + ph * 1.3) * dAmp * 0.6;
+        my += Math.cos(ST * 0.52 + ph * 1.1) * dAmp + Math.sin(ST * 0.31 + ph * 0.7) * dAmp * 0.6;
+        const twinkle = 1 + 0.07 * Math.sin(ST * 1.3 + ph) + sKick * 0.12;
+        R *= twinkle;
+      }
       ctx.save();
       ctx.globalAlpha = 0.55 + rng() * 0.4;
       ctx.fillStyle = rgb(col);
