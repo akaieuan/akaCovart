@@ -50,29 +50,38 @@ interface AutoChannel {
 // when that engine is active (the others are simply absent from the bag — we
 // guard for that).
 const CHANNELS: AutoChannel[] = [
-  // shared composition / texture
-  { key: "density", min: 0, max: 100, freq: 0.037, phase: 0.0, rangeFrac: 0.16, band: "energy" },
-  { key: "smear", min: 0, max: 100, freq: 0.029, phase: 1.1, rangeFrac: 0.18, band: "mid" },
-  { key: "blobSize", min: 0, max: 100, freq: 0.023, phase: 2.3, rangeFrac: 0.14, band: "bass" },
-  { key: "vignette", min: 0, max: 100, freq: 0.019, phase: 3.7, rangeFrac: 0.12, band: "energy" },
-  { key: "accent", min: 0, max: 100, freq: 0.041, phase: 0.6, rangeFrac: 0.16, band: "high" },
-  { key: "diamondShape", min: 0, max: 100, freq: 0.017, phase: 4.4, rangeFrac: 0.12, band: "mid" },
+  // shared composition — wider swings so the structure visibly evolves
+  { key: "density", min: 0, max: 100, freq: 0.037, phase: 0.0, rangeFrac: 0.24, band: "energy" },
+  { key: "smear", min: 0, max: 100, freq: 0.029, phase: 1.1, rangeFrac: 0.28, band: "mid" },
+  { key: "blobSize", min: 0, max: 100, freq: 0.023, phase: 2.3, rangeFrac: 0.22, band: "bass" },
+  { key: "accent", min: 0, max: 100, freq: 0.041, phase: 0.6, rangeFrac: 0.24, band: "high" },
+  { key: "diamondShape", min: 0, max: 100, freq: 0.017, phase: 4.4, rangeFrac: 0.20, band: "mid" },
+  { key: "diamondSize", min: 0, max: 100, freq: 0.013, phase: 2.7, rangeFrac: 0.20, band: "bass" },
+
+  // TEXTURE — the grit / feel now evolves too (grain density, size, dust, blur)
+  { key: "grain", min: 0, max: 100, freq: 0.035, phase: 5.2, rangeFrac: 0.24, band: "mid" },
+  { key: "grainSize", min: 0, max: 100, freq: 0.043, phase: 0.4, rangeFrac: 0.20, band: "high" },
+  { key: "dust", min: 0, max: 100, freq: 0.027, phase: 3.9, rangeFrac: 0.26, band: "energy" },
+  { key: "soften", min: 0, max: 100, freq: 0.011, phase: 1.6, rangeFrac: 0.16, band: "bass" },
+
+  // finish
+  { key: "vignette", min: 0, max: 100, freq: 0.019, phase: 3.7, rangeFrac: 0.16, band: "energy" },
 
   // brightness-ish FINISH — gentle + slow so it can never strobe
-  { key: "glow", min: 0, max: 100, freq: 0.013, phase: 5.0, rangeFrac: 0.08, band: "energy" },
-  { key: "contrast", min: 0, max: 100, freq: 0.011, phase: 1.9, rangeFrac: 0.06, band: "bass" },
-  { key: "saturation", min: 0, max: 100, freq: 0.015, phase: 3.1, rangeFrac: 0.07, band: "mid" },
-  { key: "bloom", min: 0, max: 100, freq: 0.009, phase: 0.3, rangeFrac: 0.07, band: "high" },
+  { key: "glow", min: 0, max: 100, freq: 0.013, phase: 5.0, rangeFrac: 0.10, band: "energy" },
+  { key: "contrast", min: 0, max: 100, freq: 0.011, phase: 1.9, rangeFrac: 0.07, band: "bass" },
+  { key: "saturation", min: 0, max: 100, freq: 0.015, phase: 3.1, rangeFrac: 0.09, band: "mid" },
+  { key: "bloom", min: 0, max: 100, freq: 0.009, phase: 0.3, rangeFrac: 0.08, band: "high" },
 
   // engine-specific (grid)
-  { key: "gridDensity", min: 0, max: 100, freq: 0.031, phase: 2.0, rangeFrac: 0.16, band: "energy" },
-  { key: "gridMagnet", min: 0, max: 100, freq: 0.021, phase: 4.0, rangeFrac: 0.18, band: "bass" },
+  { key: "gridDensity", min: 0, max: 100, freq: 0.031, phase: 2.0, rangeFrac: 0.24, band: "energy" },
+  { key: "gridMagnet", min: 0, max: 100, freq: 0.021, phase: 4.0, rangeFrac: 0.26, band: "bass" },
   // engine-specific (waves)
-  { key: "waveAmp", min: 0, max: 100, freq: 0.027, phase: 1.4, rangeFrac: 0.18, band: "bass" },
-  { key: "waveTurbulence", min: 0, max: 100, freq: 0.039, phase: 5.6, rangeFrac: 0.16, band: "high" },
-  // engine-specific (orb)
-  { key: "orbMelt", min: 0, max: 100, freq: 0.025, phase: 3.3, rangeFrac: 0.16, band: "mid" },
-  { key: "orbHalftone", min: 0, max: 100, freq: 0.033, phase: 0.9, rangeFrac: 0.14, band: "high" },
+  { key: "waveAmp", min: 0, max: 100, freq: 0.027, phase: 1.4, rangeFrac: 0.26, band: "bass" },
+  { key: "waveTurbulence", min: 0, max: 100, freq: 0.039, phase: 5.6, rangeFrac: 0.24, band: "high" },
+  // engine-specific (orb 2D)
+  { key: "orbMelt", min: 0, max: 100, freq: 0.025, phase: 3.3, rangeFrac: 0.24, band: "mid" },
+  { key: "orbHalftone", min: 0, max: 100, freq: 0.033, phase: 0.9, rangeFrac: 0.20, band: "high" },
 ];
 
 // Brightness-ish channels are extra rate-limited in audio mode: their reactive
