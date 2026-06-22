@@ -55,8 +55,11 @@ export interface StudioState {
   contourLines: number;
   contourWeight: number;
   contourScale: number;
+  contourDetail: number;
   contourWarp: number;
+  contourRelief: number;
   contourMorph: number;
+  contourFlow: number;
 
   // seed
   seed: number;
@@ -217,8 +220,11 @@ const defaults = {
   contourLines: 55,
   contourWeight: 40,
   contourScale: 45,
-  contourWarp: 35,
-  contourMorph: 50,
+  contourDetail: 50,
+  contourWarp: 50,
+  contourRelief: 30,
+  contourMorph: 55,
+  contourFlow: 35,
 
   soften: 0,
   density: 60,

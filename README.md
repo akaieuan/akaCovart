@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/hero.svg" alt="akaCOVART — a generative album-art engine" width="100%" />
+</p>
+
 # akaCOVART — Album Art Engine
 
 > A generative album-art studio built around four deterministic field engines, physical beat- and audio-synced motion, and high-res export.
@@ -12,14 +16,14 @@ It is aimed at musicians, labels, and designers who want distinctive cover art f
 
 ## Highlights
 
-- **Four field engines** — **Blob**, **Grid**, **Waves**, and **Orb**, each a self-contained 2D generator with its own composition and motion parameters.
+- **Four field engines** — **Blob**, **Grid**, **Waves**, and **Contours**, each a self-contained 2D generator with its own composition and motion parameters.
 - **Deterministic, seeded output** — a seeded mulberry32 PRNG means `same seed + same params ⇒ same image`, every time, on every machine.
 - **Palettes, moods & recolor** — three hand-tuned palettes (`dark`, `cream`, `grey`) plus a seed-derived `random` mood, a color picker that shifts the whole palette toward any hue, and a Tone slider that runs the palette light↔dark.
 - **Presets** — eight curated starting points: VOID, RITUAL, ASH, BLEACH, TOXIC, STATIC, OBSIDIAN, HAZE.
 - **Variations gallery** — a 9-up grid of seed variations you can reroll and click to adopt.
 - **Film finish** — film grain, dust/specks, scratch lines, vignette, bloom, and soften for a printed, physical feel.
 - **Type overlay** — title/artist text with a cover-font picker, case modes, a distort/glitch slider, color modes, and drag-to-place positioning on the canvas.
-- **Three modes** — **STILL** (a single frame), **ANIMATE** (beat-synced motion you tune by hand), and **AUDIO** (import a track and the art reacts to it).
+- **Two modes** — **STILL** (a single frame) and **ANIMATE** (beat-synced motion you tune by hand, driven by either the internal BPM clock or an imported audio track).
 - **Audio-reactive** — drop in an MP3/WAV, pick a clip, and the engine moves to the music via offline FFT analysis and critically-damped springs.
 - **Auto mode** — gently auto-evolves a curated set of look params so a frame stays alive without touching the sliders.
 - **High-res PNG export** — renders offscreen at **3000×3000** independent of the on-screen preview size; video loops export via `MediaRecorder` (MP4 where supported, else WEBM).

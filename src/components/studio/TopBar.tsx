@@ -10,9 +10,11 @@ import { cn } from "@/lib/utils";
 export default function TopBar({
   className,
   actions,
+  onHome,
 }: {
   className?: string;
   actions?: React.ReactNode;
+  onHome?: () => void;
 }) {
   return (
     <header
@@ -21,14 +23,15 @@ export default function TopBar({
         className,
       )}
     >
-      <span className="pointer-events-auto inline-flex items-baseline select-none">
-        <span className="text-[15px] font-light text-grey-350">
-          aka
-        </span>
-        <span className="text-[15px] font-semibold text-grey-100">
-          COVART
-        </span>
-      </span>
+      <button
+        type="button"
+        onClick={onHome}
+        aria-label="Back to start"
+        className="pointer-events-auto inline-flex cursor-pointer select-none items-baseline transition-opacity hover:opacity-70"
+      >
+        <span className="text-[15px] font-light text-grey-350">aka</span>
+        <span className="text-[15px] font-semibold text-grey-100">COVART</span>
+      </button>
       {actions ? (
         <div className="pointer-events-auto flex items-center gap-2">
           {actions}

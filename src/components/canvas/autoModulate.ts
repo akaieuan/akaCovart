@@ -94,6 +94,8 @@ const CHANNELS: AutoChannel[] = [
   { key: "contourScale", min: 0, max: 100, freq: 0.019, phase: 2.2, rangeFrac: 0.20, band: "bass" },
   { key: "contourWarp", min: 0, max: 100, freq: 0.026, phase: 4.1, rangeFrac: 0.22, band: "mid" },
   { key: "contourLines", min: 0, max: 100, freq: 0.014, phase: 0.7, rangeFrac: 0.16, band: "energy" },
+  { key: "contourDetail", min: 0, max: 100, freq: 0.022, phase: 3.0, rangeFrac: 0.18, band: "high" },
+  { key: "contourRelief", min: 0, max: 100, freq: 0.016, phase: 5.5, rangeFrac: 0.18, band: "mid" },
 ];
 
 // Brightness-ish channels are extra rate-limited in audio mode: their reactive

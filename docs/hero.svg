@@ -1,0 +1,42 @@
+<svg viewBox="0 0 1280 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="akaCOVART — a generative album-art engine">
+  <defs>
+    <radialGradient id="vig" cx="50%" cy="46%" r="72%">
+      <stop offset="0%" stop-color="#050608" stop-opacity="0.60"/>
+      <stop offset="45%" stop-color="#050608" stop-opacity="0.40"/>
+      <stop offset="100%" stop-color="#050608" stop-opacity="0.82"/>
+    </radialGradient>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="480" fill="#0a0a0c"/>
+
+  <!-- soft glowing colour dots — the Grid-engine landing look -->
+  <g filter="url(#soft)">
+    <circle cx="150" cy="120" r="62" fill="#3f7d72" opacity="0.55"/>
+    <circle cx="350" cy="330" r="78" fill="#c9a23a" opacity="0.42"/>
+    <circle cx="520" cy="120" r="48" fill="#5a7a9a" opacity="0.50"/>
+    <circle cx="250" cy="240" r="40" fill="#b06a82" opacity="0.40"/>
+    <circle cx="1110" cy="150" r="66" fill="#c8d0d4" opacity="0.38"/>
+    <circle cx="1160" cy="360" r="58" fill="#5a7a9a" opacity="0.50"/>
+    <circle cx="980" cy="120" r="46" fill="#b06a82" opacity="0.42"/>
+    <circle cx="1040" cy="400" r="60" fill="#c9a23a" opacity="0.40"/>
+    <circle cx="170" cy="400" r="52" fill="#5a8a6a" opacity="0.45"/>
+    <circle cx="700" cy="412" r="70" fill="#c9a23a" opacity="0.40"/>
+    <circle cx="620" cy="300" r="44" fill="#5a7a9a" opacity="0.40"/>
+    <circle cx="860" cy="320" r="50" fill="#c8d0d4" opacity="0.32"/>
+    <circle cx="430" cy="420" r="46" fill="#b06a82" opacity="0.40"/>
+    <circle cx="900" cy="225" r="40" fill="#3f7d72" opacity="0.40"/>
+  </g>
+
+  <!-- vignette so the wordmark reads cleanly -->
+  <rect width="1280" height="480" fill="url(#vig)"/>
+
+  <text x="640" y="234" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="82" letter-spacing="-1">
+    <tspan fill="#8b9099" font-weight="300">aka</tspan><tspan fill="#ffffff" font-weight="600">COVART</tspan>
+  </text>
+  <text x="640" y="282" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="19" fill="#b6bcc2" opacity="0.85">A generative album-art engine — shape it, sync it to your track, export the cover.</text>
+
+  <text x="640" y="452" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#6b7178">Built by akaIeuan @ <tspan fill="#5b9dff">akaBuild</tspan></text>
+</svg>

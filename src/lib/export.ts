@@ -1,6 +1,7 @@
 import { renderTo, resolveMood } from "@/engine";
 import type { Mood } from "@/engine";
 import { renderParams, type StudioState } from "@/lib/store";
+import { ensureCoverFont } from "@/lib/fonts";
 
 // ── PNG export at 3000² (offscreen renderTo -> toBlob -> download) ───────────
 export function exportPng(
@@ -38,11 +39,9 @@ export function exportPng(
       done();
     }
   };
-  if (typeof document !== "undefined" && document.fonts?.ready) {
-    document.fonts.ready.then(() => requestAnimationFrame(go));
-  } else {
-    requestAnimationFrame(go);
-  }
+  // Make sure the chosen cover font is downloaded before rendering the 3000²
+  // frame (canvas can't paint a web font the browser hasn't fetched).
+  ensureCoverFont(state.textFont).then(() => requestAnimationFrame(go));
 }
 
 // ── Video export (MediaRecorder over the live animated canvas) ───────────────

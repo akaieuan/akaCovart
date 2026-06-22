@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
+import { Intro } from "@/components/intro";
 import { Stage } from "@/components/canvas";
 import { Controls } from "@/components/controls";
 import EngineSelector from "./EngineSelector";
@@ -22,6 +23,9 @@ import {
 
 export default function Studio() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Landing gate: show the intro until the user clicks Start, then the studio.
+  const [started, setStarted] = useState(false);
 
   // Randomize seed + gallery after hydration (initial values are deterministic
   // to avoid an SSR/client mismatch). Gives fresh art on every load.
@@ -52,10 +56,16 @@ export default function Studio() {
     }
   };
 
+  // Landing first: a full-bleed looping generative backdrop + Start button.
+  // Clicking Start fades the intro out and reveals the studio.
+  if (!started) {
+    return <Intro onStart={() => setStarted(true)} />;
+  }
+
   return (
     <div className="relative flex h-screen w-full overflow-hidden bg-bg text-ink">
-      {/* Floating wordmark over the canvas backdrop */}
-      <TopBar />
+      {/* Floating wordmark over the canvas backdrop — click returns to start */}
+      <TopBar onHome={() => setStarted(false)} />
 
       {/* HERO: canvas centered, fills remaining space. Stage forwards canvasRef
           to the 2D CanvasStage. */}

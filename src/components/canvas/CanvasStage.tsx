@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { renderTo } from "@/engine";
 import type { TextBox } from "@/engine";
 import { useStudio, renderParams, type StudioState } from "@/lib/store";
+import { ensureCoverFont } from "@/lib/fonts";
 import { audioSession, transport, zeroFeatures } from "@/audio";
 import type { AudioFeatures } from "@/audio";
 import { applyAuto } from "./autoModulate";
@@ -91,7 +92,9 @@ function paramSig(s: StudioState): string {
     s.contourLines,
     s.contourWeight,
     s.contourScale,
+    s.contourDetail,
     s.contourWarp,
+    s.contourRelief,
     s.soften,
     s.density,
     s.smear,
@@ -497,6 +500,21 @@ export default function CanvasStage({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Cover fonts paint on the canvas, so the browser must DOWNLOAD the chosen face
+  // before it can render with it (a CSS @import won't fetch a face no DOM node
+  // uses). Load the selected family, then repaint so the switch actually shows.
+  useEffect(() => {
+    let cancelled = false;
+    ensureCoverFont(state.textFont).then(() => {
+      if (cancelled) return;
+      lastSig.current = null;
+      if (stateRef.current.mode === "still") draw();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.textFont, draw]);
 
   // React to state changes (subscribe to the whole store).
   useEffect(() => {
