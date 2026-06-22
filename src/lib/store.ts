@@ -5,7 +5,10 @@ import { create } from "zustand";
 // is a flat bag of generation params plus UI flags. `renderTo` receives the
 // whole object, so keys must match what the engine reads.
 
-export type Mode = "still" | "animate" | "audio";
+export type Mode = "still" | "animate";
+// Animate is the single animation. Its motion is driven by either the internal
+// BPM clock or an imported audio track — `animSource` selects which.
+export type AnimSource = "bpm" | "track";
 export type AudioStatus = "idle" | "decoding" | "analyzing" | "ready";
 export type MoodSel = "dark" | "cream" | "grey" | "random";
 
@@ -18,7 +21,6 @@ export interface OpenSections {
   palette: boolean;
   composition: boolean;
   texture: boolean;
-  sigil: boolean;
   type: boolean;
 }
 
@@ -50,14 +52,11 @@ export interface StudioState {
   orbHalftone: number;
   orbMelt: number;
   orbShade: number;
-
-  // 3D engine (orb3d) — WebGL liquid shape system. Consumed only by WebGLStage.
-  orb3dShape: string; // sphere | icosahedron | tetrahedron | cube | octahedron | prism
-  orb3dLiquid: number; // 0..100 displacement amount
-  orb3dDetail: number; // 0..100 noise frequency / octaves
-  orb3dRotate: number; // 0..100 continuous rotation rate
-  orb3dShade: number; // 0..100 rim / shadow strength
-  orb3dBg: string; // backdrop: "studio" (dark) | "palette" | "light"
+  contourLines: number;
+  contourWeight: number;
+  contourScale: number;
+  contourWarp: number;
+  contourMorph: number;
 
   // seed
   seed: number;
@@ -85,14 +84,6 @@ export interface StudioState {
   diamondCount: number;
   diamondSize: number;
   diamondShape: number;
-
-  // sigil
-  sigilMarks: boolean;
-  sigilMarkCount: number;
-  sigilMarkSize: number;
-  sigilMarkScatter: number;
-  sigilFrame: boolean;
-  sigilFrameDensity: number;
 
   // texture scratches
   scratches: boolean;
@@ -123,6 +114,9 @@ export interface StudioState {
 
   // mode + animation params
   mode: Mode;
+  // What drives the (single) Animate motion: the internal BPM clock or the
+  // imported audio track's analyzed energy/beats.
+  animSource: AnimSource;
   // AUTO mode: gently auto-evolve a curated set of params around their manual
   // base values via slow bounded LFOs. Render-loop only — never mutates the
   // stored param values, so toggling off returns to the exact manual look.
@@ -156,8 +150,6 @@ export interface StudioState {
   gridPop: number;
   gridOrbit: number;
   gridFlow: number;
-  orb3dPulse: number;
-  orb3dWobble: number;
 
   // UI / process flags
   open: OpenSections;
@@ -222,14 +214,11 @@ const defaults = {
   orbHalftone: 40,
   orbMelt: 30,
   orbShade: 55,
-
-  // 3D engine (orb3d) composition defaults
-  orb3dShape: "sphere",
-  orb3dLiquid: 45,
-  orb3dDetail: 50,
-  orb3dRotate: 35,
-  orb3dShade: 55,
-  orb3dBg: "studio",
+  contourLines: 55,
+  contourWeight: 40,
+  contourScale: 45,
+  contourWarp: 35,
+  contourMorph: 50,
 
   soften: 0,
   density: 60,
@@ -251,13 +240,6 @@ const defaults = {
   diamondCount: 2,
   diamondSize: 50,
   diamondShape: 50,
-
-  sigilMarks: true,
-  sigilMarkCount: 5,
-  sigilMarkSize: 42,
-  sigilMarkScatter: 58,
-  sigilFrame: false,
-  sigilFrameDensity: 50,
 
   scratches: true,
   scratchCount: 6,
@@ -284,6 +266,7 @@ const defaults = {
   audioPlaying: false,
 
   mode: "still" as Mode,
+  animSource: "bpm" as AnimSource,
   auto: false,
   autoIntensity: 50,
   animSpeed: 55,
@@ -314,8 +297,6 @@ const defaults = {
   gridPop: 55,
   gridOrbit: 35,
   gridFlow: 30,
-  orb3dPulse: 55,
-  orb3dWobble: 45,
 
   rendering: false,
   recording: false,
@@ -335,7 +316,6 @@ export const useStudio = create<StudioState>((set) => ({
     palette: true,
     composition: false,
     texture: false,
-    sigil: true,
     type: false,
   },
   gallerySeeds: INITIAL_GALLERY,

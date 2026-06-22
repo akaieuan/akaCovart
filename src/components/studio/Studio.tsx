@@ -33,7 +33,9 @@ export default function Studio() {
 
   const handleExport = () => {
     const s = useStudio.getState();
-    if (s.mode === "animate" || s.mode === "audio") {
+    // Animate records the live (BPM- or track-driven) canvas to video; Still
+    // exports a 3000² PNG.
+    if (s.mode === "animate") {
       if (s.recording) return;
       const c = canvasRef.current;
       if (!c) return;
@@ -56,8 +58,7 @@ export default function Studio() {
       <TopBar />
 
       {/* HERO: canvas centered, fills remaining space. Stage forwards canvasRef
-          to CanvasStage for 2D engines, or swaps to the (ssr:false) WebGL stage
-          when a webgl engine is selected. */}
+          to the 2D CanvasStage. */}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Stage canvasRef={canvasRef} />
       </main>

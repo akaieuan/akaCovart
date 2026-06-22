@@ -1,6 +1,5 @@
 import type { AnimState, Mood, RenderResult } from "./types";
 import { getEngine } from "./registry";
-import { isWebGLEngine } from "./types";
 import { palettes, recolorPalette, resolveMood, transformPalette } from "./palettes";
 import { prng } from "./prng";
 import { rgb } from "./color";
@@ -93,7 +92,7 @@ function buildAnim(params: Record<string, any>): AnimState {
 }
 
 // Deterministic: same (seed, params) reproduces the same image.
-// Finish order: soften, scratches, drawSigil, postColor, bloom, vignette, grain, drawText.
+// Finish order: soften, scratches, postColor, bloom, vignette, grain, drawText.
 // OMITS flicker overlay / strobe / pump-darken / hue-cycle.
 export function renderTo(
   canvas: HTMLCanvasElement,
@@ -110,10 +109,12 @@ export function renderTo(
   const mood: Mood = resolveMood(seed, (params.mood ?? "random") as Mood | "random");
   // Apply the Color controls to the resolved palette so they affect EVERY engine
   // (base fill, field, and cfg-driven effects below). Order: base mood palette ->
-  // recolour toward the picked colour (if any) -> Tone (light<->dark). The picker
-  // owns hue/saturation now, so transformPalette runs with neutral hue/sat (0/50)
-  // and only applies Tone. At defaults (colorPick null, tone 50) both steps are
-  // no-ops and the output is byte-identical to before this feature existed.
+  // recolour toward the picked colour (if any) -> Tone (light<->dark) + optional
+  // AUTO colour automation. The picker owns the static hue/sat, so normally
+  // transformPalette runs with neutral hue/sat (0/50); when Auto mode is on it
+  // supplies a slow hue rotation / sat breath via _autoHue/_autoSat. At defaults
+  // (colorPick null, tone 50, no auto) every step is a no-op and the output is
+  // byte-identical to before these features existed.
   const picked =
     typeof params.colorPick === "string" && params.colorPick
       ? params.colorPick
@@ -122,19 +123,21 @@ export function renderTo(
   const recolored = picked
     ? recolorPalette(moodPalette, picked)
     : moodPalette;
-  const cfg = transformPalette(recolored, params.colorTone ?? 50, 0, 50);
+  const cfg = transformPalette(
+    recolored,
+    params.colorTone ?? 50,
+    (params._autoHue as number) ?? 0,
+    (params._autoSat as number) ?? 50,
+  );
   const anim = buildAnim(params);
 
   // Base fill.
   ctx.fillStyle = rgb(cfg.base);
   ctx.fillRect(0, 0, S, S);
 
-  // Field dispatch. Only 2D field engines draw to the 2D canvas; WebGL engines
-  // are rendered by their own (ssr:false) stage and are skipped here. The Stage
-  // switch already routes WebGL engines away from this path, so this is just a
-  // type-safe guard that keeps the 2D contract intact.
+  // Field dispatch — the selected 2D engine draws into the canvas.
   const engine = getEngine(params.engine || "blob");
-  if (engine && !isWebGLEngine(engine)) {
+  if (engine) {
     engine.field({ ctx, size: S, params, mood, cfg, seed, anim });
   }
 

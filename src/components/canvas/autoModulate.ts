@@ -82,6 +82,18 @@ const CHANNELS: AutoChannel[] = [
   // engine-specific (orb 2D)
   { key: "orbMelt", min: 0, max: 100, freq: 0.025, phase: 3.3, rangeFrac: 0.24, band: "mid" },
   { key: "orbHalftone", min: 0, max: 100, freq: 0.033, phase: 0.9, rangeFrac: 0.20, band: "high" },
+  { key: "orbSize", min: 0, max: 100, freq: 0.020, phase: 1.2, rangeFrac: 0.16, band: "bass" },
+  { key: "orbSoft", min: 0, max: 100, freq: 0.030, phase: 4.7, rangeFrac: 0.18, band: "mid" },
+  { key: "orbShade", min: 0, max: 100, freq: 0.024, phase: 2.6, rangeFrac: 0.16, band: "energy" },
+  // engine-specific (waves) extra
+  { key: "waveDetail", min: 0, max: 100, freq: 0.022, phase: 0.8, rangeFrac: 0.18, band: "mid" },
+  { key: "wavePerspective", min: 0, max: 100, freq: 0.016, phase: 3.4, rangeFrac: 0.16, band: "bass" },
+  // engine-specific (grid) extra
+  { key: "gridPerspective", min: 0, max: 100, freq: 0.018, phase: 5.1, rangeFrac: 0.16, band: "energy" },
+  // engine-specific (contours)
+  { key: "contourScale", min: 0, max: 100, freq: 0.019, phase: 2.2, rangeFrac: 0.20, band: "bass" },
+  { key: "contourWarp", min: 0, max: 100, freq: 0.026, phase: 4.1, rangeFrac: 0.22, band: "mid" },
+  { key: "contourLines", min: 0, max: 100, freq: 0.014, phase: 0.7, rangeFrac: 0.16, band: "energy" },
 ];
 
 // Brightness-ish channels are extra rate-limited in audio mode: their reactive
@@ -148,6 +160,16 @@ export function applyAuto(
 
     out[ch.key] = clamp(cur + lfo * swing, ch.min, ch.max);
   }
+
+  // ── Colour automation ──────────────────────────────────────────────────────
+  // A slow, smooth hue rotation of the WHOLE palette (plus a gentle saturation
+  // breath) so colour evolves over time when Auto is on. Hue is circular, so a
+  // continuous drift wraps seamlessly — no jump, no strobe. render.ts applies
+  // these via transformPalette's hue/sat. Absent when Auto is off, so it no-ops.
+  let hueGain = 1;
+  if (audio) hueGain = 0.7 + clamp(bandValue(audio, "energy"), 0, 1) * 0.6; // 0.7..1.3
+  out._autoHue = (t * 3.5 * amt * hueGain) % 100; // ~28s/cycle at full intensity
+  out._autoSat = 50 + Math.sin(t * 0.08 * TAU) * 6 * amt; // gentle ±6 sat breath
 
   return out;
 }

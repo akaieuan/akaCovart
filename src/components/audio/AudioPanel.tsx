@@ -22,14 +22,18 @@ import Waveform from "./Waveform";
 const ACCEPT = "audio/mpeg,audio/wav,.mp3,.wav";
 
 /**
- * AudioPanel — the AUDIO-mode parameter body.
+ * AudioControls — the embeddable audio-driver body.
  *
  * Owns the audio import/analyze lifecycle: decode a file into the audio session
- * singleton, run the offline analysis for the current 60s window, load the
+ * singleton, run the offline analysis for the current window, load the
  * transport, and expose play/pause + the AUDIO REACT controls. The Waveform
- * child edits the clip window; this panel watches it and re-analyzes (debounced).
+ * child edits the clip window; this watches it and re-analyzes (debounced).
+ *
+ * Renders WITHOUT outer page padding so it can sit inside the Animate motion
+ * panel (which supplies its own padding + the shared Auto group). The `intro`
+ * flag toggles the short explanatory blurb (shown standalone, hidden inline).
  */
-export default function AudioPanel() {
+export function AudioControls({ intro = true }: { intro?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -182,12 +186,14 @@ export default function AudioPanel() {
   const hasAudio = audioStatus === "ready" || audioStatus === "analyzing";
 
   return (
-    <div className="px-5 pt-4 pb-2">
-      <div className="mb-4 font-sans text-[11px] leading-[1.7] text-grey-350">
-        Import an MP3 or WAV, trim a clip window (up to {DEFAULT_CLIP}s+ or the
-        full track), and the engine reacts live to its analyzed energy &amp;
-        beats. Export a synced video loop.
-      </div>
+    <div>
+      {intro && (
+        <div className="mb-4 font-sans text-[11px] leading-[1.7] text-grey-350">
+          Import an MP3 or WAV, trim a clip window (up to {DEFAULT_CLIP}s+ or the
+          full track), and the engine reacts live to its analyzed energy &amp;
+          beats. Export a synced video loop.
+        </div>
+      )}
 
       {/* ── Dropzone / file picker ──────────────────────────────────────── */}
       <input
@@ -312,23 +318,19 @@ export default function AudioPanel() {
           max={100}
         />
       </div>
+    </div>
+  );
+}
 
-      {/* ── AUTO ────────────────────────────────────────────────────────── */}
-      <div className="mt-6">
-        <GroupLabel variant="beat">Auto</GroupLabel>
-        <div className="mb-1 font-sans text-[11px] leading-[1.7] text-grey-400">
-          Gently auto-evolves a curated set of look params so the cover stays
-          alive — the swing also scales with the track&apos;s energy. Your
-          sliders stay the base.
-        </div>
-        <ToggleRow label="Auto" paramKey="auto" />
-        <SliderRow
-          label="Intensity"
-          paramKey="autoIntensity"
-          min={0}
-          max={100}
-        />
-      </div>
+/**
+ * AudioPanel — standalone wrapper around AudioControls (page padding + intro).
+ * Kept for any standalone use; the Animate motion panel embeds AudioControls
+ * directly so it can share that panel's padding + Auto group.
+ */
+export default function AudioPanel() {
+  return (
+    <div className="px-5 pt-4 pb-2">
+      <AudioControls intro />
     </div>
   );
 }

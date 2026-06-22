@@ -1,6 +1,6 @@
 import type { ParamDef } from "./types";
 
-// Shared (non-engine, non-seed) parameters — mood + finish + texture + sigil + type.
+// Shared (non-engine, non-seed) parameters — mood + finish + texture + type.
 // Min/max/defaults match the prototype UI exactly (index.html panel + default state).
 export const sharedParams: ParamDef[] = [
   // ----- palette / mood -----
@@ -31,14 +31,6 @@ export const sharedParams: ParamDef[] = [
   { key: "dust", label: "DUST / SPECKS", type: "range", group: "texture", min: 0, max: 100, default: 18 },
   { key: "scratches", label: "SCRATCH LINES", type: "toggle", group: "texture", default: true },
   { key: "scratchCount", label: "COUNT", type: "int", group: "texture", min: 0, max: 16, default: 6 },
-
-  // ----- sigil -----
-  { key: "sigilMarks", label: "SIGIL MARKS", type: "toggle", group: "sigil", default: true },
-  { key: "sigilMarkCount", label: "DENSITY", type: "int", group: "sigil", min: 0, max: 20, default: 5 },
-  { key: "sigilMarkSize", label: "SIZE", type: "range", group: "sigil", min: 0, max: 100, default: 42 },
-  { key: "sigilMarkScatter", label: "SCATTER", type: "range", group: "sigil", min: 0, max: 100, default: 58 },
-  { key: "sigilFrame", label: "BARB FRAME", type: "toggle", group: "sigil", default: false },
-  { key: "sigilFrameDensity", label: "FRAME DENSITY", type: "range", group: "sigil", min: 0, max: 100, default: 50 },
 
   // ----- type overlay -----
   { key: "showText", label: "RENDER TEXT", type: "toggle", group: "type", default: true },

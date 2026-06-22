@@ -21,7 +21,7 @@ import {
 import Gallery from "./Gallery";
 import { Presets } from "./Presets";
 import { PositionGrid } from "./PositionGrid";
-import { AudioPanel } from "@/components/audio";
+import { AudioControls } from "@/components/audio";
 import {
   type Control,
   type ControlGroup,
@@ -107,20 +107,56 @@ function PanelSection({
 // user can open several at once.
 const DEFAULT_OPEN: string[] = [];
 
+// Source segmented options — drives the (single) Animate motion from either the
+// internal BPM clock or an imported audio track.
+const ANIM_SOURCE_OPTIONS = [
+  { value: "bpm", label: "BPM" },
+  { value: "track", label: "Track" },
+];
+
 // ── ANIMATE-mode motion body ─────────────────────────────────────────────────
-// Split out so it can subscribe to ONLY `engine` (which motion set to show),
-// independent of the STILL accordion.
+// One animation, two drivers. A "Source" segmented control picks BPM (internal
+// clock) or Track (imported audio). When Track is selected, the audio import /
+// waveform / clip / reactivity UI is embedded here, and the BPM-only Beat group
+// is hidden (Drift + per-engine Motion still apply). Subscribes to `engine` (to
+// pick the motion set) and `animSource` (which body to show).
 function MotionPanel() {
   const engine = useStudio((s) => s.engine);
+  const animSource = useStudio((s) => s.animSource);
+  const isTrack = animSource === "track";
   return (
     <div>
       <div className="px-5 pt-4 pb-1 font-sans text-[11px] leading-[1.7] text-grey-350">
-        Beat-synced motion for techno. Set the BPM, dial the pump &amp; kick,
-        then export a looping video (MP4 where supported, else WEBM).
+        {isTrack
+          ? "Drive the motion from an imported track — import an MP3/WAV, trim a clip window, then export a synced video loop."
+          : "Beat-synced motion for techno. Set the BPM, dial the pump & kick, then export a looping video (MP4 where supported, else WEBM)."}
       </div>
       <div className="px-5 pt-[14px] pb-[6px]">
-        <GroupLabel variant="beat">{BEAT_GROUP.heading}</GroupLabel>
-        {BEAT_GROUP.controls.map((c) => renderControl(c))}
+        {/* Source: what drives this animation. */}
+        <GroupLabel variant="beat">Source</GroupLabel>
+        <Segmented
+          paramKey="animSource"
+          options={ANIM_SOURCE_OPTIONS}
+          className="mb-[6px]"
+        />
+
+        {/* TRACK driver: the embedded audio import / waveform / reactivity UI. */}
+        {isTrack && (
+          <>
+            <Divider />
+            <AudioControls intro={false} />
+          </>
+        )}
+
+        {/* BEAT (BPM) controls — only meaningful for the internal-clock driver. */}
+        {!isTrack && (
+          <>
+            <Divider />
+            <GroupLabel variant="beat">{BEAT_GROUP.heading}</GroupLabel>
+            {BEAT_GROUP.controls.map((c) => renderControl(c))}
+          </>
+        )}
+
         <Divider />
         <GroupLabel variant="beat">{DRIFT_GROUP.heading}</GroupLabel>
         {DRIFT_GROUP.controls.map((c) => renderControl(c))}
@@ -153,13 +189,10 @@ function MotionPanel() {
 // without re-rendering on a slider tick.
 function CompositionBody() {
   const engine = useStudio((s) => s.engine);
-  // FINISH is a 2D canvas post-process (contrast/bloom/vignette/soften). The 3D
-  // engine renders its own group and must NOT show the 2D finish controls.
-  const isWebGL = engine === "orb3d";
   return (
     <>
       {renderGroups(COMPOSITION_BY_ENGINE[engine] ?? [])}
-      {!isWebGL && renderGroups([FINISH_GROUP])}
+      {renderGroups([FINISH_GROUP])}
     </>
   );
 }
@@ -178,10 +211,6 @@ function CompositionBody() {
  */
 export default function Controls() {
   const mode = useStudio((s) => s.mode);
-
-  if (mode === "audio") {
-    return <AudioPanel />;
-  }
 
   if (mode === "animate") {
     return <MotionPanel />;

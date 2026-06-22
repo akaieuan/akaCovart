@@ -3,19 +3,18 @@
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-/** STILL / ANIMATE / AUDIO mode toggle. */
+/** STILL / ANIMATE mode toggle. (Audio is now a driver of Animate, not a mode.) */
 export function ModeToggle({ className }: { className?: string }) {
   const mode = useStudio((s) => s.mode);
   const setState = useStudio((s) => s.setState);
-  const opts: { value: "still" | "animate" | "audio"; label: string }[] = [
+  const opts: { value: "still" | "animate"; label: string }[] = [
     { value: "still", label: "Still" },
     { value: "animate", label: "Animate" },
-    { value: "audio", label: "Audio" },
   ];
   return (
     <div
       className={cn(
-        "grid grid-cols-3 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
+        "grid grid-cols-2 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
         className,
       )}
     >

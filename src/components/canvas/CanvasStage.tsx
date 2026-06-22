@@ -13,6 +13,20 @@ const DISPLAY = 880;
 // changing; we snap back to DISPLAY (full quality) once the value settles.
 const DRAFT = 560;
 
+// Live animation renders at an ADAPTIVE backing-store size (CSS-scaled up to the
+// stage) so the per-frame finish chain (grain / soften / bloom / vignette) stays
+// cheap and the motion stays fluid. It auto-tunes between these bounds from the
+// measured frame time, and snaps back to full DISPLAY at rest + when baking an
+// export frame.
+const ANIM_MIN = 440;
+const ANIM_MAX = 820;
+const ANIM_START = 700;
+function nextAnimRes(cur: number, emaMs: number): number {
+  if (emaMs > 21 && cur > ANIM_MIN) return Math.max(ANIM_MIN, cur - 48);
+  if (emaMs < 13 && cur < ANIM_MAX) return Math.min(ANIM_MAX, cur + 24);
+  return cur;
+}
+
 // ── Audio reactivity tuning ────────────────────────────────────────────────
 // Fixed-timestep physics step. We accumulate real delta-time and step springs
 // at this rate so motion is identical at 30 / 60 / 120 fps and never blows up.
@@ -74,6 +88,10 @@ function paramSig(s: StudioState): string {
     s.orbHalftone,
     s.orbMelt,
     s.orbShade,
+    s.contourLines,
+    s.contourWeight,
+    s.contourScale,
+    s.contourWarp,
     s.soften,
     s.density,
     s.smear,
@@ -92,12 +110,6 @@ function paramSig(s: StudioState): string {
     s.diamondCount,
     s.diamondSize,
     s.diamondShape,
-    s.sigilMarks,
-    s.sigilMarkCount,
-    s.sigilMarkSize,
-    s.sigilMarkScatter,
-    s.sigilFrame,
-    s.sigilFrameDensity,
     s.scratches,
     s.scratchCount,
   ].join("|");
@@ -139,13 +151,18 @@ export default function CanvasStage({
   const t0Ref = useRef(0);
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
 
+  // Adaptive animation-resolution state for the unified anim loop. An EMA of
+  // frame time drives the backing-store size to keep motion fluid.
+  const animResRef = useRef(ANIM_START);
+  const animEmaRef = useRef(16);
+  const animCtrRef = useRef(0);
+  const animLastNowRef = useRef(0);
+
   // Coalesced still-render scheduling (rAF + draft-while-interacting).
   const drawRafRef = useRef<number | null>(null);
   const lastChangeRef = useRef(0);
 
-  // ── Audio reactivity loop state ───────────────────────────────────────────
-  const audioRafRef = useRef<number | null>(null);
-  const audioLastNowRef = useRef(0);
+  // ── Track-driver (audio) physics state — shared by the unified anim loop ───
   const audioAccumRef = useRef(0); // fixed-timestep accumulator (seconds)
   // Smoothed (envelope-followed) features — buttery input to the springs.
   const featRef = useRef<AudioFeatures>(zeroFeatures());
@@ -201,7 +218,33 @@ export default function CanvasStage({
     drawRafRef.current = requestAnimationFrame(run);
   }, [drawAt]);
 
-  // ── Animation loop (beat-synced; NO flicker — CSS filter only) ─────────────
+  // Decide, this frame, whether motion is driven by the imported track. The
+  // track only drives when the user picked it AND an analyzed timeline exists.
+  const useTrackNow = useCallback((s: StudioState): boolean => {
+    const tl = audioSession.timeline;
+    return s.animSource === "track" && !!tl && tl.duration > 0;
+  }, []);
+
+  // Reset the audio spring/accumulator transients so the track path starts calm
+  // (when entering animate, or when the source flips to "track" mid-run).
+  const resetAudioTransients = useCallback(() => {
+    audioAccumRef.current = 0;
+    featRef.current = zeroFeatures();
+    kickSpringRef.current = { x: 0, v: 0 };
+    pumpSpringRef.current = { x: 0, v: 0 };
+    bassSpringRef.current = { x: 0, v: 0 };
+    driftSpringRef.current = { x: 0, v: 0 };
+    swirlSpringRef.current = { x: 0, v: 0 };
+    kickImpulseRef.current = 0;
+    prevBeatRef.current = 0;
+  }, []);
+
+  // ── Unified animation loop (runs while mode === "animate") ─────────────────
+  // ONE animation. Each frame picks its DRIVER: the internal BPM clock, or the
+  // imported track (when animSource === "track" and a timeline is analyzed).
+  // Both feed the same shared AnimState the engines already consume. Motion is
+  // SPACE-only (scale / position / displacement) so there is never any flicker;
+  // brightness/contrast/saturation are applied once per frame as a CSS filter.
   const stopAnim = useCallback(() => {
     if (rafRef.current != null) {
       cancelAnimationFrame(rafRef.current);
@@ -220,6 +263,15 @@ export default function CanvasStage({
     c.width = DISPLAY;
     c.height = DISPLAY;
     t0Ref.current = performance.now();
+    animResRef.current = ANIM_START;
+    animEmaRef.current = 16;
+    animCtrRef.current = 0;
+    animLastNowRef.current = t0Ref.current;
+    // Start the track-driver physics calm; harmless when the BPM driver is used.
+    resetAudioTransients();
+    // Track which driver ran last frame so we can re-settle the audio springs
+    // when the source flips to "track" mid-run.
+    let wasTrack = useTrackNow(stateRef.current);
 
     // Paint one immediate frame so the canvas is never blank before the first
     // requestAnimationFrame fires (e.g. if the tab is briefly backgrounded).
@@ -241,33 +293,188 @@ export default function CanvasStage({
         rafRef.current = null;
         return;
       }
-      const sp = 0.3 + (s.animSpeed / 100) * 1.7;
-      const rt = (now - t0Ref.current) / 1000;
-      const t = rt * sp;
       const bake = !!s.recording;
-      // AUTO mode: gently wander a curated set of params around their manual
-      // base values (render-loop only — never written back to the store). Uses
-      // real time `rt` as a steady clock so the wander is BPM-independent.
-      const baseParams = s.auto
-        ? applyAuto(renderParams(s), rt, s.autoIntensity)
-        : renderParams(s);
-      const p = {
-        ...baseParams,
-        _anim: true,
-        _t: t,
-        _rt: rt,
-        _bake: bake,
-      };
-      const res = renderTo(c, DISPLAY, p);
+      const useTrack = useTrackNow(s);
+      // Re-settle the audio springs the moment we switch INTO the track driver
+      // so it eases in from rest instead of snapping from stale state.
+      if (useTrack && !wasTrack) resetAudioTransients();
+      wasTrack = useTrack;
+
+      // Frame delta-time (clamped) — used both for the EMA and the track path's
+      // fixed-timestep physics so behavior is fps-independent.
+      let frameDt = (now - animLastNowRef.current) / 1000;
+      animLastNowRef.current = now;
+      if (!(frameDt > 0)) frameDt = 0;
+      if (frameDt > MAX_FRAME_DT) frameDt = MAX_FRAME_DT;
+
+      // Per-driver: build the render params (incl. AUTO base) + the CSS filter
+      // source params. autoBase is also the contrast/saturation source.
+      let p: Record<string, unknown>;
+      let autoBase: Record<string, unknown>;
+
+      if (useTrack) {
+        // ── TRACK DRIVER ──────────────────────────────────────────────────
+        // Audio clock — seconds into the clip. SAMPLE the offline timeline here.
+        const tl = audioSession.timeline;
+        const haveAudio = !!tl && tl.duration > 0;
+        const playing = haveAudio && transport.playing && s.audioReactive;
+        const audioT = haveAudio ? transport.currentTime : 0;
+
+        // Raw features from the deterministic offline timeline (interpolated).
+        // When idle (no clip / not playing) we relax toward zero -> calm hold.
+        const raw: AudioFeatures =
+          haveAudio && (playing || transport.currentTime > 0)
+            ? tl!.sampleByTime(audioT)
+            : zeroFeatures();
+
+        // Reactivity scale (0..~1.4). Lets loud/quiet tracks behave the same and
+        // gives the user one global intensity knob.
+        const intensity = (s.audioReactive ? s.audioIntensity : 0) / 50;
+
+        // ── Fixed-timestep accumulator: step springs + envelopes at SPRING_DT
+        // so behavior is identical at 30 / 60 / 120 fps and never overshoots.
+        audioAccumRef.current += frameDt;
+        let steps = 0;
+        const maxSteps = 240;
+        while (audioAccumRef.current >= SPRING_DT && steps < maxSteps) {
+          const dt = SPRING_DT;
+          audioAccumRef.current -= dt;
+          steps++;
+
+          const f = featRef.current;
+          // Envelope-follow the raw features (buttery, normalized 0..1).
+          f.energy = follow(f.energy, clamp01(raw.energy), 0.04, 0.18, dt);
+          f.bass = follow(f.bass, clamp01(raw.bass), 0.03, 0.16, dt);
+          f.mid = follow(f.mid, clamp01(raw.mid), 0.05, 0.14, dt);
+          f.high = follow(f.high, clamp01(raw.high), 0.02, 0.10, dt);
+          // Beat is already a decaying onset peak in the timeline.
+          f.beat = follow(f.beat, clamp01(raw.beat), 0.005, 0.12, dt);
+
+          // Onset detection: rising edge of the beat impulse -> kick the impulse
+          // envelope (sharp attack), then it decays. Drives kickEnv (calm pulse).
+          const rising = f.beat - prevBeatRef.current;
+          prevBeatRef.current = f.beat;
+          if (rising > 0.04 && f.beat > 0.25) {
+            kickImpulseRef.current = Math.max(kickImpulseRef.current, f.beat);
+          }
+          // Decay the impulse (attack-decay envelope, no flicker).
+          kickImpulseRef.current *= Math.exp(-dt / 0.22);
+
+          // Step critically-damped springs toward the followed targets.
+          // Stiffness sets the "feel": bouncy kick, breathing pump, slow drift.
+          stepSpring(kickSpringRef.current, f.beat, 180, dt); // bouncy
+          stepSpring(pumpSpringRef.current, f.energy, 60, dt); // breathing
+          stepSpring(bassSpringRef.current, f.bass, 90, dt); // chest thump
+          stepSpring(driftSpringRef.current, f.mid, 28, dt); // lazy drift
+          stepSpring(swirlSpringRef.current, f.high, 40, dt); // shimmer swirl
+        }
+
+        // ── Map spring outputs -> eased AnimState, scaled by intensity ───────
+        const kickSpringX = kickSpringRef.current.x;
+        const pumpX = pumpSpringRef.current.x;
+        const bassX = bassSpringRef.current.x;
+        const driftX = driftSpringRef.current.x;
+        const swirlX = swirlSpringRef.current.x;
+        const impulse = kickImpulseRef.current;
+
+        // kickSpring is a SIGNED bounce (spring can overshoot above its target);
+        // re-center around the followed value so it overshoots/settles like the
+        // BPM path's damped cosine. Clamp everything so it never blows up.
+        const kickSpringSigned = clamp(
+          (kickSpringX - featRef.current.beat) * 1.6 * intensity,
+          -1.2,
+          1.2,
+        );
+        const kickEnv = clamp(impulse * intensity, 0, 1.4);
+        // pump (breathing) blends overall energy + a little bass for weight.
+        const pumpEnv = clamp((pumpX * 0.7 + bassX * 0.5) * intensity, 0, 1.4);
+        const drift = clamp(driftX * intensity, 0, 1.2);
+        const swirl = clamp(swirlX * intensity, 0, 1.2);
+
+        // Keep engine time-based motion advancing from the AUDIO clock so flow /
+        // spin / turbulence stay locked to the music. _rt is the real audio time;
+        // _t scales it gently by energy so quiet passages feel calmer.
+        const rt = haveAudio ? audioT : (now - t0Ref.current) / 1000;
+        const speed = clamp(
+          0.35 + pumpX * 0.9 * Math.max(0.0001, intensity),
+          0,
+          1.4,
+        );
+        const t = rt * (0.45 + speed);
+
+        const builtState = {
+          anim: true,
+          t,
+          rt,
+          bake,
+          beat: featRef.current.beat,
+          kickEnv,
+          kickSpring: kickSpringSigned,
+          pumpEnv,
+          drift,
+          swirl,
+          speed,
+        };
+
+        // AUTO: wander curated params around their manual base, swing additionally
+        // scaled by the SMOOTHED audio features. Render-loop only — never stored.
+        autoBase = s.auto
+          ? applyAuto(renderParams(s), rt, s.autoIntensity, featRef.current)
+          : renderParams(s);
+
+        p = {
+          ...autoBase,
+          _anim: true,
+          _audioAnim: builtState,
+          _t: t,
+          _rt: rt,
+          _bake: bake,
+        };
+      } else {
+        // ── BPM DRIVER (internal clock) ──────────────────────────────────────
+        const sp = 0.3 + (s.animSpeed / 100) * 1.7;
+        const rt = (now - t0Ref.current) / 1000;
+        const t = rt * sp;
+        // AUTO: gently wander curated params around their manual base values
+        // (render-loop only). Uses real time `rt` so the wander is BPM-independent.
+        autoBase = s.auto
+          ? applyAuto(renderParams(s), rt, s.autoIntensity)
+          : renderParams(s);
+        p = {
+          ...autoBase,
+          _anim: true,
+          _t: t,
+          _rt: rt,
+          _bake: bake,
+        };
+      }
+
+      // ── SHARED: adaptive backing-store size + CSS filter (both drivers) ────
+      // Adaptive size from the measured frame time keeps motion fluid; full
+      // DISPLAY when baking a frame for export.
+      const frameMs = frameDt * 1000;
+      if (frameMs > 0 && frameMs < 200) {
+        animEmaRef.current = animEmaRef.current * 0.9 + frameMs * 0.1;
+      }
+      if (!bake && ++animCtrRef.current % 12 === 0) {
+        animResRef.current = nextAnimRes(animResRef.current, animEmaRef.current);
+      }
+      const renderSize = bake ? DISPLAY : animResRef.current;
+      if (c.width !== renderSize) {
+        c.width = renderSize;
+        c.height = renderSize;
+      }
+      const res = renderTo(c, renderSize, p);
       textBoxRef.current = res.textBox;
+
       // Live contrast/saturate via CSS filter (never per-frame pixel work).
       // Read from the (possibly auto-modulated) params so AUTO's gentle, rate-
       // limited finish wander is reflected here too — still bounded, no strobe.
       if (bake) {
         c.style.filter = "none";
       } else {
-        const cParam = (baseParams.contrast as number) ?? s.contrast;
-        const sParam = (baseParams.saturation as number) ?? s.saturation;
+        const cParam = (autoBase.contrast as number) ?? s.contrast;
+        const sParam = (autoBase.saturation as number) ?? s.saturation;
         const cc = 1 + ((cParam - 50) / 50) * 0.7;
         const sf = sParam / 50;
         c.style.filter = `contrast(${cc.toFixed(3)}) saturate(${sf.toFixed(3)})`;
@@ -275,185 +482,7 @@ export default function CanvasStage({
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
-  }, [canvasRef]);
-
-  // ── Audio-reactive loop (samples the offline feature timeline by the audio ──
-  //    clock; drives critically-damped springs with a fixed-timestep accumulator
-  //    so motion is identical at any fps. Audio drives SPACE only — never
-  //    brightness / opacity / hue, so there is no flicker.) ────────────────────
-  const stopAudio = useCallback(() => {
-    if (audioRafRef.current != null) {
-      cancelAnimationFrame(audioRafRef.current);
-      audioRafRef.current = null;
-    }
-    const c = canvasRef.current;
-    if (c) c.style.filter = "none";
-    lastSig.current = null;
-    draw();
-  }, [draw, canvasRef]);
-
-  const startAudio = useCallback(() => {
-    if (audioRafRef.current != null) return;
-    const c = canvasRef.current;
-    if (!c) return;
-    c.width = DISPLAY;
-    c.height = DISPLAY;
-
-    // Reset transient physics so re-entering audio mode starts calm.
-    audioLastNowRef.current = performance.now();
-    audioAccumRef.current = 0;
-    featRef.current = zeroFeatures();
-    kickSpringRef.current = { x: 0, v: 0 };
-    pumpSpringRef.current = { x: 0, v: 0 };
-    bassSpringRef.current = { x: 0, v: 0 };
-    driftSpringRef.current = { x: 0, v: 0 };
-    swirlSpringRef.current = { x: 0, v: 0 };
-    kickImpulseRef.current = 0;
-    prevBeatRef.current = 0;
-
-    const loop = (now: number) => {
-      const s = stateRef.current;
-      if (s.mode !== "audio") {
-        audioRafRef.current = null;
-        return;
-      }
-
-      // Real delta-time (clamped) for fps-independent physics.
-      let frameDt = (now - audioLastNowRef.current) / 1000;
-      audioLastNowRef.current = now;
-      if (!(frameDt > 0)) frameDt = 0;
-      if (frameDt > MAX_FRAME_DT) frameDt = MAX_FRAME_DT;
-
-      // Audio clock — seconds into the clip. SAMPLE the offline timeline here.
-      const tl = audioSession.timeline;
-      const haveAudio = !!tl && tl.duration > 0;
-      const playing = haveAudio && transport.playing && s.audioReactive;
-      const audioT = haveAudio ? transport.currentTime : 0;
-
-      // Raw features from the deterministic offline timeline (interpolated).
-      // When idle (no clip / not playing) we relax toward zero -> calm hold.
-      const raw: AudioFeatures =
-        haveAudio && (playing || transport.currentTime > 0)
-          ? tl!.sampleByTime(audioT)
-          : zeroFeatures();
-
-      // Reactivity scale (0..~1.4). Lets loud/quiet tracks behave the same and
-      // gives the user one global intensity knob.
-      const intensity = (s.audioReactive ? s.audioIntensity : 0) / 50;
-
-      // ── Fixed-timestep accumulator: step springs + envelopes at SPRING_DT ──
-      // so behavior is identical at 30 / 60 / 120 fps and never overshoots.
-      audioAccumRef.current += frameDt;
-      // Guard against a runaway spiral if the loop ever stalls badly.
-      let steps = 0;
-      const maxSteps = 240;
-      while (audioAccumRef.current >= SPRING_DT && steps < maxSteps) {
-        const dt = SPRING_DT;
-        audioAccumRef.current -= dt;
-        steps++;
-
-        const f = featRef.current;
-        // Envelope-follow the raw features (buttery, normalized 0..1).
-        f.energy = follow(f.energy, clamp01(raw.energy), 0.04, 0.18, dt);
-        f.bass = follow(f.bass, clamp01(raw.bass), 0.03, 0.16, dt);
-        f.mid = follow(f.mid, clamp01(raw.mid), 0.05, 0.14, dt);
-        f.high = follow(f.high, clamp01(raw.high), 0.02, 0.10, dt);
-        // Beat is already a decaying onset peak in the timeline.
-        f.beat = follow(f.beat, clamp01(raw.beat), 0.005, 0.12, dt);
-
-        // Onset detection: rising edge of the beat impulse -> kick the impulse
-        // envelope (sharp attack), then it decays. Drives kickEnv (calm pulse).
-        const rising = f.beat - prevBeatRef.current;
-        prevBeatRef.current = f.beat;
-        if (rising > 0.04 && f.beat > 0.25) {
-          kickImpulseRef.current = Math.max(kickImpulseRef.current, f.beat);
-        }
-        // Decay the impulse (attack-decay envelope, no flicker).
-        kickImpulseRef.current *= Math.exp(-dt / 0.22);
-
-        // Step critically-damped springs toward the followed targets.
-        // Stiffness sets the "feel": bouncy kick, breathing pump, slow drift.
-        stepSpring(kickSpringRef.current, f.beat, 180, dt); // bouncy
-        stepSpring(pumpSpringRef.current, f.energy, 60, dt); // breathing
-        stepSpring(bassSpringRef.current, f.bass, 90, dt); // chest thump
-        stepSpring(driftSpringRef.current, f.mid, 28, dt); // lazy drift
-        stepSpring(swirlSpringRef.current, f.high, 40, dt); // shimmer swirl
-      }
-
-      // ── Map spring outputs -> eased AnimState, scaled by intensity ─────────
-      const kickSpringX = kickSpringRef.current.x;
-      const pumpX = pumpSpringRef.current.x;
-      const bassX = bassSpringRef.current.x;
-      const driftX = driftSpringRef.current.x;
-      const swirlX = swirlSpringRef.current.x;
-      const impulse = kickImpulseRef.current;
-
-      // kickSpring is a SIGNED bounce (spring can overshoot above its target);
-      // re-center around the followed value so it overshoots/settles like the
-      // BPM path's damped cosine. Clamp everything so it never blows up.
-      const kickSpringSigned = clamp(
-        (kickSpringX - featRef.current.beat) * 1.6 * intensity,
-        -1.2,
-        1.2,
-      );
-      const kickEnv = clamp(impulse * intensity, 0, 1.4);
-      // pump (breathing) blends overall energy + a little bass for chest weight.
-      const pumpEnv = clamp((pumpX * 0.7 + bassX * 0.5) * intensity, 0, 1.4);
-      const drift = clamp(driftX * intensity, 0, 1.2);
-      const swirl = clamp(swirlX * intensity, 0, 1.2);
-
-      // Keep engine time-based motion advancing from the AUDIO clock so flow /
-      // spin / turbulence stay locked to the music. _rt is the real audio time;
-      // _t scales it gently by energy so quiet passages feel calmer.
-      const rt = haveAudio ? audioT : (now - t0Ref.current) / 1000;
-      const speed = clamp(0.35 + pumpX * 0.9 * Math.max(0.0001, intensity), 0, 1.4);
-      const t = rt * (0.45 + speed);
-
-      const builtState = {
-        anim: true,
-        t,
-        rt,
-        bake: false,
-        beat: featRef.current.beat,
-        kickEnv,
-        kickSpring: kickSpringSigned,
-        pumpEnv,
-        drift,
-        swirl,
-        speed,
-      };
-
-      // AUTO mode: wander the curated params around their manual base values,
-      // with the swing additionally scaled by the SMOOTHED audio features so the
-      // wander reacts to the track. Render-loop only — never written to store.
-      const autoBase = s.auto
-        ? applyAuto(renderParams(s), rt, s.autoIntensity, featRef.current)
-        : renderParams(s);
-
-      const res = renderTo(c, DISPLAY, {
-        ...autoBase,
-        _anim: true,
-        _audioAnim: builtState,
-        _t: t,
-        _rt: rt,
-        _bake: false,
-      });
-      textBoxRef.current = res.textBox;
-
-      // Live contrast/saturate via CSS filter (never per-frame pixel work). The
-      // AUTO finish wander (contrast/saturation) is gentle + rate-limited, so it
-      // stays flicker-free — same no-strobe rule as the BPM animate path.
-      const cParam = (autoBase.contrast as number) ?? s.contrast;
-      const sParam = (autoBase.saturation as number) ?? s.saturation;
-      const cc = 1 + ((cParam - 50) / 50) * 0.7;
-      const sf = sParam / 50;
-      c.style.filter = `contrast(${cc.toFixed(3)}) saturate(${sf.toFixed(3)})`;
-
-      audioRafRef.current = requestAnimationFrame(loop);
-    };
-
-    audioRafRef.current = requestAnimationFrame(loop);
-  }, [canvasRef]);
+  }, [canvasRef, useTrackNow, resetAudioTransients]);
 
   // ── Mount + reactive sync ─────────────────────────────────────────────────
   useEffect(() => {
@@ -464,7 +493,6 @@ export default function CanvasStage({
     }
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-      if (audioRafRef.current != null) cancelAnimationFrame(audioRafRef.current);
       if (drawRafRef.current != null) cancelAnimationFrame(drawRafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -477,32 +505,20 @@ export default function CanvasStage({
       cancelAnimationFrame(drawRafRef.current);
       drawRafRef.current = null;
     }
-    // AUDIO mode: run the audio-reactive loop. Stop the BPM loop if it is up.
-    if (state.mode === "audio") {
-      if (rafRef.current != null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      if (audioRafRef.current == null) startAudio();
-      return;
-    }
 
-    // Leaving audio mode: stop the audio loop and redraw the still frame.
-    if (audioRafRef.current != null) {
-      stopAudio();
-      // Fall through so animate mode can restart the BPM loop below.
-    }
-
+    // ANIMATE: run the ONE unified loop (driver is chosen per-frame inside it).
     if (state.mode === "animate") {
       if (rafRef.current == null) startAnim();
       return;
     }
+
+    // STILL: stop the loop (it draws a crisp full-res frame), else coalesce a draw.
     if (rafRef.current != null) {
       stopAnim();
       return;
     }
     if (sig(state) !== lastSig.current) scheduleDraw();
-  }, [state, draw, scheduleDraw, startAnim, stopAnim, startAudio, stopAudio]);
+  }, [state, draw, scheduleDraw, startAnim, stopAnim]);
 
   // ── Drag-to-move text on canvas ───────────────────────────────────────────
   const norm = (e: React.PointerEvent<HTMLCanvasElement>) => {

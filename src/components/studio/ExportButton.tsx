@@ -14,16 +14,22 @@ export function ExportButton({
   className?: string;
 }) {
   const mode = useStudio((s) => s.mode);
+  const animSource = useStudio((s) => s.animSource);
   const rendering = useStudio((s) => s.rendering);
   const recording = useStudio((s) => s.recording);
   const busy = rendering || recording;
 
-  const isVideo = mode === "animate" || mode === "audio";
+  // Animate exports video for BOTH drivers: a looping clip (BPM) or a synced clip
+  // (Track). Still exports a 3000² PNG.
+  const isVideo = mode === "animate";
+  const trackSynced = isVideo && animSource === "track";
 
   const label = isVideo
     ? recording
       ? "Recording…"
-      : "Export video loop"
+      : trackSynced
+        ? "Export synced video"
+        : "Export video loop"
     : rendering
       ? "Rendering…"
       : "Download PNG · 3000²";

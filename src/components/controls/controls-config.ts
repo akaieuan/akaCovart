@@ -63,26 +63,14 @@ export const ENGINE_TAB_LABELS: Record<string, string> = {
   blob: "Blob",
   grid: "Grid",
   waves: "Wave",
-  orb: "Orb",
-  orb3d: "3D",
+  contours: "Contours",
 };
-
-// 3D engine shape options (segmented selector). Values match the geometry switch
-// in WebGLStage.
-export const ORB3D_SHAPE_OPTIONS: SegOption[] = [
-  { value: "sphere", label: "Sphere" },
-  { value: "icosahedron", label: "Icosa" },
-  { value: "tetrahedron", label: "Tetra" },
-  { value: "cube", label: "Cube" },
-  { value: "octahedron", label: "Octa" },
-  { value: "prism", label: "Prism" },
-];
 
 export const FALLBACK_ENGINES: SegOption[] = [
   { value: "blob", label: "Blob" },
   { value: "grid", label: "Grid" },
   { value: "waves", label: "Wave" },
-  { value: "orb", label: "Orb" },
+  { value: "contours", label: "Contours" },
 ];
 
 // ── PALETTE / MOOD ───────────────────────────────────────────────────────────
@@ -154,47 +142,13 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
       ],
     },
   ],
-  orb: [
+  contours: [
     {
       controls: [
-        { kind: "slider", key: "orbSize", label: "Orb size", min: 0, max: 100 },
-        { kind: "slider", key: "orbSoft", label: "Softness", min: 0, max: 100 },
-        { kind: "slider", key: "orbHalftone", label: "Halftone", min: 0, max: 100 },
-        { kind: "slider", key: "orbMelt", label: "Melt", min: 0, max: 100 },
-        { kind: "slider", key: "orbShade", label: "3D shade", min: 0, max: 100 },
-      ],
-    },
-  ],
-  // 3D (WebGL) engine — a Shape selector plus the liquid/detail/rotation/shade
-  // sliders. These set store params consumed by WebGLStage; the shared 2D FINISH
-  // group is intentionally skipped for this engine (see Controls.tsx).
-  orb3d: [
-    {
-      heading: "Shape",
-      controls: [
-        { kind: "segmented", key: "orb3dShape", options: ORB3D_SHAPE_OPTIONS },
-      ],
-    },
-    {
-      controls: [
-        { kind: "slider", key: "orb3dLiquid", label: "Liquid", min: 0, max: 100 },
-        { kind: "slider", key: "orb3dDetail", label: "Detail", min: 0, max: 100 },
-        { kind: "slider", key: "orb3dRotate", label: "Rotation", min: 0, max: 100 },
-        { kind: "slider", key: "orb3dShade", label: "Shade", min: 0, max: 100 },
-      ],
-    },
-    {
-      heading: "Background",
-      controls: [
-        {
-          kind: "segmented",
-          key: "orb3dBg",
-          options: [
-            { value: "studio", label: "Dark" },
-            { value: "palette", label: "Palette" },
-            { value: "light", label: "Light" },
-          ],
-        },
+        { kind: "slider", key: "contourLines", label: "Lines", min: 0, max: 100 },
+        { kind: "slider", key: "contourWeight", label: "Line weight", min: 0, max: 100 },
+        { kind: "slider", key: "contourScale", label: "Field scale", min: 0, max: 100 },
+        { kind: "slider", key: "contourWarp", label: "Warp", min: 0, max: 100 },
       ],
     },
   ],
@@ -225,24 +179,6 @@ export const TEXTURE_GROUPS: ControlGroup[] = [
     controls: [
       { kind: "toggle", key: "scratches", label: "Scratch lines" },
       { kind: "slider", key: "scratchCount", label: "Count", min: 0, max: 16, sub: true },
-    ],
-  },
-];
-
-// ── SIGIL ────────────────────────────────────────────────────────────────────
-export const SIGIL_GROUPS: ControlGroup[] = [
-  {
-    controls: [
-      { kind: "toggle", key: "sigilMarks", label: "Sigil marks" },
-      { kind: "slider", key: "sigilMarkCount", label: "Density", min: 0, max: 20, sub: true },
-      { kind: "slider", key: "sigilMarkSize", label: "Size", min: 0, max: 100, sub: true },
-      { kind: "slider", key: "sigilMarkScatter", label: "Scatter", min: 0, max: 100, sub: true },
-    ],
-  },
-  {
-    controls: [
-      { kind: "toggle", key: "sigilFrame", label: "Barb frame" },
-      { kind: "slider", key: "sigilFrameDensity", label: "Frame density", min: 0, max: 100, sub: true },
     ],
   },
 ];
@@ -306,12 +242,8 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "blobWander", label: "Wander", min: 0, max: 100 },
     { kind: "slider", key: "blobMorph", label: "Morph", min: 0, max: 100 },
   ],
-  orb: [
-    { kind: "slider", key: "orbSpin", label: "Spin", min: 0, max: 100 },
-    { kind: "slider", key: "orbWobble", label: "Wobble", min: 0, max: 100 },
-    { kind: "slider", key: "orbBounce", label: "Bounce", min: 0, max: 100 },
-    { kind: "slider", key: "orbBreath", label: "Breath", min: 0, max: 100 },
-    { kind: "slider", key: "orbChurn", label: "Churn", min: 0, max: 100 },
+  contours: [
+    { kind: "slider", key: "contourMorph", label: "Morph speed", min: 0, max: 100 },
   ],
   waves: [
     { kind: "slider", key: "waveFlow", label: "Flow", min: 0, max: 100 },
@@ -326,9 +258,5 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "gridPop", label: "Pop", min: 0, max: 100 },
     { kind: "slider", key: "gridOrbit", label: "Orbit", min: 0, max: 100 },
     { kind: "slider", key: "gridFlow", label: "Flow", min: 0, max: 100 },
-  ],
-  orb3d: [
-    { kind: "slider", key: "orb3dPulse", label: "Pulse", min: 0, max: 100 },
-    { kind: "slider", key: "orb3dWobble", label: "Wobble", min: 0, max: 100 },
   ],
 };
