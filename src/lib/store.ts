@@ -5,7 +5,8 @@ import { create } from "zustand";
 // is a flat bag of generation params plus UI flags. `renderTo` receives the
 // whole object, so keys must match what the engine reads.
 
-export type Mode = "still" | "animate";
+export type Mode = "still" | "animate" | "audio";
+export type AudioStatus = "idle" | "decoding" | "analyzing" | "ready";
 export type MoodSel = "dark" | "cream" | "grey" | "random";
 
 export interface OpenSections {
@@ -88,6 +89,16 @@ export interface StudioState {
   textY: number;
   textAlign: string;
 
+  // audio (SERIALIZABLE mirror only — buffer/timeline/peaks live in src/audio)
+  audioName: string | null;
+  audioStatus: AudioStatus;
+  audioDuration: number; // full track duration (s)
+  clipStart: number; // window start (s)
+  clipEnd: number; // window end (s); clamped so end-start <= 60
+  audioReactive: boolean;
+  audioIntensity: number; // 0..100, overall reactivity scale
+  audioPlaying: boolean;
+
   // mode + animation params
   mode: Mode;
   animSpeed: number;
@@ -127,7 +138,11 @@ export interface StudioState {
   newSeed: () => void;
   rerollGallery: () => void;
   resetParams: () => void;
+  // Set the 60s clip window, clamping end-start <= 60 within [0, audioDuration].
+  setClip: (start: number, end: number) => void;
 }
+
+export const MAX_CLIP = 60;
 
 export function randSeed(): number {
   return (Math.random() * 1e9) | 0;
@@ -200,6 +215,15 @@ const defaults = {
   textY: 0.85,
   textAlign: "left",
 
+  audioName: null as string | null,
+  audioStatus: "idle" as AudioStatus,
+  audioDuration: 0,
+  clipStart: 0,
+  clipEnd: 60,
+  audioReactive: true,
+  audioIntensity: 65,
+  audioPlaying: false,
+
   mode: "still" as Mode,
   animSpeed: 55,
   animDrift: 62,
@@ -261,6 +285,20 @@ export const useStudio = create<StudioState>((set) => ({
     }),
   newSeed: () => set({ seed: randSeed() }),
   rerollGallery: () => set({ gallerySeeds: makeSeeds(9) }),
+  setClip: (start, end) =>
+    set((s) => {
+      const dur = s.audioDuration > 0 ? s.audioDuration : Infinity;
+      let cs = Math.max(0, Math.min(start, dur));
+      let ce = Math.max(cs, Math.min(end, dur));
+      // Clamp window length to MAX_CLIP seconds.
+      if (ce - cs > MAX_CLIP) ce = cs + MAX_CLIP;
+      // If a finite duration shrinks the window, pull start back to keep length.
+      if (ce > dur) {
+        ce = dur;
+        cs = Math.max(0, ce - MAX_CLIP);
+      }
+      return { clipStart: cs, clipEnd: ce };
+    }),
   resetParams: () =>
     set(() => {
       // Reset all generation/animation params to their defaults, but keep the
@@ -287,11 +325,17 @@ export function renderParams(s: StudioState): Record<string, unknown> {
     toggleSection: _b,
     newSeed: _c,
     rerollGallery: _d,
+    resetParams: _e,
+    setAllSections: _f,
+    setClip: _g,
     ...rest
   } = s;
   void _a;
   void _b;
   void _c;
   void _d;
+  void _e;
+  void _f;
+  void _g;
   return rest;
 }

@@ -39,32 +39,33 @@ function SeedRow() {
         value={seed}
         onChange={(e) => setState({ seed: Number(e.target.value) })}
         aria-label="Seed"
-        className="h-10 min-w-0 flex-1 rounded-[4px] border border-grey-780 bg-grey-880 px-3 font-mono text-[12px] font-medium text-ink outline-none transition-colors focus:border-grey-500"
+        className="h-10 min-w-0 flex-1 rounded-[4px] border border-grey-780 bg-grey-880 px-3 text-[12px] font-normal text-ink outline-none transition-colors focus:border-grey-500"
       />
       <button
         type="button"
         onClick={newSeed}
-        className="flex h-10 flex-none items-center gap-[7px] rounded-[4px] bg-grey-100 px-[18px] font-mono text-[10px] font-semibold tracking-[0.14em] whitespace-nowrap text-bg transition-colors hover:bg-white"
+        className="flex h-10 flex-none items-center gap-[7px] rounded-[4px] bg-grey-100 px-[18px] text-[12px] font-medium whitespace-nowrap text-bg transition-colors hover:bg-white"
       >
         <RefreshCw className="size-[13px]" />
-        GENERATE
+        Generate
       </button>
     </div>
   );
 }
 
-/** STILL / ANIMATE mode toggle. */
+/** STILL / ANIMATE / AUDIO mode toggle. */
 function ModeToggle({ className }: { className?: string }) {
   const mode = useStudio((s) => s.mode);
   const setState = useStudio((s) => s.setState);
-  const opts: { value: "still" | "animate"; label: string }[] = [
-    { value: "still", label: "STILL" },
-    { value: "animate", label: "ANIMATE" },
+  const opts: { value: "still" | "animate" | "audio"; label: string }[] = [
+    { value: "still", label: "Still" },
+    { value: "animate", label: "Animate" },
+    { value: "audio", label: "Audio" },
   ];
   return (
     <div
       className={cn(
-        "grid grid-cols-2 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
+        "grid grid-cols-3 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
         className,
       )}
     >
@@ -76,7 +77,7 @@ function ModeToggle({ className }: { className?: string }) {
             type="button"
             onClick={() => setState({ mode: o.value })}
             className={cn(
-              "flex h-9 items-center justify-center rounded-[3px] font-mono text-[9px] font-semibold tracking-[0.18em] transition-colors",
+              "flex h-9 items-center justify-center rounded-[3px] px-1 text-[12px] font-normal transition-colors",
               active
                 ? "bg-grey-100 text-bg"
                 : "bg-transparent text-grey-300 hover:bg-grey-850 hover:text-grey-150",
@@ -99,12 +100,12 @@ function ResetButton({ className }: { className?: string }) {
       onClick={resetParams}
       title="Reset all parameters to defaults"
       className={cn(
-        "flex h-9 flex-none items-center justify-center gap-[6px] rounded-[5px] border border-grey-800 bg-grey-880 px-4 font-mono text-[9px] font-semibold tracking-[0.16em] text-grey-300 transition-colors hover:border-grey-500 hover:text-grey-100",
+        "flex h-9 flex-none items-center justify-center gap-[6px] rounded-[5px] border border-grey-800 bg-grey-880 px-4 text-[12px] font-normal text-grey-300 transition-colors hover:border-grey-500 hover:text-grey-100",
         className,
       )}
     >
       <RotateCcw className="size-[12px]" />
-      RESET
+      Reset
     </button>
   );
 }
@@ -122,14 +123,15 @@ function ExportButton({
   const recording = useStudio((s) => s.recording);
   const busy = rendering || recording;
 
-  const label =
-    mode === "animate"
-      ? recording
-        ? "RECORDING…"
-        : "EXPORT VIDEO LOOP"
-      : rendering
-        ? "RENDERING…"
-        : "DOWNLOAD PNG · 3000²";
+  const isVideo = mode === "animate" || mode === "audio";
+
+  const label = isVideo
+    ? recording
+      ? "Recording…"
+      : "Export video loop"
+    : rendering
+      ? "Rendering…"
+      : "Download PNG · 3000²";
 
   return (
     <button
@@ -137,13 +139,13 @@ function ExportButton({
       onClick={onExport}
       disabled={busy}
       className={cn(
-        "flex h-11 w-full items-center justify-center gap-[9px] rounded-[4px] bg-grey-100 font-mono text-[10px] font-semibold tracking-[0.16em] text-bg transition-colors hover:bg-white disabled:opacity-70",
+        "flex h-11 w-full items-center justify-center gap-[9px] rounded-[4px] bg-grey-100 text-[12px] font-medium text-bg transition-colors hover:bg-white disabled:opacity-70",
         className,
       )}
     >
       {busy ? (
         <Loader2 className="size-[14px] animate-spin" />
-      ) : mode === "animate" ? (
+      ) : isVideo ? (
         <Film className="size-[14px]" />
       ) : (
         <Download className="size-[14px]" />
@@ -166,7 +168,7 @@ export default function Studio() {
 
   const handleExport = () => {
     const s = useStudio.getState();
-    if (s.mode === "animate") {
+    if (s.mode === "animate" || s.mode === "audio") {
       if (s.recording) return;
       const c = canvasRef.current;
       if (!c) return;
@@ -229,12 +231,12 @@ export default function Studio() {
                 <button
                   type="button"
                   aria-label="Open controls"
-                  className="flex h-12 flex-none items-center gap-2 rounded-[6px] border border-border bg-panel/95 px-4 font-mono text-[10px] font-semibold tracking-[0.16em] text-ink shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-sm transition-colors hover:bg-grey-900"
+                  className="flex h-12 flex-none items-center gap-2 rounded-[6px] border border-border bg-panel/95 px-4 text-[12px] font-normal text-ink shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-sm transition-colors hover:bg-grey-900"
                 />
               }
             >
               <SlidersHorizontal className="size-[15px]" />
-              CONTROLS
+              Controls
             </SheetTrigger>
             <SheetContent
               side="right"
@@ -242,8 +244,8 @@ export default function Studio() {
             >
               {/* Sheet header: engine + seed + mode (always visible at top) */}
               <div className="flex flex-none flex-col gap-3 border-b border-border px-5 pt-5 pb-4">
-                <SheetTitle className="font-mono text-[10px] font-semibold tracking-[0.22em] text-grey-300">
-                  ENGINE
+                <SheetTitle className="text-[13px] font-medium text-grey-300">
+                  Engine
                 </SheetTitle>
                 <EngineSelector />
                 <SeedRow />

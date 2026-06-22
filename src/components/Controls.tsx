@@ -23,6 +23,7 @@ import {
   TextRow,
 } from "./primitives";
 import Gallery from "./Gallery";
+import AudioPanel from "./AudioPanel";
 import {
   type Control,
   type ControlGroup,
@@ -118,7 +119,7 @@ function PanelSection({
 }) {
   return (
     <AccordionItem value={value} className="border-b border-border-soft">
-      <AccordionTrigger className="rounded-none px-5 py-[15px] font-mono text-[9px] font-semibold tracking-[0.22em] text-grey-250 uppercase no-underline hover:no-underline hover:text-grey-150">
+      <AccordionTrigger className="rounded-none px-5 py-[15px] font-sans text-[13px] font-medium text-grey-250 no-underline hover:no-underline hover:text-grey-150">
         {title}
       </AccordionTrigger>
       <AccordionContent className="px-5 pt-0 pb-[18px]">
@@ -150,10 +151,14 @@ export default function Controls() {
   const set = useStudio((st) => st.setState);
   const presets = getPresets();
 
+  if (s.mode === "audio") {
+    return <AudioPanel />;
+  }
+
   if (s.mode === "animate") {
     return (
       <div>
-        <div className="px-5 pt-4 pb-1 font-mono text-[9px] leading-[1.7] tracking-[0.05em] text-grey-350">
+        <div className="px-5 pt-4 pb-1 font-sans text-[11px] leading-[1.7] text-grey-350">
           Beat-synced motion for techno. Set the BPM, dial the pump &amp; kick,
           then export a looping video (MP4 where supported, else WEBM).
         </div>
@@ -165,13 +170,13 @@ export default function Controls() {
           {DRIFT_GROUP.controls.map((c) => renderControl(c, s, set))}
 
           <Divider />
-          <GroupLabel variant="beat">MOTION</GroupLabel>
+          <GroupLabel variant="beat">Motion</GroupLabel>
           {MOTION_BY_ENGINE[s.engine] ? (
             MOTION_BY_ENGINE[s.engine].map((c) => renderControl(c, s, set))
           ) : (
-            <div className="font-mono text-[9px] leading-[1.7] tracking-[0.05em] text-grey-400">
-              The BLOB engine has no per-shape motion — it rides the BEAT and
-              DRIFT above.
+            <div className="font-sans text-[11px] leading-[1.7] text-grey-400">
+              The Blob engine has no per-shape motion — it rides the Beat and
+              Drift above.
             </div>
           )}
         </div>
@@ -186,12 +191,12 @@ export default function Controls() {
       className="flex w-full flex-col"
     >
       {/* STARTING POINTS */}
-      <PanelSection value="library" title="STARTING POINTS">
-        <GroupLabel variant="sub">PRESETS</GroupLabel>
+      <PanelSection value="library" title="Starting points">
+        <GroupLabel variant="sub">Presets</GroupLabel>
         <div className="mb-4 grid grid-cols-4 gap-[6px]">
           {presets.length === 0 ? (
-            <span className="col-span-4 font-mono text-[8px] tracking-[0.08em] text-grey-400">
-              NO PRESETS
+            <span className="col-span-4 font-sans text-[11px] text-grey-400">
+              No presets
             </span>
           ) : (
             presets.map((p, i) => (
@@ -206,7 +211,7 @@ export default function Controls() {
                     gallerySeeds: makeSeeds(9),
                   })
                 }
-                className="rounded-[4px] border border-grey-800 bg-grey-880 px-1 py-[10px] text-center font-mono text-[8px] font-semibold tracking-[0.08em] text-grey-200 transition-colors hover:border-grey-500 hover:bg-grey-850 hover:text-grey-100"
+                className="rounded-[4px] border border-grey-800 bg-grey-880 px-1 py-[10px] text-center font-sans text-[11px] font-medium text-grey-200 transition-colors hover:border-grey-500 hover:bg-grey-850 hover:text-grey-100"
               >
                 {p.name}
               </button>
@@ -217,7 +222,7 @@ export default function Controls() {
       </PanelSection>
 
       {/* PALETTE / MOOD */}
-      <PanelSection value="palette" title="PALETTE · MOOD">
+      <PanelSection value="palette" title="Palette · mood">
         <Segmented
           value={s.mood}
           options={MOOD_OPTIONS}
@@ -226,44 +231,44 @@ export default function Controls() {
       </PanelSection>
 
       {/* COMPOSITION (engine-specific + shared FINISH) */}
-      <PanelSection value="composition" title="COMPOSITION">
+      <PanelSection value="composition" title="Composition">
         {renderGroups(COMPOSITION_BY_ENGINE[s.engine] ?? [], s, set)}
         {renderGroups([FINISH_GROUP], s, set)}
       </PanelSection>
 
       {/* TEXTURE */}
-      <PanelSection value="texture" title="TEXTURE">
+      <PanelSection value="texture" title="Texture">
         {renderGroups(TEXTURE_GROUPS, s, set)}
       </PanelSection>
 
       {/* SIGIL */}
-      <PanelSection value="sigil" title="SIGIL">
+      <PanelSection value="sigil" title="Sigil">
         {renderGroups([SIGIL_GROUPS[0]], s, set)}
         <Divider />
         {renderGroups([SIGIL_GROUPS[1]], s, set)}
       </PanelSection>
 
       {/* TYPE OVERLAY */}
-      <PanelSection value="type" title="TYPE OVERLAY">
+      <PanelSection value="type" title="Type overlay">
         <ToggleRow
-          label="RENDER TEXT"
+          label="Render text"
           value={s.showText}
           onChange={(v) => set({ showText: v })}
         />
         <TextRow
           value={s.title}
-          placeholder="TITLE"
+          placeholder="Title"
           onChange={(v) => set({ title: v })}
           className="mb-[9px]"
         />
         <TextRow
           value={s.artist}
-          placeholder="ARTIST"
+          placeholder="Artist"
           muted
           onChange={(v) => set({ artist: v })}
           className="mb-[14px]"
         />
-        <GroupLabel variant="sub">CASE</GroupLabel>
+        <GroupLabel variant="sub">Case</GroupLabel>
         <Segmented
           className="mb-[14px]"
           value={s.textCase}
@@ -271,14 +276,14 @@ export default function Controls() {
           onChange={(v) => set({ textCase: v })}
         />
         <SliderRow
-          label="DISTORT / GLITCH"
+          label="Distort / glitch"
           min={0}
           max={100}
           sub
           value={s.distort}
           onChange={(v) => set({ distort: v })}
         />
-        <GroupLabel variant="sub">COLOR</GroupLabel>
+        <GroupLabel variant="sub">Color</GroupLabel>
         <Segmented
           className="mb-[14px]"
           value={s.textColor}
@@ -286,8 +291,8 @@ export default function Controls() {
           onChange={(v) => set({ textColor: v })}
         />
         <div className="mb-2 flex items-baseline justify-between">
-          <Label sub>POSITION</Label>
-          <span className="font-mono text-[8px] tracking-[0.08em] text-grey-400">
+          <Label sub>Position</Label>
+          <span className="font-sans text-[11px] text-grey-400">
             or drag on canvas ⤢
           </span>
         </div>

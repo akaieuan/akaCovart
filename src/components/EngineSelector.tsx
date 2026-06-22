@@ -15,10 +15,10 @@ type EngineDef = {
 };
 
 const ENGINE_DEFS: EngineDef[] = [
-  { value: "blob", label: "BLOB", Icon: Droplet },
-  { value: "grid", label: "GRID", Icon: Grid3x3 },
-  { value: "waves", label: "WAVE", Icon: Waves },
-  { value: "orb", label: "ORB", Icon: Circle },
+  { value: "blob", label: "Blob", Icon: Droplet },
+  { value: "grid", label: "Grid", Icon: Grid3x3 },
+  { value: "waves", label: "Wave", Icon: Waves },
+  { value: "orb", label: "Orb", Icon: Circle },
 ];
 
 const DEF_BY_ID = new Map(ENGINE_DEFS.map((d) => [d.value, d]));
@@ -32,7 +32,7 @@ function engineList(): EngineDef[] {
     (e) =>
       DEF_BY_ID.get(e.id) ?? {
         value: e.id,
-        label: e.label.toUpperCase(),
+        label: e.label,
         Icon: Circle,
       },
   );
@@ -63,7 +63,7 @@ export default function EngineSelector({ className }: { className?: string }) {
           value={value}
           aria-label={label}
           className={cn(
-            "flex h-11 flex-col items-center justify-center gap-[3px] rounded-[3px] border-0 bg-transparent font-mono text-[9px] font-semibold tracking-[0.18em] text-grey-300 transition-colors",
+            "flex h-11 flex-col items-center justify-center gap-[3px] rounded-[3px] border-0 bg-transparent text-[12px] font-normal text-grey-300 transition-colors",
             // idle hover
             "hover:bg-grey-850 hover:text-grey-150",
             // SELECTED: override the shadcn/base-ui default (data-[state=on]:bg-muted /

@@ -75,25 +75,25 @@ export interface ControlGroup {
 
 // ── Engine identity ──────────────────────────────────────────────────────────
 export const ENGINE_TAB_LABELS: Record<string, string> = {
-  blob: "BLOB",
-  grid: "GRID",
-  waves: "WAVE",
-  orb: "ORB",
+  blob: "Blob",
+  grid: "Grid",
+  waves: "Wave",
+  orb: "Orb",
 };
 
 export const FALLBACK_ENGINES: SegOption[] = [
-  { value: "blob", label: "BLOB" },
-  { value: "grid", label: "GRID" },
-  { value: "waves", label: "WAVE" },
-  { value: "orb", label: "ORB" },
+  { value: "blob", label: "Blob" },
+  { value: "grid", label: "Grid" },
+  { value: "waves", label: "Wave" },
+  { value: "orb", label: "Orb" },
 ];
 
 // ── PALETTE / MOOD ───────────────────────────────────────────────────────────
 export const MOOD_OPTIONS: SegOption[] = [
-  { value: "dark", label: "DARK" },
-  { value: "cream", label: "CREAM" },
-  { value: "grey", label: "GREY" },
-  { value: "random", label: "RANDOM" },
+  { value: "dark", label: "Dark" },
+  { value: "cream", label: "Cream" },
+  { value: "grey", label: "Grey" },
+  { value: "random", label: "Random" },
 ];
 
 // ── COMPOSITION (per-engine) ─────────────────────────────────────────────────
@@ -103,57 +103,57 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
   blob: [
     {
       controls: [
-        { kind: "slider", key: "density", label: "BLOB DENSITY", min: 0, max: 100 },
-        { kind: "slider", key: "smear", label: "SMEAR / BLUR", min: 0, max: 100 },
-        { kind: "slider", key: "blobSize", label: "BLOB SIZE", min: 0, max: 100 },
-        { kind: "slider", key: "glow", label: "GLOW", min: 0, max: 100 },
+        { kind: "slider", key: "density", label: "Blob density", min: 0, max: 100 },
+        { kind: "slider", key: "smear", label: "Smear / blur", min: 0, max: 100 },
+        { kind: "slider", key: "blobSize", label: "Blob size", min: 0, max: 100 },
+        { kind: "slider", key: "glow", label: "Glow", min: 0, max: 100 },
       ],
     },
     {
       controls: [
-        { kind: "toggle", key: "diamonds", label: "DIAMOND ZONES" },
-        { kind: "slider", key: "diamondCount", label: "COUNT", min: 0, max: 4, sub: true },
-        { kind: "slider", key: "diamondSize", label: "SIZE", min: 0, max: 100, sub: true },
-        { kind: "slider", key: "diamondShape", label: "SHAPE WIDE–TALL", min: 0, max: 100, sub: true },
+        { kind: "toggle", key: "diamonds", label: "Diamond zones" },
+        { kind: "slider", key: "diamondCount", label: "Count", min: 0, max: 4, sub: true },
+        { kind: "slider", key: "diamondSize", label: "Size", min: 0, max: 100, sub: true },
+        { kind: "slider", key: "diamondShape", label: "Shape wide–tall", min: 0, max: 100, sub: true },
       ],
     },
     {
-      heading: "ACCENT STREAKS",
+      heading: "Accent streaks",
       controls: [
-        { kind: "slider", key: "accent", label: "INTENSITY", min: 0, max: 100, sub: true },
-        { kind: "slider", key: "accentCount", label: "COUNT", min: 0, max: 4, sub: true },
+        { kind: "slider", key: "accent", label: "Intensity", min: 0, max: 100, sub: true },
+        { kind: "slider", key: "accentCount", label: "Count", min: 0, max: 4, sub: true },
       ],
     },
   ],
   grid: [
     {
       controls: [
-        { kind: "slider", key: "gridCols", label: "COLUMNS", min: 3, max: 18 },
-        { kind: "slider", key: "gridDensity", label: "FILL DENSITY", min: 0, max: 100 },
-        { kind: "slider", key: "gridPerspective", label: "3D PLANE", min: 0, max: 100 },
-        { kind: "slider", key: "gridMagnet", label: "MAGNET · SCATTER", min: 0, max: 100 },
+        { kind: "slider", key: "gridCols", label: "Columns", min: 3, max: 18 },
+        { kind: "slider", key: "gridDensity", label: "Fill density", min: 0, max: 100 },
+        { kind: "slider", key: "gridPerspective", label: "3D plane", min: 0, max: 100 },
+        { kind: "slider", key: "gridMagnet", label: "Magnet · scatter", min: 0, max: 100 },
       ],
     },
   ],
   waves: [
     {
       controls: [
-        { kind: "slider", key: "waveCount", label: "LINES", min: 10, max: 160 },
-        { kind: "slider", key: "waveAmp", label: "AMPLITUDE", min: 0, max: 100 },
-        { kind: "slider", key: "waveDetail", label: "DETAIL", min: 0, max: 100 },
-        { kind: "slider", key: "waveTurbulence", label: "TURBULENCE", min: 0, max: 100 },
-        { kind: "slider", key: "wavePerspective", label: "PERSPECTIVE", min: 0, max: 100 },
+        { kind: "slider", key: "waveCount", label: "Lines", min: 10, max: 160 },
+        { kind: "slider", key: "waveAmp", label: "Amplitude", min: 0, max: 100 },
+        { kind: "slider", key: "waveDetail", label: "Detail", min: 0, max: 100 },
+        { kind: "slider", key: "waveTurbulence", label: "Turbulence", min: 0, max: 100 },
+        { kind: "slider", key: "wavePerspective", label: "Perspective", min: 0, max: 100 },
       ],
     },
   ],
   orb: [
     {
       controls: [
-        { kind: "slider", key: "orbSize", label: "ORB SIZE", min: 0, max: 100 },
-        { kind: "slider", key: "orbSoft", label: "SOFTNESS", min: 0, max: 100 },
-        { kind: "slider", key: "orbHalftone", label: "HALFTONE", min: 0, max: 100 },
-        { kind: "slider", key: "orbMelt", label: "MELT", min: 0, max: 100 },
-        { kind: "slider", key: "orbShade", label: "3D SHADE", min: 0, max: 100 },
+        { kind: "slider", key: "orbSize", label: "Orb size", min: 0, max: 100 },
+        { kind: "slider", key: "orbSoft", label: "Softness", min: 0, max: 100 },
+        { kind: "slider", key: "orbHalftone", label: "Halftone", min: 0, max: 100 },
+        { kind: "slider", key: "orbMelt", label: "Melt", min: 0, max: 100 },
+        { kind: "slider", key: "orbShade", label: "3D shade", min: 0, max: 100 },
       ],
     },
   ],
@@ -161,13 +161,13 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
 
 // Shared FINISH group, appended to every engine's COMPOSITION section.
 export const FINISH_GROUP: ControlGroup = {
-  heading: "FINISH",
+  heading: "Finish",
   controls: [
-    { kind: "slider", key: "contrast", label: "CONTRAST", min: 0, max: 100, sub: true },
-    { kind: "slider", key: "saturation", label: "SATURATION", min: 0, max: 100, sub: true },
-    { kind: "slider", key: "vignette", label: "VIGNETTE", min: 0, max: 100, sub: true },
-    { kind: "slider", key: "bloom", label: "BLOOM", min: 0, max: 100, sub: true },
-    { kind: "slider", key: "soften", label: "SOFTEN · BLUR", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "contrast", label: "Contrast", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "saturation", label: "Saturation", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "vignette", label: "Vignette", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "bloom", label: "Bloom", min: 0, max: 100, sub: true },
+    { kind: "slider", key: "soften", label: "Soften · blur", min: 0, max: 100, sub: true },
   ],
 };
 
@@ -175,15 +175,15 @@ export const FINISH_GROUP: ControlGroup = {
 export const TEXTURE_GROUPS: ControlGroup[] = [
   {
     controls: [
-      { kind: "slider", key: "grain", label: "FILM GRAIN", min: 0, max: 100 },
-      { kind: "slider", key: "grainSize", label: "GRAIN SIZE", min: 0, max: 100 },
-      { kind: "slider", key: "dust", label: "DUST / SPECKS", min: 0, max: 100 },
+      { kind: "slider", key: "grain", label: "Film grain", min: 0, max: 100 },
+      { kind: "slider", key: "grainSize", label: "Grain size", min: 0, max: 100 },
+      { kind: "slider", key: "dust", label: "Dust / specks", min: 0, max: 100 },
     ],
   },
   {
     controls: [
-      { kind: "toggle", key: "scratches", label: "SCRATCH LINES" },
-      { kind: "slider", key: "scratchCount", label: "COUNT", min: 0, max: 16, sub: true },
+      { kind: "toggle", key: "scratches", label: "Scratch lines" },
+      { kind: "slider", key: "scratchCount", label: "Count", min: 0, max: 16, sub: true },
     ],
   },
 ];
@@ -192,32 +192,32 @@ export const TEXTURE_GROUPS: ControlGroup[] = [
 export const SIGIL_GROUPS: ControlGroup[] = [
   {
     controls: [
-      { kind: "toggle", key: "sigilMarks", label: "SIGIL MARKS" },
-      { kind: "slider", key: "sigilMarkCount", label: "DENSITY", min: 0, max: 20, sub: true },
-      { kind: "slider", key: "sigilMarkSize", label: "SIZE", min: 0, max: 100, sub: true },
-      { kind: "slider", key: "sigilMarkScatter", label: "SCATTER", min: 0, max: 100, sub: true },
+      { kind: "toggle", key: "sigilMarks", label: "Sigil marks" },
+      { kind: "slider", key: "sigilMarkCount", label: "Density", min: 0, max: 20, sub: true },
+      { kind: "slider", key: "sigilMarkSize", label: "Size", min: 0, max: 100, sub: true },
+      { kind: "slider", key: "sigilMarkScatter", label: "Scatter", min: 0, max: 100, sub: true },
     ],
   },
   {
     controls: [
-      { kind: "toggle", key: "sigilFrame", label: "BARB FRAME" },
-      { kind: "slider", key: "sigilFrameDensity", label: "FRAME DENSITY", min: 0, max: 100, sub: true },
+      { kind: "toggle", key: "sigilFrame", label: "Barb frame" },
+      { kind: "slider", key: "sigilFrameDensity", label: "Frame density", min: 0, max: 100, sub: true },
     ],
   },
 ];
 
 // ── TYPE OVERLAY ─────────────────────────────────────────────────────────────
 export const TEXT_CASE_OPTIONS: SegOption[] = [
-  { value: "upper", label: "UPPER" },
-  { value: "lower", label: "lower" },
-  { value: "asis", label: "As-Is" },
-  { value: "manic", label: "ManIC" },
+  { value: "upper", label: "Upper" },
+  { value: "lower", label: "Lower" },
+  { value: "asis", label: "As-is" },
+  { value: "manic", label: "Manic" },
 ];
 
 export const TEXT_COLOR_OPTIONS: SegOption[] = [
-  { value: "auto", label: "AUTO" },
-  { value: "light", label: "LIGHT" },
-  { value: "dark", label: "DARK" },
+  { value: "auto", label: "Auto" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
 ];
 
 // 3x3 position grid: column carries x + align, rows carry y.
@@ -230,44 +230,44 @@ export const POS_ROWS = [0.06, 0.45, 0.84] as const;
 
 // ── ANIMATE: BEAT / DRIFT / MOTION ───────────────────────────────────────────
 export const BEAT_GROUP: ControlGroup = {
-  heading: "BEAT",
+  heading: "Beat",
   controls: [
     { kind: "slider", key: "animBPM", label: "BPM", min: 90, max: 160 },
-    { kind: "slider", key: "animPump", label: "PUMP", min: 0, max: 100 },
-    { kind: "slider", key: "animKick", label: "KICK", min: 0, max: 100 },
+    { kind: "slider", key: "animPump", label: "Pump", min: 0, max: 100 },
+    { kind: "slider", key: "animKick", label: "Kick", min: 0, max: 100 },
   ],
 };
 
 export const DRIFT_GROUP: ControlGroup = {
-  heading: "DRIFT",
+  heading: "Drift",
   controls: [
-    { kind: "slider", key: "animSpeed", label: "SPEED", min: 0, max: 100 },
-    { kind: "slider", key: "animDrift", label: "WANDER", min: 0, max: 100 },
-    { kind: "slider", key: "animSwirl", label: "SWIRL", min: 0, max: 100 },
+    { kind: "slider", key: "animSpeed", label: "Speed", min: 0, max: 100 },
+    { kind: "slider", key: "animDrift", label: "Wander", min: 0, max: 100 },
+    { kind: "slider", key: "animSwirl", label: "Swirl", min: 0, max: 100 },
   ],
 };
 
 // Per-engine MOTION. blob has none (rendered as a muted note instead).
 export const MOTION_BY_ENGINE: Record<string, Control[]> = {
   orb: [
-    { kind: "slider", key: "orbSpin", label: "SPIN", min: 0, max: 100 },
-    { kind: "slider", key: "orbWobble", label: "WOBBLE", min: 0, max: 100 },
-    { kind: "slider", key: "orbBounce", label: "BOUNCE", min: 0, max: 100 },
-    { kind: "slider", key: "orbBreath", label: "BREATH", min: 0, max: 100 },
-    { kind: "slider", key: "orbChurn", label: "CHURN", min: 0, max: 100 },
+    { kind: "slider", key: "orbSpin", label: "Spin", min: 0, max: 100 },
+    { kind: "slider", key: "orbWobble", label: "Wobble", min: 0, max: 100 },
+    { kind: "slider", key: "orbBounce", label: "Bounce", min: 0, max: 100 },
+    { kind: "slider", key: "orbBreath", label: "Breath", min: 0, max: 100 },
+    { kind: "slider", key: "orbChurn", label: "Churn", min: 0, max: 100 },
   ],
   waves: [
-    { kind: "slider", key: "waveFlow", label: "FLOW", min: 0, max: 100 },
-    { kind: "slider", key: "waveSwell", label: "SWELL", min: 0, max: 100 },
-    { kind: "slider", key: "waveSurge", label: "SURGE", min: 0, max: 100 },
-    { kind: "slider", key: "waveChurn", label: "CHURN", min: 0, max: 100 },
-    { kind: "slider", key: "waveUndulate", label: "UNDULATE", min: 0, max: 100 },
+    { kind: "slider", key: "waveFlow", label: "Flow", min: 0, max: 100 },
+    { kind: "slider", key: "waveSwell", label: "Swell", min: 0, max: 100 },
+    { kind: "slider", key: "waveSurge", label: "Surge", min: 0, max: 100 },
+    { kind: "slider", key: "waveChurn", label: "Churn", min: 0, max: 100 },
+    { kind: "slider", key: "waveUndulate", label: "Undulate", min: 0, max: 100 },
   ],
   grid: [
-    { kind: "slider", key: "gridRipple", label: "RIPPLE", min: 0, max: 100 },
-    { kind: "slider", key: "gridBob", label: "BOB", min: 0, max: 100 },
-    { kind: "slider", key: "gridPop", label: "POP", min: 0, max: 100 },
-    { kind: "slider", key: "gridOrbit", label: "ORBIT", min: 0, max: 100 },
-    { kind: "slider", key: "gridFlow", label: "FLOW", min: 0, max: 100 },
+    { kind: "slider", key: "gridRipple", label: "Ripple", min: 0, max: 100 },
+    { kind: "slider", key: "gridBob", label: "Bob", min: 0, max: 100 },
+    { kind: "slider", key: "gridPop", label: "Pop", min: 0, max: 100 },
+    { kind: "slider", key: "gridOrbit", label: "Orbit", min: 0, max: 100 },
+    { kind: "slider", key: "gridFlow", label: "Flow", min: 0, max: 100 },
   ],
 };

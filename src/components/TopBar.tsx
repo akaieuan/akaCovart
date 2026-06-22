@@ -22,10 +22,10 @@ export default function TopBar({
       )}
     >
       <span className="pointer-events-auto inline-flex items-baseline select-none">
-        <span className="font-mono text-[15px] font-light tracking-[0.3em] text-grey-350">
+        <span className="text-[15px] font-light text-grey-350">
           aka
         </span>
-        <span className="font-mono text-[15px] font-semibold tracking-[0.3em] text-grey-100">
+        <span className="text-[15px] font-semibold text-grey-100">
           COVART
         </span>
       </span>

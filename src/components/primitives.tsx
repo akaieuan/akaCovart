@@ -7,8 +7,8 @@ import { Switch as UISwitch } from "@/components/ui/switch";
 import { Input as UIInput } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-// Shared mono micro-typography for every label/value in the panel.
-const MICRO = "font-mono text-[9px] font-medium tracking-[0.14em] uppercase";
+// Shared micro-typography for every label/value in the panel.
+const MICRO = "font-sans text-[11px] font-normal";
 
 // ── Micro-label ──────────────────────────────────────────────────────────────
 export function Label({
@@ -42,14 +42,14 @@ export function GroupLabel({
     return (
       <div
         className={cn(
-          "mb-[14px] font-mono text-[9px] font-semibold tracking-[0.18em] text-grey-350 uppercase",
+          "mb-[14px] font-sans text-[12px] font-medium text-grey-350",
         )}
       >
         {children}
       </div>
     );
   }
-  return <div className={cn(MICRO, "mt-[18px] mb-3 text-grey-300")}>{children}</div>;
+  return <div className={cn(MICRO, "mt-[18px] mb-3 font-medium text-grey-300")}>{children}</div>;
 }
 
 export function Divider() {
@@ -124,14 +124,14 @@ export function SliderRow({
               if (e.key === "Enter") commit();
               else if (e.key === "Escape") setEditing(false);
             }}
-            className="w-[44px] rounded-[2px] border border-grey-600 bg-grey-880 px-1 text-right font-mono text-[10px] font-medium text-grey-100 outline-none"
+            className="w-[44px] rounded-[2px] border border-grey-600 bg-grey-880 px-1 text-right font-sans text-[11px] font-normal text-grey-100 outline-none"
           />
         ) : (
           <button
             type="button"
             onClick={startEdit}
             title="Click to edit"
-            className="cursor-text bg-transparent font-mono text-[10px] font-medium text-grey-150 hover:text-grey-100"
+            className="cursor-text bg-transparent font-sans text-[11px] font-normal text-grey-150 hover:text-grey-100"
           >
             {value}
           </button>
@@ -203,7 +203,7 @@ export function Segmented({
           value={op.value}
           variant="outline"
           className={cn(
-            "h-auto flex-1 rounded-[3px] border-grey-800 bg-transparent px-0 py-2 font-mono text-[9px] font-medium tracking-[0.12em] uppercase text-grey-350",
+            "h-auto flex-1 rounded-[3px] border-grey-800 bg-transparent px-0 py-2 font-sans text-[11px] font-normal text-grey-350",
             "hover:border-grey-500 hover:bg-transparent hover:text-grey-200",
             "data-pressed:border-grey-500 data-pressed:bg-grey-600 data-pressed:text-grey-100",
             "aria-pressed:border-grey-500 aria-pressed:bg-grey-600 aria-pressed:text-grey-100",
@@ -237,8 +237,8 @@ export function TextRow({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
-        "h-[38px] rounded-[3px] border-grey-780 bg-grey-880 px-3 font-mono text-[11px] tracking-[0.1em] text-ink",
-        muted ? "font-normal text-grey-200" : "font-semibold",
+        "h-[38px] rounded-[3px] border-grey-780 bg-grey-880 px-3 font-sans text-[12px] text-ink",
+        muted ? "font-normal text-grey-200" : "font-medium",
         className,
       )}
     />

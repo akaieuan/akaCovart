@@ -82,15 +82,15 @@ export default function Gallery() {
   return (
     <div>
       <div className="mb-[9px] flex items-center justify-between">
-        <span className="font-mono text-[9px] font-medium tracking-[0.14em] text-grey-350">
-          VARIATIONS
+        <span className="font-sans text-[11px] font-medium text-grey-350">
+          Variations
         </span>
         <button
           type="button"
           onClick={rerollGallery}
-          className="rounded-[3px] border border-grey-800 px-[10px] py-[5px] font-mono text-[8px] font-semibold tracking-[0.12em] text-grey-250 hover:border-grey-500 hover:text-grey-100"
+          className="rounded-[3px] border border-grey-800 px-[10px] py-[5px] font-sans text-[11px] font-medium text-grey-250 hover:border-grey-500 hover:text-grey-100"
         >
-          ↻ MORE
+          ↻ More
         </button>
       </div>
       <div className="grid grid-cols-3 gap-[6px]">

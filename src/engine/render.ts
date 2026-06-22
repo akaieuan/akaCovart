@@ -20,6 +20,26 @@ import {
 // scale / position / displacement / radius — never brightness/opacity/hue.
 // When not animating (the still default), everything is calm (zero energy).
 function buildAnim(params: Record<string, any>): AnimState {
+  // Audio-driven override: the render loop computes critically-damped springs
+  // off the sampled feature timeline (delta-time stepped) and passes the eased
+  // AnimState directly. Audio drives SPACE only — never brightness/opacity/hue.
+  const audioAnim = params._audioAnim as Partial<AnimState> | undefined;
+  if (audioAnim) {
+    return {
+      anim: audioAnim.anim ?? true,
+      t: audioAnim.t ?? 0,
+      rt: audioAnim.rt ?? 0,
+      bake: audioAnim.bake ?? false,
+      beat: audioAnim.beat ?? 0,
+      kickEnv: audioAnim.kickEnv ?? 0,
+      kickSpring: audioAnim.kickSpring ?? 0,
+      pumpEnv: audioAnim.pumpEnv ?? 0,
+      drift: audioAnim.drift ?? 0,
+      swirl: audioAnim.swirl ?? 0,
+      speed: audioAnim.speed ?? 0,
+    };
+  }
+
   const animOn = !!params._anim;
   if (!animOn) {
     return {

@@ -1,18 +1,11 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
+// App font: Geist (clean neutral sans). The `Geist` loader isn't available in
+// next/font/google in this Next version, so we use the `geist` package's
+// GeistSans. It exposes --font-geist-sans, which globals.css aliases to
+// --font-app and points --font-sans/-mono/-heading at.
 
 export const metadata: Metadata = {
   title: "akaTOOL — Album Art Engine",
@@ -25,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${plexSans.variable} ${plexMono.variable} font-sans`}>
+    <html lang="en" className={`dark ${GeistSans.variable}`}>
+      <body className="font-sans">
         {children}
       </body>
     </html>

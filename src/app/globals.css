@@ -6,8 +6,13 @@
 
 /* Design tokens ported from the prototype (index.html). Dark studio palette. */
 @theme {
-  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  /* App font: Geist (clean neutral sans), loaded via the `geist` package which
+     exposes --font-geist-sans; we alias it to --font-app and point every font
+     token at it so the whole UI is one Geist sans. mono maps to the same app
+     font so old font-mono labels lose the mono look. */
+  --font-app: var(--font-geist-sans);
+  --font-sans: var(--font-app), system-ui, sans-serif;
+  --font-mono: var(--font-app), system-ui, sans-serif;
 
   /* Surfaces */
   --color-bg: #0a0a0b;
@@ -128,10 +133,9 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @theme inline {
-  /* Keep IBM Plex as the shadcn font tokens too (defined in the @theme block
-     above as --font-sans / --font-mono). Do NOT re-alias --font-sans here or
-     it shadows the prototype definition. */
-  --font-heading: var(--font-plex-sans), system-ui, sans-serif;
+  /* Fonts: a single plain sans (Geist, via --font-app) for sans/mono/heading.
+     Do NOT re-alias --font-sans here or it shadows the @theme definition. */
+  --font-heading: var(--font-app), system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
