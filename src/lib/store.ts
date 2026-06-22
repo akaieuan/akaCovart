@@ -49,6 +49,13 @@ export interface StudioState {
   orbMelt: number;
   orbShade: number;
 
+  // 3D engine (orb3d) — WebGL liquid shape system. Consumed only by WebGLStage.
+  orb3dShape: string; // sphere | icosahedron | tetrahedron | cube | octahedron | prism
+  orb3dLiquid: number; // 0..100 displacement amount
+  orb3dDetail: number; // 0..100 noise frequency / octaves
+  orb3dRotate: number; // 0..100 continuous rotation rate
+  orb3dShade: number; // 0..100 rim / shadow strength
+
   // seed
   seed: number;
 
@@ -146,6 +153,8 @@ export interface StudioState {
   gridPop: number;
   gridOrbit: number;
   gridFlow: number;
+  orb3dPulse: number;
+  orb3dWobble: number;
 
   // UI / process flags
   open: OpenSections;
@@ -211,6 +220,13 @@ const defaults = {
   orbHalftone: 40,
   orbMelt: 30,
   orbShade: 55,
+
+  // 3D engine (orb3d) composition defaults
+  orb3dShape: "sphere",
+  orb3dLiquid: 45,
+  orb3dDetail: 50,
+  orb3dRotate: 35,
+  orb3dShade: 55,
 
   soften: 0,
   density: 60,
@@ -295,6 +311,8 @@ const defaults = {
   gridPop: 55,
   gridOrbit: 35,
   gridFlow: 30,
+  orb3dPulse: 55,
+  orb3dWobble: 45,
 
   rendering: false,
   recording: false,

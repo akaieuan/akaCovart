@@ -64,7 +64,19 @@ export const ENGINE_TAB_LABELS: Record<string, string> = {
   grid: "Grid",
   waves: "Wave",
   orb: "Orb",
+  orb3d: "3D",
 };
+
+// 3D engine shape options (segmented selector). Values match the geometry switch
+// in WebGLStage.
+export const ORB3D_SHAPE_OPTIONS: SegOption[] = [
+  { value: "sphere", label: "Sphere" },
+  { value: "icosahedron", label: "Icosa" },
+  { value: "tetrahedron", label: "Tetra" },
+  { value: "cube", label: "Cube" },
+  { value: "octahedron", label: "Octa" },
+  { value: "prism", label: "Prism" },
+];
 
 export const FALLBACK_ENGINES: SegOption[] = [
   { value: "blob", label: "Blob" },
@@ -150,6 +162,25 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
         { kind: "slider", key: "orbHalftone", label: "Halftone", min: 0, max: 100 },
         { kind: "slider", key: "orbMelt", label: "Melt", min: 0, max: 100 },
         { kind: "slider", key: "orbShade", label: "3D shade", min: 0, max: 100 },
+      ],
+    },
+  ],
+  // 3D (WebGL) engine — a Shape selector plus the liquid/detail/rotation/shade
+  // sliders. These set store params consumed by WebGLStage; the shared 2D FINISH
+  // group is intentionally skipped for this engine (see Controls.tsx).
+  orb3d: [
+    {
+      heading: "Shape",
+      controls: [
+        { kind: "segmented", key: "orb3dShape", options: ORB3D_SHAPE_OPTIONS },
+      ],
+    },
+    {
+      controls: [
+        { kind: "slider", key: "orb3dLiquid", label: "Liquid", min: 0, max: 100 },
+        { kind: "slider", key: "orb3dDetail", label: "Detail", min: 0, max: 100 },
+        { kind: "slider", key: "orb3dRotate", label: "Rotation", min: 0, max: 100 },
+        { kind: "slider", key: "orb3dShade", label: "Shade", min: 0, max: 100 },
       ],
     },
   ],
@@ -281,5 +312,9 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "gridPop", label: "Pop", min: 0, max: 100 },
     { kind: "slider", key: "gridOrbit", label: "Orbit", min: 0, max: 100 },
     { kind: "slider", key: "gridFlow", label: "Flow", min: 0, max: 100 },
+  ],
+  orb3d: [
+    { kind: "slider", key: "orb3dPulse", label: "Pulse", min: 0, max: 100 },
+    { kind: "slider", key: "orb3dWobble", label: "Wobble", min: 0, max: 100 },
   ],
 };

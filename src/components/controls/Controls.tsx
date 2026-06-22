@@ -152,10 +152,13 @@ function MotionPanel() {
 // without re-rendering on a slider tick.
 function CompositionBody() {
   const engine = useStudio((s) => s.engine);
+  // FINISH is a 2D canvas post-process (contrast/bloom/vignette/soften). The 3D
+  // engine renders its own group and must NOT show the 2D finish controls.
+  const isWebGL = engine === "orb3d";
   return (
     <>
       {renderGroups(COMPOSITION_BY_ENGINE[engine] ?? [])}
-      {renderGroups([FINISH_GROUP])}
+      {!isWebGL && renderGroups([FINISH_GROUP])}
     </>
   );
 }
