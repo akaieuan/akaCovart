@@ -6,6 +6,7 @@ import type { TextBox } from "@/engine";
 import { useStudio, renderParams, type StudioState } from "@/lib/store";
 import { audioSession, transport, zeroFeatures } from "@/audio";
 import type { AudioFeatures } from "@/audio";
+import { applyAuto } from "./autoModulate";
 
 const DISPLAY = 880;
 // Cheaper backing-store size used for "draft" frames while params are actively
@@ -107,6 +108,7 @@ function textSig(s: StudioState): string {
     s.artist,
     s.textColor,
     s.textCase,
+    s.textFont,
     s.distort,
     s.textX,
     s.textY,
@@ -241,8 +243,14 @@ export default function CanvasStage({
       const rt = (now - t0Ref.current) / 1000;
       const t = rt * sp;
       const bake = !!s.recording;
+      // AUTO mode: gently wander a curated set of params around their manual
+      // base values (render-loop only — never written back to the store). Uses
+      // real time `rt` as a steady clock so the wander is BPM-independent.
+      const baseParams = s.auto
+        ? applyAuto(renderParams(s), rt, s.autoIntensity)
+        : renderParams(s);
       const p = {
-        ...renderParams(s),
+        ...baseParams,
         _anim: true,
         _t: t,
         _rt: rt,
@@ -251,11 +259,15 @@ export default function CanvasStage({
       const res = renderTo(c, DISPLAY, p);
       textBoxRef.current = res.textBox;
       // Live contrast/saturate via CSS filter (never per-frame pixel work).
+      // Read from the (possibly auto-modulated) params so AUTO's gentle, rate-
+      // limited finish wander is reflected here too — still bounded, no strobe.
       if (bake) {
         c.style.filter = "none";
       } else {
-        const cc = 1 + ((s.contrast - 50) / 50) * 0.7;
-        const sf = s.saturation / 50;
+        const cParam = (baseParams.contrast as number) ?? s.contrast;
+        const sParam = (baseParams.saturation as number) ?? s.saturation;
+        const cc = 1 + ((cParam - 50) / 50) * 0.7;
+        const sf = sParam / 50;
         c.style.filter = `contrast(${cc.toFixed(3)}) saturate(${sf.toFixed(3)})`;
       }
       rafRef.current = requestAnimationFrame(loop);
@@ -409,8 +421,15 @@ export default function CanvasStage({
         speed,
       };
 
+      // AUTO mode: wander the curated params around their manual base values,
+      // with the swing additionally scaled by the SMOOTHED audio features so the
+      // wander reacts to the track. Render-loop only — never written to store.
+      const autoBase = s.auto
+        ? applyAuto(renderParams(s), rt, s.autoIntensity, featRef.current)
+        : renderParams(s);
+
       const res = renderTo(c, DISPLAY, {
-        ...renderParams(s),
+        ...autoBase,
         _anim: true,
         _audioAnim: builtState,
         _t: t,
@@ -419,10 +438,13 @@ export default function CanvasStage({
       });
       textBoxRef.current = res.textBox;
 
-      // Live contrast/saturate via CSS filter (never per-frame pixel work, never
-      // audio-modulated — same rule as the BPM animate path: no flicker).
-      const cc = 1 + ((s.contrast - 50) / 50) * 0.7;
-      const sf = s.saturation / 50;
+      // Live contrast/saturate via CSS filter (never per-frame pixel work). The
+      // AUTO finish wander (contrast/saturation) is gentle + rate-limited, so it
+      // stays flicker-free — same no-strobe rule as the BPM animate path.
+      const cParam = (autoBase.contrast as number) ?? s.contrast;
+      const sParam = (autoBase.saturation as number) ?? s.saturation;
+      const cc = 1 + ((cParam - 50) / 50) * 0.7;
+      const sf = sParam / 50;
       c.style.filter = `contrast(${cc.toFixed(3)}) saturate(${sf.toFixed(3)})`;
 
       audioRafRef.current = requestAnimationFrame(loop);

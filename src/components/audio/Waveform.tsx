@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { audioSession, transport } from "@/audio";
-import { useStudio, MAX_CLIP } from "@/lib/store";
+import { useStudio, maxClipSeconds } from "@/lib/store";
 
 // Theme greys (resolved literals so the canvas paints without CSS vars).
 const C_TRACK = "#3a3a3a"; // unselected peaks
@@ -11,10 +11,12 @@ const C_HANDLE = "#f2f2f2"; // trim handles
 const C_PLAYHEAD = "#ffffff"; // playhead line
 const C_SHADE = "rgba(220,220,220,0.06)"; // window backing wash
 
-const HANDLE_W = 8; // px hit/visual width of each trim handle
-const HIT_PAD = 10; // px extra pointer tolerance around handles
+const HANDLE_W = 8; // px visual width of each trim handle
+const HANDLE_HIT = 9; // px half-zone around each edge that resizes (vs. moves)
 
 type DragKind = "left" | "right" | "body" | null;
+// What a pointer at a given x would do — drives both hit-testing and the cursor.
+type HitZone = "left" | "right" | "body" | "outside";
 
 /**
  * Waveform — custom retina canvas of the decoded track peaks.
@@ -22,8 +24,10 @@ type DragKind = "left" | "right" | "body" | null;
  * Draws the full track (grey), brightens the selected [clipStart, clipEnd]
  * window, and renders draggable left/right trim handles plus a live playhead
  * line driven by transport.currentTime. Pointer drags update clipStart/clipEnd
- * in the store (clamped to MAX_CLIP). The actual offline re-analysis is owned by
- * AudioPanel (it watches the clip window) — this component only edits the window.
+ * in the store: edge handles resize, and dragging the highlighted band body
+ * moves the whole window (start + end together) along the track. The window
+ * length is clamped to the active clip length. The actual offline re-analysis is
+ * owned by AudioPanel (it watches the window) — this only edits the window.
  */
 export default function Waveform({
   onScrub,
@@ -37,11 +41,14 @@ export default function Waveform({
   const audioDuration = useStudio((s) => s.audioDuration);
   const clipStart = useStudio((s) => s.clipStart);
   const clipEnd = useStudio((s) => s.clipEnd);
+  const clipLength = useStudio((s) => s.clipLength);
   const audioPlaying = useStudio((s) => s.audioPlaying);
   const setClip = useStudio((s) => s.setClip);
 
   const drag = useRef<DragKind>(null);
   const dragGrab = useRef(0); // for "body": offset (s) from clipStart to grab point
+  // Cursor hint when not dragging: grab over the band body, ew-resize over edges.
+  const [hoverZone, setHoverZone] = useState<HitZone>("outside");
 
   // ── Drawing ────────────────────────────────────────────────────────────────
   const draw = useCallback(() => {
@@ -152,20 +159,31 @@ export default function Waveform({
     return Math.max(0, Math.min(audioDuration, frac * audioDuration));
   };
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (audioDuration <= 0) return;
+  // Classify a client-x position: edge handle (resize) > band body (move) >
+  // outside. Handle zones win over the body so the edges of a narrow window
+  // stay resizable rather than being swallowed by the move region.
+  const zoneAtClientX = (clientX: number): HitZone => {
     const wrap = wrapRef.current;
-    if (!wrap) return;
+    if (!wrap || audioDuration <= 0) return "outside";
     const rect = wrap.getBoundingClientRect();
     const pxPerSec = rect.width / audioDuration;
     const sx = clipStart * pxPerSec;
     const ex = clipEnd * pxPerSec;
-    const x = e.clientX - rect.left;
+    const x = clientX - rect.left;
+    if (Math.abs(x - sx) <= HANDLE_HIT) return "left";
+    if (Math.abs(x - ex) <= HANDLE_HIT) return "right";
+    if (x > sx && x < ex) return "body";
+    return "outside";
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (audioDuration <= 0) return;
+    const zone = zoneAtClientX(e.clientX);
 
     let kind: DragKind;
-    if (Math.abs(x - sx) <= HANDLE_W / 2 + HIT_PAD) kind = "left";
-    else if (Math.abs(x - ex) <= HANDLE_W / 2 + HIT_PAD) kind = "right";
-    else if (x > sx && x < ex) {
+    if (zone === "left" || zone === "right") {
+      kind = zone;
+    } else if (zone === "body") {
       kind = "body";
       dragGrab.current = timeAtClientX(e.clientX) - clipStart;
     } else {
@@ -190,6 +208,7 @@ export default function Waveform({
     } else if (kind === "right") {
       setClip(clipStart, Math.max(t, clipStart + 0.05));
     } else if (kind === "body") {
+      // Move the whole window: shift start + end together, clamped to the track.
       const span = clipEnd - clipStart;
       let ns = t - dragGrab.current;
       ns = Math.max(0, Math.min(ns, audioDuration - span));
@@ -198,8 +217,13 @@ export default function Waveform({
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current) return;
-    handleDragMove(e.clientX);
+    if (drag.current) {
+      handleDragMove(e.clientX);
+      return;
+    }
+    // Idle hover: update the cursor hint without committing any edit.
+    const z = zoneAtClientX(e.clientX);
+    setHoverZone((prev) => (prev === z ? prev : z));
   };
 
   const endDrag = (e: React.PointerEvent) => {
@@ -210,17 +234,39 @@ export default function Waveform({
   };
 
   const span = Math.max(0, clipEnd - clipStart);
-  const atMax = span >= MAX_CLIP - 0.01;
+  const maxLen = maxClipSeconds(clipLength, audioDuration);
+  const atMax = clipLength !== "full" && span >= maxLen - 0.01;
+
+  // Cursor: grabbing while moving the body, ew-resize over/while-dragging edges,
+  // grab over the band body at rest, pointer (scrub) elsewhere.
+  const activeZone: HitZone =
+    drag.current === "body"
+      ? "body"
+      : drag.current === "left" || drag.current === "right"
+        ? drag.current
+        : hoverZone;
+  const cursor =
+    activeZone === "left" || activeZone === "right"
+      ? "ew-resize"
+      : activeZone === "body"
+        ? drag.current === "body"
+          ? "grabbing"
+          : "grab"
+        : "pointer";
 
   return (
     <div className="select-none">
       <div
         ref={wrapRef}
-        className="relative h-[76px] w-full cursor-pointer rounded-[4px] border border-grey-800 bg-grey-880"
+        className="relative h-[76px] w-full rounded-[4px] border border-grey-800 bg-grey-880"
+        style={{ cursor }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onPointerLeave={() => {
+          if (!drag.current) setHoverZone("outside");
+        }}
       >
         <canvas
           ref={canvasRef}
@@ -231,6 +277,10 @@ export default function Waveform({
         <span>{fmt(clipStart)}</span>
         <span className={atMax ? "text-grey-200" : "text-grey-350"}>
           {span.toFixed(1)}s window{atMax ? " · max" : ""}
+          <span className="text-grey-450"> · </span>
+          {fmt(clipStart)}
+          <span className="text-grey-450">→</span>
+          {fmt(clipEnd)}
         </span>
         <span>{fmt(clipEnd)}</span>
       </div>

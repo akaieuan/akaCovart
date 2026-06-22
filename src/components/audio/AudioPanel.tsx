@@ -9,7 +9,13 @@ import {
   analyzeClip,
   transport,
 } from "@/audio";
-import { useStudio, MAX_CLIP } from "@/lib/store";
+import {
+  useStudio,
+  maxClipSeconds,
+  DEFAULT_CLIP,
+  CLIP_PRESETS,
+  type ClipLength,
+} from "@/lib/store";
 import { GroupLabel, SliderRow, ToggleRow } from "@/components/controls/primitives";
 import Waveform from "./Waveform";
 
@@ -34,8 +40,10 @@ export default function AudioPanel() {
   const audioDuration = useStudio((s) => s.audioDuration);
   const clipStart = useStudio((s) => s.clipStart);
   const clipEnd = useStudio((s) => s.clipEnd);
+  const clipLength = useStudio((s) => s.clipLength);
   const audioPlaying = useStudio((s) => s.audioPlaying);
   const setState = useStudio((s) => s.setState);
+  const setClipLength = useStudio((s) => s.setClipLength);
 
   // Each analysis run gets a token so a stale (superseded) run can't overwrite
   // the session/state after a newer window has been requested.
@@ -84,9 +92,10 @@ export default function AudioPanel() {
         audioSession.buffer = buffer;
         audioSession.peaks = peaks;
 
-        // Default window: first MAX_CLIP seconds (clamped to track length).
+        // Default window: first (active length) seconds, clamped to track length.
         const dur = buffer.duration;
-        const end = Math.min(dur, MAX_CLIP);
+        const len = useStudio.getState().clipLength;
+        const end = maxClipSeconds(len, dur);
         setState({ audioDuration: dur, clipStart: 0, clipEnd: end });
 
         await runAnalysis();
@@ -129,6 +138,16 @@ export default function AudioPanel() {
     };
   }, []);
 
+  // Pick a window length: refit clipStart/clipEnd in the store, then re-analyze
+  // (debounced) just like a drag does.
+  const pickLength = useCallback(
+    (len: ClipLength) => {
+      setClipLength(len);
+      scheduleReanalyze();
+    },
+    [setClipLength, scheduleReanalyze],
+  );
+
   // ── Transport ──────────────────────────────────────────────────────────────
   const togglePlay = () => {
     if (audioStatus !== "ready" && audioStatus !== "analyzing") return;
@@ -165,8 +184,9 @@ export default function AudioPanel() {
   return (
     <div className="px-5 pt-4 pb-2">
       <div className="mb-4 font-sans text-[11px] leading-[1.7] text-grey-350">
-        Import an MP3 or WAV, trim a {MAX_CLIP}s window, and the engine reacts
-        live to its analyzed energy &amp; beats. Export a synced video loop.
+        Import an MP3 or WAV, trim a clip window (up to {DEFAULT_CLIP}s+ or the
+        full track), and the engine reacts live to its analyzed energy &amp;
+        beats. Export a synced video loop.
       </div>
 
       {/* ── Dropzone / file picker ──────────────────────────────────────── */}
@@ -234,6 +254,29 @@ export default function AudioPanel() {
           <div className="mt-5">
             <GroupLabel variant="beat">Clip window</GroupLabel>
             <Waveform onScrub={scheduleReanalyze} />
+
+            {/* Length presets */}
+            <div className="mt-[10px] flex items-center gap-[6px]">
+              {CLIP_PRESETS.map((len) => {
+                const active = clipLength === len;
+                return (
+                  <button
+                    key={String(len)}
+                    type="button"
+                    onClick={() => pickLength(len)}
+                    aria-pressed={active}
+                    className={
+                      "flex-1 rounded-[4px] border px-2 py-[6px] font-sans text-[11px] tabular-nums transition-colors " +
+                      (active
+                        ? "border-grey-400 bg-grey-150 text-bg"
+                        : "border-grey-800 bg-grey-880 text-grey-300 hover:border-grey-600 hover:text-grey-150")
+                    }
+                  >
+                    {len === "full" ? "Full" : `${len}s`}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Transport */}
@@ -265,6 +308,23 @@ export default function AudioPanel() {
         <SliderRow
           label="Intensity"
           paramKey="audioIntensity"
+          min={0}
+          max={100}
+        />
+      </div>
+
+      {/* ── AUTO ────────────────────────────────────────────────────────── */}
+      <div className="mt-6">
+        <GroupLabel variant="beat">Auto</GroupLabel>
+        <div className="mb-1 font-sans text-[11px] leading-[1.7] text-grey-400">
+          Gently auto-evolves a curated set of look params so the cover stays
+          alive — the swing also scales with the track&apos;s energy. Your
+          sliders stay the base.
+        </div>
+        <ToggleRow label="Auto" paramKey="auto" />
+        <SliderRow
+          label="Intensity"
+          paramKey="autoIntensity"
           min={0}
           max={100}
         />

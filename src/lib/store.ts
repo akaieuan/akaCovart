@@ -9,6 +9,10 @@ export type Mode = "still" | "animate" | "audio";
 export type AudioStatus = "idle" | "decoding" | "analyzing" | "ready";
 export type MoodSel = "dark" | "cream" | "grey" | "random";
 
+// Selectable clip-window lengths. A finite number of seconds, or "full" for the
+// whole track. The active length caps how far the window can grow when dragging.
+export type ClipLength = number | "full";
+
 export interface OpenSections {
   library: boolean;
   palette: boolean;
@@ -95,13 +99,19 @@ export interface StudioState {
   audioStatus: AudioStatus;
   audioDuration: number; // full track duration (s)
   clipStart: number; // window start (s)
-  clipEnd: number; // window end (s); clamped so end-start <= 60
+  clipEnd: number; // window end (s); clamped so end-start <= active length
+  clipLength: ClipLength; // selected max window length (s) or "full"
   audioReactive: boolean;
   audioIntensity: number; // 0..100, overall reactivity scale
   audioPlaying: boolean;
 
   // mode + animation params
   mode: Mode;
+  // AUTO mode: gently auto-evolve a curated set of params around their manual
+  // base values via slow bounded LFOs. Render-loop only — never mutates the
+  // stored param values, so toggling off returns to the exact manual look.
+  auto: boolean;
+  autoIntensity: number; // 0..100, swing scale
   animSpeed: number;
   animDrift: number;
   animSwirl: number;
@@ -139,11 +149,22 @@ export interface StudioState {
   newSeed: () => void;
   rerollGallery: () => void;
   resetParams: () => void;
-  // Set the 60s clip window, clamping end-start <= 60 within [0, audioDuration].
+  // Set the clip window, clamping end-start <= active length within [0, audioDuration].
   setClip: (start: number, end: number) => void;
+  // Set the active window length (seconds or "full") and refit clipEnd/clipStart.
+  setClipLength: (len: ClipLength) => void;
 }
 
-export const MAX_CLIP = 60;
+// Default clip length when a track loads. Also the cap used before a length is
+// explicitly chosen. Kept as a named constant so callers don't hardcode 60.
+export const DEFAULT_CLIP = 60;
+export const CLIP_PRESETS: ClipLength[] = [30, 60, 90, 180, "full"];
+
+// Resolve the active length into a concrete max number of seconds for a track.
+export function maxClipSeconds(len: ClipLength, duration: number): number {
+  const dur = duration > 0 ? duration : Infinity;
+  return len === "full" ? dur : Math.min(len, dur);
+}
 
 export function randSeed(): number {
   return (Math.random() * 1e9) | 0;
@@ -222,11 +243,14 @@ const defaults = {
   audioDuration: 0,
   clipStart: 0,
   clipEnd: 60,
+  clipLength: 60 as ClipLength,
   audioReactive: true,
   audioIntensity: 65,
   audioPlaying: false,
 
   mode: "still" as Mode,
+  auto: false,
+  autoIntensity: 50,
   animSpeed: 55,
   animDrift: 62,
   animSwirl: 24,
@@ -290,16 +314,28 @@ export const useStudio = create<StudioState>((set) => ({
   setClip: (start, end) =>
     set((s) => {
       const dur = s.audioDuration > 0 ? s.audioDuration : Infinity;
+      const maxLen = maxClipSeconds(s.clipLength, s.audioDuration);
       let cs = Math.max(0, Math.min(start, dur));
       let ce = Math.max(cs, Math.min(end, dur));
-      // Clamp window length to MAX_CLIP seconds.
-      if (ce - cs > MAX_CLIP) ce = cs + MAX_CLIP;
+      // Clamp window length to the active max length.
+      if (ce - cs > maxLen) ce = cs + maxLen;
       // If a finite duration shrinks the window, pull start back to keep length.
       if (ce > dur) {
         ce = dur;
-        cs = Math.max(0, ce - MAX_CLIP);
+        cs = Math.max(0, ce - maxLen);
       }
       return { clipStart: cs, clipEnd: ce };
+    }),
+  setClipLength: (len) =>
+    set((s) => {
+      const dur = s.audioDuration > 0 ? s.audioDuration : Infinity;
+      const target = maxClipSeconds(len, s.audioDuration);
+      // Grow/shrink the window from the current start to the new length, nudging
+      // start back if the window would overflow the end of the track.
+      let cs = Math.max(0, s.clipStart);
+      const ce = Math.min(cs + target, dur);
+      if (ce - cs < target) cs = Math.max(0, ce - target);
+      return { clipLength: len, clipStart: cs, clipEnd: ce };
     }),
   resetParams: () =>
     set(() => {
@@ -330,6 +366,7 @@ export function renderParams(s: StudioState): Record<string, unknown> {
     resetParams: _e,
     setAllSections: _f,
     setClip: _g,
+    setClipLength: _h,
     ...rest
   } = s;
   void _a;
@@ -339,5 +376,6 @@ export function renderParams(s: StudioState): Record<string, unknown> {
   void _e;
   void _f;
   void _g;
+  void _h;
   return rest;
 }

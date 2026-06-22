@@ -53,6 +53,7 @@ function gallerySig(s: StudioState): string {
     s.sigilFrameDensity,
     s.scratches,
     s.scratchCount,
+    s.textFont,
     s.mode,
   ].join("|") +
     "||" +

@@ -4,5 +4,6 @@ export { Divider } from "./Divider";
 export { SliderRow, type SliderRowProps } from "./SliderRow";
 export { ToggleRow, type ToggleRowProps } from "./ToggleRow";
 export { Segmented, type SegmentedProps, type SegOption } from "./Segmented";
+export { FontPicker, type FontPickerProps } from "./FontPicker";
 export { TextRow, type TextRowProps } from "./TextRow";
 export type { NumKey, BoolKey, StrKey } from "./keys";

@@ -205,6 +205,15 @@ export const TEXT_COLOR_OPTIONS: SegOption[] = [
   { value: "dark", label: "Dark" },
 ];
 
+// Curated cover faces. `value` is the real CSS family name (loaded via the
+// globals.css @import) that the engine writes into params.textFont and draws.
+export const TEXT_FONT_OPTIONS: SegOption[] = [
+  { value: "Space Grotesk", label: "Space Grotesk" },
+  { value: "Anton", label: "Anton" },
+  { value: "Instrument Serif", label: "Instrument Serif" },
+  { value: "Syne", label: "Syne" },
+];
+
 // 3x3 position grid: column carries x + align, rows carry y.
 export const POS_COLS = [
   { x: 0.05, align: "left" },

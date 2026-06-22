@@ -14,6 +14,7 @@ import {
   SliderRow,
   ToggleRow,
   Segmented,
+  FontPicker,
   TextRow,
 } from "./primitives";
 import Gallery from "./Gallery";
@@ -30,6 +31,7 @@ import {
   SIGIL_GROUPS,
   TEXT_CASE_OPTIONS,
   TEXT_COLOR_OPTIONS,
+  TEXT_FONT_OPTIONS,
   BEAT_GROUP,
   DRIFT_GROUP,
   MOTION_BY_ENGINE,
@@ -137,6 +139,15 @@ function MotionPanel() {
             Drift above.
           </div>
         )}
+
+        <Divider />
+        <GroupLabel variant="beat">Auto</GroupLabel>
+        <div className="mb-1 font-sans text-[11px] leading-[1.7] text-grey-400">
+          Gently auto-evolves a curated set of look params so the frame stays
+          alive. Your sliders are the base — Auto only wanders around them.
+        </div>
+        <ToggleRow label="Auto" paramKey="auto" />
+        <SliderRow label="Intensity" paramKey="autoIntensity" min={0} max={100} />
       </div>
     </div>
   );
@@ -221,6 +232,12 @@ export default function Controls() {
           placeholder="Artist"
           muted
           className="mb-[14px]"
+        />
+        <GroupLabel variant="sub">Font</GroupLabel>
+        <FontPicker
+          className="mb-[14px]"
+          paramKey="textFont"
+          options={TEXT_FONT_OPTIONS}
         />
         <GroupLabel variant="sub">Case</GroupLabel>
         <Segmented
