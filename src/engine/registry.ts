@@ -1,15 +1,17 @@
-import type { FieldEngine } from "./types";
+import type { AnyEngine } from "./types";
 
-const registry = new Map<string, FieldEngine>();
+// Holds the union of 2D field engines and WebGL engines. 2D engines keep
+// registering exactly as before — FieldEngine is assignable to AnyEngine.
+const registry = new Map<string, AnyEngine>();
 
-export function registerEngine(e: FieldEngine): void {
+export function registerEngine(e: AnyEngine): void {
   registry.set(e.id, e);
 }
 
-export function getEngine(id: string): FieldEngine | undefined {
+export function getEngine(id: string): AnyEngine | undefined {
   return registry.get(id);
 }
 
-export function listEngines(): FieldEngine[] {
+export function listEngines(): AnyEngine[] {
   return Array.from(registry.values());
 }

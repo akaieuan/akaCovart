@@ -70,6 +70,25 @@ export interface FieldEngine {
   field(args: FieldArgs): void;
 }
 
+// WebGL/Three.js engine descriptor. DATA ONLY — no React component or three
+// imports live here, so the engine module stays framework-agnostic and never
+// pulls three into the server / static-export prerender. The actual rendering
+// lives in a dynamically-imported (ssr:false) client stage component, matched
+// to this descriptor by `id`.
+export interface WebGLEngine {
+  id: string;
+  label: string;
+  kind: "webgl";
+  params: ParamDef[];
+}
+
+// An engine is either a 2D field engine or a WebGL engine.
+export type AnyEngine = FieldEngine | WebGLEngine;
+
+export function isWebGLEngine(e: AnyEngine): e is WebGLEngine {
+  return e.kind === "webgl";
+}
+
 export interface TextBox {
   x: number;
   y: number;

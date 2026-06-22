@@ -1,5 +1,6 @@
 import type { AnimState, Mood, RenderResult } from "./types";
 import { getEngine } from "./registry";
+import { isWebGLEngine } from "./types";
 import { palettes, resolveMood, transformPalette } from "./palettes";
 import { prng } from "./prng";
 import { rgb } from "./color";
@@ -122,9 +123,12 @@ export function renderTo(
   ctx.fillStyle = rgb(cfg.base);
   ctx.fillRect(0, 0, S, S);
 
-  // Field dispatch.
+  // Field dispatch. Only 2D field engines draw to the 2D canvas; WebGL engines
+  // are rendered by their own (ssr:false) stage and are skipped here. The Stage
+  // switch already routes WebGL engines away from this path, so this is just a
+  // type-safe guard that keeps the 2D contract intact.
   const engine = getEngine(params.engine || "blob");
-  if (engine) {
+  if (engine && !isWebGLEngine(engine)) {
     engine.field({ ctx, size: S, params, mood, cfg, seed, anim });
   }
 

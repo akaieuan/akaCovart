@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
-import { CanvasStage } from "@/components/canvas";
+import { Stage } from "@/components/canvas";
 import { Controls } from "@/components/controls";
 import EngineSelector from "./EngineSelector";
 import TopBar from "./TopBar";
@@ -55,9 +55,11 @@ export default function Studio() {
       {/* Floating wordmark over the canvas backdrop */}
       <TopBar />
 
-      {/* HERO: canvas centered, fills remaining space */}
+      {/* HERO: canvas centered, fills remaining space. Stage forwards canvasRef
+          to CanvasStage for 2D engines, or swaps to the (ssr:false) WebGL stage
+          when a webgl engine is selected. */}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <CanvasStage canvasRef={canvasRef} />
+        <Stage canvasRef={canvasRef} />
       </main>
 
       {/* ── DESKTOP SIDEBAR (md+) ─────────────────────────────────────── */}
