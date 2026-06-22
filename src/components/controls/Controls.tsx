@@ -25,6 +25,7 @@ import {
   type Control,
   type ControlGroup,
   MOOD_OPTIONS,
+  COLOR_GROUP,
   COMPOSITION_BY_ENGINE,
   FINISH_GROUP,
   TEXTURE_GROUPS,
@@ -101,13 +102,9 @@ function PanelSection({
   );
 }
 
-const DEFAULT_OPEN = [
-  "library",
-  "palette",
-  "composition",
-  "texture",
-  "type",
-];
+// All sections start COLLAPSED by default. The accordion stays `multiple` so the
+// user can open several at once.
+const DEFAULT_OPEN: string[] = [];
 
 // ── ANIMATE-mode motion body ─────────────────────────────────────────────────
 // Split out so it can subscribe to ONLY `engine` (which motion set to show),
@@ -200,7 +197,8 @@ export default function Controls() {
 
       {/* PALETTE / MOOD */}
       <PanelSection value="palette" title="Palette · mood">
-        <Segmented paramKey="mood" options={MOOD_OPTIONS} />
+        <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
+        {renderGroups([COLOR_GROUP])}
       </PanelSection>
 
       {/* COMPOSITION (engine-specific + shared FINISH) */}

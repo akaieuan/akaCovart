@@ -1,5 +1,6 @@
 import type { Mood, Palette } from "./types";
 import { prng } from "./prng";
+import { huerot } from "./color";
 
 // Palettes ported verbatim from the prototype (index.html `palettes()`).
 export const palettes: Record<Mood, Palette> = {
@@ -147,4 +148,72 @@ export function resolveMood(seed: number, mood: Mood | "random"): Mood {
   const r = prng(seed >>> 0);
   const moods: Mood[] = ["dark", "cream", "grey"];
   return moods[Math.floor(r() * 3)];
+}
+
+// ── Palette transform (Color controls) ───────────────────────────────────────
+// Recolours a resolved palette before rendering so the three "Color" sliders
+// (tone / hue / saturation) affect EVERY engine. Operates only on the rgb color
+// fields (base, colors, accentColors, diamondColors, fleck, smoke); every other
+// field — counts, alphas, flags, and the `scratch` string — is carried through
+// untouched. At default values (tone=50, hue=0, sat=50) the transform is skipped
+// entirely so output is byte-identical to before this feature existed.
+function clamp255(v: number): number {
+  return v < 0 ? 0 : v > 255 ? 255 : v;
+}
+
+// Transform a single rgb triple: hue rotation -> saturation scale -> tone bias.
+function transformColor(c: number[], deg: number, sat: number, t: number): number[] {
+  // 1) Hue rotation (degrees), reusing the prototype's HSL rotation.
+  let out = deg ? huerot(c, deg) : [c[0], c[1], c[2]];
+  // 2) Saturation: pull toward / push away from luma. sat==50 -> identity.
+  if (sat !== 50) {
+    const k = sat / 50;
+    const gray = 0.299 * out[0] + 0.587 * out[1] + 0.114 * out[2];
+    out = [
+      clamp255(gray + (out[0] - gray) * k),
+      clamp255(gray + (out[1] - gray) * k),
+      clamp255(gray + (out[2] - gray) * k),
+    ];
+  }
+  // 3) Tone lightness bias. t<0 darkens (incl. the base), t>0 lightens.
+  if (t !== 0) {
+    out =
+      t < 0
+        ? [out[0] * (1 + t * 0.85), out[1] * (1 + t * 0.85), out[2] * (1 + t * 0.85)]
+        : [
+            out[0] + (255 - out[0]) * (t * 0.75),
+            out[1] + (255 - out[1]) * (t * 0.75),
+            out[2] + (255 - out[2]) * (t * 0.75),
+          ];
+  }
+  return [
+    Math.round(clamp255(out[0])),
+    Math.round(clamp255(out[1])),
+    Math.round(clamp255(out[2])),
+  ];
+}
+
+export function transformPalette(
+  cfg: Palette,
+  tone: number,
+  hue: number,
+  sat: number,
+): Palette {
+  // Defaults -> no-op, so existing art is unchanged to the byte.
+  if (tone === 50 && hue === 0 && sat === 50) return cfg;
+
+  const deg = (hue / 100) * 360;
+  const t = (tone - 50) / 50;
+  const c1 = (c: number[]) => transformColor(c, deg, sat, t);
+  const cN = (cs: number[][]) => cs.map(c1);
+
+  return {
+    ...cfg,
+    base: c1(cfg.base),
+    colors: cN(cfg.colors),
+    diamondColors: cN(cfg.diamondColors),
+    fleck: c1(cfg.fleck),
+    smoke: c1(cfg.smoke),
+    accentColors: cN(cfg.accentColors),
+  };
 }

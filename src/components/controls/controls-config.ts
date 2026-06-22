@@ -81,6 +81,17 @@ export const MOOD_OPTIONS: SegOption[] = [
   { value: "random", label: "Random" },
 ];
 
+// Color transform: recolours the whole palette (all engines). Tone below 50
+// darkens — including the background — which is the readability fix.
+export const COLOR_GROUP: ControlGroup = {
+  heading: "Color",
+  controls: [
+    { kind: "slider", key: "colorTone", label: "Tone dark–light", min: 0, max: 100 },
+    { kind: "slider", key: "colorHue", label: "Hue shift", min: 0, max: 100 },
+    { kind: "slider", key: "colorSat", label: "Saturation", min: 0, max: 100 },
+  ],
+};
+
 // ── COMPOSITION (per-engine) ─────────────────────────────────────────────────
 // Each engine contributes its own groups; a shared FINISH group is appended for
 // all engines by the renderer.

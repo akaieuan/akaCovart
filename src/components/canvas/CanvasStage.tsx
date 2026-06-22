@@ -57,6 +57,9 @@ function clamp(v: number, lo: number, hi: number): number {
 function paramSig(s: StudioState): string {
   return [
     s.mood,
+    s.colorTone,
+    s.colorHue,
+    s.colorSat,
     s.engine,
     s.gridCols,
     s.gridDensity,

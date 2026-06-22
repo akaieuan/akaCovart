@@ -1,6 +1,6 @@
 import type { AnimState, Mood, RenderResult } from "./types";
 import { getEngine } from "./registry";
-import { palettes, resolveMood } from "./palettes";
+import { palettes, resolveMood, transformPalette } from "./palettes";
 import { prng } from "./prng";
 import { rgb } from "./color";
 import {
@@ -107,7 +107,15 @@ export function renderTo(
 
   const seed = (params.seed >>> 0) || 1;
   const mood: Mood = resolveMood(seed, (params.mood ?? "random") as Mood | "random");
-  const cfg = palettes[mood];
+  // Apply the Color controls to the resolved palette so tone/hue/saturation
+  // affect EVERY engine (base fill, field, and cfg-driven effects below). At
+  // default values this returns the palette unchanged (byte-identical output).
+  const cfg = transformPalette(
+    palettes[mood],
+    params.colorTone ?? 50,
+    params.colorHue ?? 0,
+    params.colorSat ?? 50,
+  );
   const anim = buildAnim(params);
 
   // Base fill.

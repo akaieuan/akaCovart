@@ -104,12 +104,15 @@ const blob: FieldEngine = {
       const fy = -Math.sin(nx * 3.3 - T * 0.21 + fpx) * 0.7 - b * 0.5;
       return { fx: fx * amp, fy: fy * amp };
     };
-    // Slow whole-field rotation around centre.
-    const fieldAng = swirlM > 0 ? T * 0.12 * swirlM : 0;
+    // Slow whole-field rotation around centre. swirlT folds the global swirl
+    // baseline (gSwirl) in with the dedicated Swirl control so both ride along
+    // together as a shared rotation of the field.
+    const swirlT = swirlM + gSwirl;
+    const fieldAng = swirlT > 0 ? T * 0.12 * swirlT : 0;
     const fCos = Math.cos(fieldAng),
       fSin = Math.sin(fieldAng);
     const rotateField = (x: number, y: number): { x: number; y: number } => {
-      if (swirlM <= 0) return { x, y };
+      if (swirlT <= 0) return { x, y };
       const rx = x - S / 2,
         ry = y - S / 2;
       return { x: S / 2 + rx * fCos - ry * fSin, y: S / 2 + rx * fSin + ry * fCos };
@@ -174,7 +177,7 @@ const blob: FieldEngine = {
         // SWIRL — rotate this blob's rest position around the centre with the
         // whole field (shared angle), plus a tiny radius-dependent lead so the
         // field reads as a slow cohesive turn rather than a rigid spin.
-        if (swirlM > 0) {
+        if (swirlT > 0) {
           const rot = rotateField(bx, by);
           bx = rot.x;
           by = rot.y;
@@ -254,7 +257,7 @@ const blob: FieldEngine = {
           dAng = 0;
         if (ANIM) {
           const dph = k * 2.39;
-          if (swirlM > 0) {
+          if (swirlT > 0) {
             const rot = rotateField(cx, cy);
             cx = rot.x;
             cy = rot.y;
@@ -268,7 +271,7 @@ const blob: FieldEngine = {
           cx += Math.sin(T * 0.33 + dph) * S * 0.012 * (wanderM + 0.4);
           cy += Math.cos(T * 0.29 + dph * 1.3) * S * 0.012 * (wanderM + 0.4);
           dPulse = 1 + (kickEnv * 0.16 + kickSpring * 0.1) * (0.5 + pulseM) + morphM * 0.05 * Math.sin(T * 0.8 + dph);
-          dAng = T * 0.1 * swirlM + 0.18 * swirlM * Math.sin(T * 0.5 + dph);
+          dAng = T * 0.1 * swirlT + 0.18 * swirlT * Math.sin(T * 0.5 + dph);
         }
         const RW = Rb * aH * dPulse,
           RH = Rb * aV * dPulse,

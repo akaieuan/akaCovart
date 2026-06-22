@@ -26,6 +26,12 @@ export interface StudioState {
   // palette / mood
   mood: MoodSel;
 
+  // palette transform (Color controls) — applied to the RESOLVED palette before
+  // rendering, so they recolour ALL engines. Defaults are no-ops.
+  colorTone: number; // 0..100; 50 = neutral. <50 darkens (incl. base), >50 lightens.
+  colorHue: number; // 0..100; 0 = none. Maps to a 0..360deg hue rotation.
+  colorSat: number; // 0..100; 50 = neutral. 0 = grayscale, 100 = ~2x vivid.
+
   // engine + engine-specific composition params
   engine: string;
   gridCols: number;
@@ -184,6 +190,11 @@ export function makeSeeds(n: number): number[] {
 // Prototype defaults, verbatim.
 const defaults = {
   mood: "random" as MoodSel,
+
+  // palette transform (Color controls) — neutral defaults => unchanged output.
+  colorTone: 50,
+  colorHue: 0,
+  colorSat: 50,
 
   engine: "blob",
   gridCols: 9,
