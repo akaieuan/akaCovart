@@ -40,10 +40,9 @@ function FontPickerInner({ paramKey, options, className }: FontPickerProps) {
             }
             style={{ fontFamily: `"${op.value}", sans-serif` }}
             className={cn(
-              "h-auto truncate rounded-[3px] border border-grey-800 bg-transparent px-2 py-2 text-[12px] font-normal leading-none text-grey-350",
-              "hover:border-grey-500 hover:text-grey-200",
-              active &&
-                "border-grey-500 bg-grey-600 text-grey-100",
+              "h-auto truncate rounded-[5px] border border-grey-800/80 bg-grey-880/40 px-2 py-[9px] text-[12px] font-normal leading-none text-grey-300 transition-colors",
+              "hover:border-grey-700 hover:bg-grey-850/60 hover:text-grey-150",
+              active && "border-grey-500/70 bg-grey-100 text-grey-950",
             )}
           >
             {op.label}

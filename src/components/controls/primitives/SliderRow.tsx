@@ -64,8 +64,8 @@ function SliderRowInner({
   };
 
   return (
-    <div className="mb-4">
-      <div className="mb-2 flex items-baseline justify-between">
+    <div className="mb-[18px]">
+      <div className="mb-[7px] flex items-center justify-between gap-2">
         <Label sub={sub} className="!text-grey-300">
           {label}
         </Label>
@@ -83,14 +83,14 @@ function SliderRowInner({
               if (e.key === "Enter") commit();
               else if (e.key === "Escape") setEditing(false);
             }}
-            className="w-[44px] rounded-[2px] border border-grey-600 bg-grey-880 px-1 text-right font-sans text-[11px] font-normal text-grey-100 outline-none"
+            className="w-[52px] rounded-[4px] border border-grey-600 bg-grey-880/80 px-1.5 py-0.5 text-right font-sans text-[11px] font-medium tabular-nums text-grey-100 outline-none focus:border-grey-450"
           />
         ) : (
           <button
             type="button"
             onClick={startEdit}
             title="Click to edit"
-            className="cursor-text bg-transparent font-sans text-[11px] font-normal text-grey-150 hover:text-grey-100"
+            className="-mr-1.5 cursor-text rounded-[4px] bg-transparent px-1.5 py-0.5 font-sans text-[11px] font-medium tabular-nums text-grey-150 transition-colors hover:bg-grey-800/50 hover:text-grey-100"
           >
             {value}
           </button>

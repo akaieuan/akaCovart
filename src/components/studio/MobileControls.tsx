@@ -1,0 +1,238 @@
+"use client";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MobileControls — small-screen control dock (below md).
+//
+// Replaces the right-side drawer with a fixed bottom dock so params are reachable
+// without leaving the canvas. A HORIZONTAL section-tab strip swaps which section
+// is shown; the params live in a FIXED-HEIGHT panel so switching tabs causes zero
+// page movement (the canvas above never reflows). Animate mode shows the shared
+// <Controls/> motion panel directly.
+//
+// Self-contained on purpose: it reuses the data config + primitives + leaf
+// components (all stable exports) and mirrors the section composition locally, so
+// the frequently-rewritten Controls.tsx can't clobber it. The single source of
+// truth for the PARAMS themselves stays controls-config.ts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { useState, type ReactNode } from "react";
+
+import { useStudio } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import {
+  GroupLabel,
+  SliderRow,
+  ToggleRow,
+  Segmented,
+  ColorPicker,
+  FontPicker,
+  TextRow,
+} from "@/components/controls/primitives";
+import Gallery from "@/components/controls/Gallery";
+import { Presets } from "@/components/controls/Presets";
+import { PositionGrid } from "@/components/controls/PositionGrid";
+import { Controls } from "@/components/controls";
+import {
+  type Control,
+  type ControlGroup,
+  MOOD_OPTIONS,
+  COLOR_TONE_GROUP,
+  COMPOSITION_BY_ENGINE,
+  FINISH_GROUP,
+  TEXTURE_GROUPS,
+  TEXT_CASE_OPTIONS,
+  TEXT_COLOR_OPTIONS,
+  TEXT_FONT_OPTIONS,
+} from "@/components/controls/controls-config";
+
+import EngineSelector from "./EngineSelector";
+import { SeedRow } from "./SeedRow";
+import { ModeToggle } from "./ModeToggle";
+import { ResetButton } from "./ResetButton";
+import { ExportButton } from "./ExportButton";
+
+// ── DRY render core (mirrors Controls.tsx) ───────────────────────────────────
+function renderControl(c: Control): ReactNode {
+  switch (c.kind) {
+    case "slider":
+      return (
+        <SliderRow
+          key={c.key}
+          paramKey={c.key}
+          label={c.label}
+          min={c.min}
+          max={c.max}
+          step={c.step}
+          sub={c.sub}
+        />
+      );
+    case "toggle":
+      return <ToggleRow key={c.key} paramKey={c.key} label={c.label} />;
+    case "segmented":
+      return <Segmented key={c.key} paramKey={c.key} options={c.options} />;
+    case "text":
+      return (
+        <TextRow
+          key={c.key}
+          paramKey={c.key}
+          placeholder={c.placeholder}
+          muted={c.muted}
+        />
+      );
+  }
+}
+
+function renderGroups(groups: ControlGroup[]): ReactNode {
+  return groups.map((g, gi) => (
+    <div key={g.heading ?? gi}>
+      {g.heading && <GroupLabel>{g.heading}</GroupLabel>}
+      {g.controls.map((c) => renderControl(c))}
+    </div>
+  ));
+}
+
+// ── Section bodies (composition mirrors Controls.tsx; params come from config) ─
+function StartBody() {
+  return (
+    <>
+      <Presets />
+      <Gallery />
+    </>
+  );
+}
+
+function PaletteBody() {
+  return (
+    <>
+      <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
+      <ColorPicker paramKey="colorPick" label="Color" />
+      {renderGroups([COLOR_TONE_GROUP])}
+    </>
+  );
+}
+
+function ComposeBody() {
+  const engine = useStudio((s) => s.engine);
+  return (
+    <>
+      {renderGroups(COMPOSITION_BY_ENGINE[engine] ?? [])}
+      {renderGroups([FINISH_GROUP])}
+    </>
+  );
+}
+
+function TextureBody() {
+  return <>{renderGroups(TEXTURE_GROUPS)}</>;
+}
+
+function TypeBody() {
+  return (
+    <>
+      <ToggleRow label="Render text" paramKey="showText" />
+      <TextRow paramKey="title" placeholder="Title" className="mb-[9px]" />
+      <TextRow paramKey="artist" placeholder="Artist" muted className="mb-[14px]" />
+      <GroupLabel variant="sub">Font</GroupLabel>
+      <FontPicker className="mb-[14px]" paramKey="textFont" options={TEXT_FONT_OPTIONS} />
+      <GroupLabel variant="sub">Case</GroupLabel>
+      <Segmented className="mb-[14px]" paramKey="textCase" options={TEXT_CASE_OPTIONS} />
+      <SliderRow label="Distort / glitch" paramKey="distort" min={0} max={100} sub />
+      <GroupLabel variant="sub">Color</GroupLabel>
+      <Segmented className="mb-[14px]" paramKey="textColor" options={TEXT_COLOR_OPTIONS} />
+      <PositionGrid />
+    </>
+  );
+}
+
+function EngineBody() {
+  return (
+    <div className="flex flex-col gap-3">
+      <EngineSelector />
+      <SeedRow />
+    </div>
+  );
+}
+
+// Animate mode reuses the shared Controls motion panel (Beat / Drift / Motion /
+// Auto / audio) so there is exactly one source of truth for motion params.
+function MotionBody() {
+  return <Controls />;
+}
+
+type Tab = { id: string; label: string; Body: () => ReactNode };
+
+const STILL_TABS: Tab[] = [
+  { id: "engine", label: "Engine", Body: EngineBody },
+  { id: "library", label: "Looks", Body: StartBody },
+  { id: "palette", label: "Palette", Body: PaletteBody },
+  { id: "composition", label: "Compose", Body: ComposeBody },
+  { id: "texture", label: "Texture", Body: TextureBody },
+  { id: "type", label: "Type", Body: TypeBody },
+];
+
+const ANIM_TABS: Tab[] = [
+  { id: "engine", label: "Engine", Body: EngineBody },
+  { id: "motion", label: "Motion", Body: MotionBody },
+];
+
+export default function MobileControls({ onExport }: { onExport: () => void }) {
+  const mode = useStudio((s) => s.mode);
+  const showFormats = useStudio((s) => s.showFormats);
+  const showPreview = useStudio((s) => s.showPreview);
+  const overlayOpen = showFormats || showPreview;
+
+  const tabs = mode === "animate" ? ANIM_TABS : STILL_TABS;
+  const [tab, setTab] = useState<string>("composition");
+  // Tab state persists across STILL/ANIMATE swaps; clamp to a valid one.
+  const activeId = tabs.some((t) => t.id === tab)
+    ? tab
+    : mode === "animate"
+      ? "motion"
+      : "composition";
+  const ActiveBody = tabs.find((t) => t.id === activeId)!.Body;
+
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-x-0 bottom-0 z-30 p-3 transition-opacity duration-300 md:hidden",
+        overlayOpen && "opacity-0",
+      )}
+    >
+      <div className="pointer-events-auto flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/85 shadow-[0_18px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
+        {/* Horizontal nav — every group (incl. Engine) is a tab. Scrolls sideways. */}
+        <div className="flex flex-none gap-1 overflow-x-auto border-b border-white/[0.06] px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              aria-pressed={activeId === t.id}
+              className={cn(
+                "flex-none rounded-full px-3.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors",
+                activeId === t.id
+                  ? "bg-grey-100 text-bg"
+                  : "text-grey-300 hover:bg-white/5 hover:text-white",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Params — FIXED height so switching tabs never moves the page; scrolls
+            internally so the dock stays compact. */}
+        <div className="pnl h-[24vh] max-h-[260px] min-h-[140px] overflow-y-auto px-3 py-2.5">
+          <ActiveBody />
+        </div>
+
+        {/* Slim action footer: mode + reset + export. */}
+        <div className="flex flex-none flex-col gap-2 border-t border-white/[0.06] px-3 py-2.5">
+          <div className="flex gap-2">
+            <ModeToggle className="flex-1" />
+            <ResetButton />
+          </div>
+          <ExportButton onExport={onExport} />
+        </div>
+      </div>
+    </div>
+  );
+}

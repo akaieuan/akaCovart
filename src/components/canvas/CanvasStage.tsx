@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { renderTo } from "@/engine";
+import { renderFormatTo } from "@/engine";
 import type { TextBox } from "@/engine";
 import { useStudio, renderParams, type StudioState } from "@/lib/store";
 import { getFormat } from "@/lib/formats";
@@ -135,7 +135,9 @@ function textSig(s: StudioState): string {
 }
 
 function sig(s: StudioState): string {
-  return s.seed + "|" + paramSig(s) + "|" + textSig(s);
+  // `format` is included so switching the delivery format re-renders the live
+  // frame (the backing-store aspect + crop + frame-space type all change).
+  return s.seed + "|" + paramSig(s) + "|" + textSig(s) + "|" + s.format;
 }
 
 export default function CanvasStage({
@@ -154,6 +156,20 @@ export default function CanvasStage({
   const rafRef = useRef<number | null>(null);
   const t0Ref = useRef(0);
   const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+  // Reused offscreen square canvas for the format cover-crop, so the animate loop
+  // never allocates a canvas per frame (which would cause GC hitches).
+  const scratchRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Backing-store dims for the ACTIVE format at a given longest-edge target. The
+  // engines render square; the canvas is the format aspect (cover-cropped), so
+  // the live frame matches the chosen delivery format 1:1 with the export.
+  const fmtDims = useCallback((longEdge: number) => {
+    const f = getFormat(stateRef.current.format);
+    const a = f.w / f.h;
+    return a >= 1
+      ? { w: longEdge, h: Math.max(1, Math.round(longEdge / a)) }
+      : { w: Math.max(1, Math.round(longEdge * a)), h: longEdge };
+  }, []);
 
   // Adaptive animation-resolution state for the unified anim loop. An EMA of
   // frame time drives the backing-store size to keep motion fluid.
@@ -184,15 +200,18 @@ export default function CanvasStage({
   // Render at an explicit backing-store size. Smaller = cheaper "draft" frame;
   // the canvas is CSS-scaled to the stage so a draft just looks slightly soft.
   const drawAt = useCallback(
-    (size: number) => {
+    (longEdge: number) => {
       const c = canvasRef.current;
       if (!c) return;
-      c.width = size;
-      c.height = size;
-      const res = renderTo(c, size, renderParams(stateRef.current));
+      const { w, h } = fmtDims(longEdge);
+      c.width = w;
+      c.height = h;
+      const scratch =
+        scratchRef.current ?? (scratchRef.current = document.createElement("canvas"));
+      const res = renderFormatTo(c, renderParams(stateRef.current), scratch);
       textBoxRef.current = res.textBox;
     },
-    [canvasRef],
+    [canvasRef, fmtDims],
   );
 
   // Full-quality immediate draw (mount / settle / after an anim loop stops).
@@ -264,8 +283,11 @@ export default function CanvasStage({
     if (rafRef.current != null) return;
     const c = canvasRef.current;
     if (!c) return;
-    c.width = DISPLAY;
-    c.height = DISPLAY;
+    {
+      const d = fmtDims(DISPLAY);
+      c.width = d.w;
+      c.height = d.h;
+    }
     t0Ref.current = performance.now();
     animResRef.current = ANIM_START;
     animEmaRef.current = 16;
@@ -282,7 +304,11 @@ export default function CanvasStage({
     {
       const s0 = stateRef.current;
       const p0 = { ...renderParams(s0), _anim: true, _t: 0, _rt: 0, _bake: !!s0.recording };
-      const res0 = renderTo(c, DISPLAY, p0);
+      const res0 = renderFormatTo(
+        c,
+        p0,
+        scratchRef.current ?? (scratchRef.current = document.createElement("canvas")),
+      );
       textBoxRef.current = res0.textBox;
       if (!s0.recording) {
         const cc = 1 + ((s0.contrast - 50) / 50) * 0.7;
@@ -464,11 +490,16 @@ export default function CanvasStage({
         animResRef.current = nextAnimRes(animResRef.current, animEmaRef.current);
       }
       const renderSize = bake ? DISPLAY : animResRef.current;
-      if (c.width !== renderSize) {
-        c.width = renderSize;
-        c.height = renderSize;
+      const { w: tw, h: th } = fmtDims(renderSize);
+      if (c.width !== tw || c.height !== th) {
+        c.width = tw;
+        c.height = th;
       }
-      const res = renderTo(c, renderSize, p);
+      const res = renderFormatTo(
+        c,
+        p,
+        scratchRef.current ?? (scratchRef.current = document.createElement("canvas")),
+      );
       textBoxRef.current = res.textBox;
 
       // Live contrast/saturate via CSS filter (never per-frame pixel work).
@@ -486,7 +517,7 @@ export default function CanvasStage({
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
-  }, [canvasRef, trackActive, resetAudioTransients]);
+  }, [canvasRef, trackActive, resetAudioTransients, fmtDims]);
 
   // ── Mount + reactive sync ─────────────────────────────────────────────────
   useEffect(() => {
@@ -540,18 +571,14 @@ export default function CanvasStage({
   }, [state, draw, scheduleDraw, startAnim, stopAnim]);
 
   // ── Drag-to-move text on canvas ───────────────────────────────────────────
-  // The canvas backing store is SQUARE but displayed with object-cover inside the
-  // active-format frame, so the square is scaled to the frame's longer edge and
-  // centre-cropped. Undo that here so pointer coords map back to square-space
-  // [0,1] (matching the textBox), keeping drag accurate in every format.
+  // The canvas is now the ACTIVE FORMAT's aspect (backing store == frame), and
+  // the type box is reported in frame space, so pointer coords map directly to
+  // [0,1] of the frame — accurate in every format with no crop math.
   const norm = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
-    const side = Math.max(r.width, r.height);
-    const offX = (r.width - side) / 2;
-    const offY = (r.height - side) / 2;
     return {
-      x: (e.clientX - r.left - offX) / side,
-      y: (e.clientY - r.top - offY) / side,
+      x: (e.clientX - r.left) / r.width,
+      y: (e.clientY - r.top) / r.height,
     };
   };
 
@@ -616,7 +643,7 @@ export default function CanvasStage({
       >
         <canvas
           ref={canvasRef}
-          className="block h-full w-full touch-none object-cover"
+          className="block h-full w-full touch-none"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

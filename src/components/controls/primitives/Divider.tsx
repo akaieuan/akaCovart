@@ -1,5 +1,6 @@
 "use client";
 
 export function Divider() {
-  return <div className="my-4 h-px bg-border-soft" />;
+  // Quiet hairline that reads on glass without drawing a hard line.
+  return <div className="my-[18px] h-px bg-grey-800/60" />;
 }

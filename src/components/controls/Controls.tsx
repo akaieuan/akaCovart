@@ -92,8 +92,8 @@ function PanelSection({
   children: ReactNode;
 }) {
   return (
-    <AccordionItem value={value} className="border-b border-border-soft">
-      <AccordionTrigger className="rounded-none px-5 py-[15px] font-sans text-[13px] font-medium text-grey-250 no-underline hover:no-underline hover:text-grey-150">
+    <AccordionItem value={value} className="border-b border-grey-800/50">
+      <AccordionTrigger className="rounded-none px-5 py-4 font-sans text-[13px] font-medium tracking-[0.01em] text-grey-250 no-underline transition-colors hover:no-underline hover:text-grey-100">
         {title}
       </AccordionTrigger>
       <AccordionContent className="px-5 pt-0 pb-[18px]">

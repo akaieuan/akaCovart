@@ -1,28 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Intro } from "@/components/intro";
 import { Stage } from "@/components/canvas";
 import { Controls } from "@/components/controls";
 import EngineSelector from "./EngineSelector";
-import TopBar from "./TopBar";
+import Header from "./Header";
 import { SeedRow } from "./SeedRow";
 import { ModeToggle } from "./ModeToggle";
 import { ResetButton } from "./ResetButton";
 import { ExportButton } from "./ExportButton";
-import { FormatsButton } from "./FormatsButton";
 import Formats from "./Formats";
+import Preview from "./Preview";
+import MobileControls from "./MobileControls";
 import { useStudio } from "@/lib/store";
 import { exportPng, exportVideo } from "@/lib/export";
 import { cn } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 
 export default function Studio() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,9 +25,11 @@ export default function Studio() {
   // Landing gate: show the intro until the user clicks Start, then the studio.
   const [started, setStarted] = useState(false);
 
-  // Multi-format bento overlay — when open, the sidebar slides away and the
-  // floating mobile controls hide so the bento owns the screen.
+  // Nav state — overlays cover the editor; collapse hides the sidebar.
   const showFormats = useStudio((s) => s.showFormats);
+  const showPreview = useStudio((s) => s.showPreview);
+  const collapsed = useStudio((s) => s.sidebarCollapsed);
+  const overlayOpen = showFormats || showPreview;
 
   // Randomize seed + gallery after hydration (initial values are deterministic
   // to avoid an SSR/client mismatch). Gives fresh art on every load.
@@ -45,7 +42,7 @@ export default function Studio() {
   const handleExport = () => {
     const s = useStudio.getState();
     // Animate records the live (BPM- or track-driven) canvas to video; Still
-    // exports a 3000² PNG.
+    // exports a PNG in the active delivery format.
     if (s.mode === "animate") {
       if (s.recording) return;
       const c = canvasRef.current;
@@ -64,116 +61,88 @@ export default function Studio() {
   };
 
   // Landing first: a full-bleed looping generative backdrop + Start button.
-  // Clicking Start fades the intro out and reveals the studio.
   if (!started) {
     return <Intro onStart={() => setStarted(true)} />;
   }
 
   return (
     <div className="relative flex h-screen w-full overflow-hidden bg-bg text-ink">
-      {/* Floating wordmark over the canvas backdrop — click returns to start */}
-      <TopBar onHome={() => setStarted(false)} />
+      {/* Transparent floating header: wordmark + Edit / Formats / Preview nav */}
+      <Header onHome={() => setStarted(false)} />
 
-      {/* HERO: canvas centered, fills remaining space. Stage forwards canvasRef
-          to the 2D CanvasStage. */}
+      {/* HERO: canvas centered, fills remaining space. Expands when the sidebar
+          collapses. Stage forwards canvasRef to the 2D CanvasStage. */}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Stage canvasRef={canvasRef} />
       </main>
 
-      {/* ── DESKTOP SIDEBAR (md+) ─────────────────────────────────────── */}
-      {/* Slides out to the right when the format bento is open. */}
+      {/* ── DESKTOP SIDEBAR (md+) ─────────────────────────────────────────────
+          A floating, muted-glass, rounded panel inset from the top/right/bottom.
+          Collapses to zero width (canvas reclaims the space) via the edge handle
+          below. Inner panel keeps a fixed width so it clips cleanly while
+          collapsing instead of squishing. */}
       <aside
         className={cn(
-          "hidden w-[320px] flex-none flex-col border-l border-border bg-panel transition-transform duration-300 ease-out md:flex lg:w-[380px] xl:w-[400px]",
-          showFormats && "translate-x-full",
+          "z-30 hidden flex-none overflow-hidden transition-[width] duration-300 ease-out md:block",
+          collapsed ? "w-0" : "w-[324px] lg:w-[348px]",
         )}
       >
-        {/* Engine selector + seed/generate (sticky header zone) */}
-        <div className="flex flex-none flex-col gap-3 border-b border-border px-5 pt-5 pb-4">
-          <EngineSelector />
-          <SeedRow />
-        </div>
+        <div className="flex h-full w-[324px] flex-col p-3 pt-[74px] lg:w-[348px]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/65 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+            {/* Engine selector + seed/generate (sticky header zone) */}
+            <div className="flex flex-none flex-col gap-3 border-b border-white/[0.06] px-4 pt-4 pb-3.5">
+              <EngineSelector />
+              <SeedRow />
+            </div>
 
-        {/* Scrolling parameter body */}
-        <div className="pnl min-h-0 flex-1 overflow-y-auto">
-          <Controls />
-        </div>
+            {/* Scrolling parameter body */}
+            <div className="pnl min-h-0 flex-1 overflow-y-auto">
+              <Controls />
+            </div>
 
-        {/* Sticky action footer: mode + reset + formats + export */}
-        <div className="flex flex-none flex-col gap-[9px] border-t border-border px-5 py-4">
-          <div className="flex gap-2">
-            <ModeToggle className="flex-1" />
-            <ResetButton />
+            {/* Sticky action footer: mode + reset + export */}
+            <div className="flex flex-none flex-col gap-2.5 border-t border-white/[0.06] px-4 py-3.5">
+              <div className="flex gap-2">
+                <ModeToggle className="flex-1" />
+                <ResetButton />
+              </div>
+              <ExportButton onExport={handleExport} />
+            </div>
           </div>
-          <FormatsButton />
-          <ExportButton onExport={handleExport} />
         </div>
       </aside>
 
-      {/* ── PHONE FLOATING CONTROLS (below md) ────────────────────────── */}
-      <div
+      {/* Sidebar collapse / expand handle (desktop) — a tab on the panel's edge.
+          A dedicated control so the header's Edit/Formats/Preview stay consistent
+          view switchers. Slides with the panel; sits at the screen edge when
+          collapsed. Hidden while an overlay is open. */}
+      <button
+        type="button"
+        onClick={() =>
+          useStudio.getState().setState({ sidebarCollapsed: !collapsed })
+        }
+        aria-label={collapsed ? "Show controls" : "Hide controls"}
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 p-4 transition-opacity duration-300 md:hidden",
-          showFormats && "opacity-0",
+          "absolute top-1/2 z-30 hidden h-14 w-6 -translate-y-1/2 items-center justify-center rounded-l-[8px] border border-r-0 border-white/10 bg-panel/70 text-grey-300 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300 ease-out hover:text-white md:flex",
+          overlayOpen && "pointer-events-none opacity-0",
+          collapsed ? "right-0" : "right-[312px] lg:right-[336px]",
         )}
       >
-        {/* Engine selector stays reachable without opening the sheet */}
-        <div className="pointer-events-auto rounded-[6px] border border-border bg-panel/95 p-2 shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-sm">
-          <EngineSelector />
-        </div>
-        <div className="pointer-events-auto flex items-stretch gap-2">
-          <Sheet>
-            <SheetTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Open controls"
-                  className="flex h-12 flex-none items-center gap-2 rounded-[6px] border border-border bg-panel/95 px-4 text-[12px] font-normal text-ink shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-sm transition-colors hover:bg-grey-900"
-                />
-              }
-            >
-              <SlidersHorizontal className="size-[15px]" />
-              Controls
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="flex w-[90vw] max-w-[400px] flex-col gap-0 border-l border-border bg-panel p-0"
-            >
-              {/* Sheet header: engine + seed + mode (always visible at top) */}
-              <div className="flex flex-none flex-col gap-3 border-b border-border px-5 pt-5 pb-4">
-                <SheetTitle className="text-[13px] font-medium text-grey-300">
-                  Engine
-                </SheetTitle>
-                <EngineSelector />
-                <SeedRow />
-                <div className="flex gap-2">
-                  <ModeToggle className="flex-1" />
-                  <ResetButton />
-                </div>
-              </div>
-              {/* Scrolling params */}
-              <div className="pnl min-h-0 flex-1 overflow-y-auto">
-                <Controls />
-              </div>
-              {/* Sheet footer: formats + export */}
-              <div className="flex flex-none flex-col gap-[9px] border-t border-border px-5 py-4">
-                <FormatsButton />
-                <ExportButton onExport={handleExport} />
-              </div>
-            </SheetContent>
-          </Sheet>
+        {collapsed ? (
+          <ChevronLeft className="size-4" />
+        ) : (
+          <ChevronRight className="size-4" />
+        )}
+      </button>
 
-          {/* Primary export reachable without opening the sheet */}
-          <div className="pointer-events-auto flex-1 rounded-[6px] border border-border bg-panel/95 p-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.6)] backdrop-blur-sm">
-            <ExportButton onExport={handleExport} />
-          </div>
-        </div>
-      </div>
+      {/* ── PHONE CONTROLS (below md) — bottom dock with horizontal section tabs */}
+      <MobileControls onExport={handleExport} />
 
-      {/* ── MULTI-FORMAT BENTO OVERLAY ────────────────────────────────── */}
-      {/* Always mounted (after Start) so it fades/scales in and out; previews
-          only render while it's open. */}
+      {/* ── OVERLAYS ──────────────────────────────────────────────────── */}
+      {/* Always mounted (after Start) so they fade/scale in and out; their heavy
+          previews only render while open. */}
       <Formats />
+      <Preview />
     </div>
   );
 }

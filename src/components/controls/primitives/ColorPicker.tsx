@@ -96,12 +96,12 @@ function ColorPickerInner({
             <button
               type="button"
               className={cn(
-                "flex w-full items-center gap-2 rounded-[3px] border border-grey-780 bg-grey-880 px-2 py-2",
-                "hover:border-grey-500",
+                "flex w-full items-center gap-2.5 rounded-[5px] border border-grey-800/80 bg-grey-880/40 px-2.5 py-2 transition-colors",
+                "hover:border-grey-700 hover:bg-grey-850/60",
               )}
             >
               <span
-                className="size-5 shrink-0 rounded-[3px] border border-grey-600"
+                className="size-5 shrink-0 rounded-[4px] border border-grey-600 shadow-sm"
                 style={
                   active
                     ? { background: value }

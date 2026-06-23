@@ -42,10 +42,10 @@ function SegmentedInner({ paramKey, options, className }: SegmentedProps) {
           value={op.value}
           variant="outline"
           className={cn(
-            "h-auto flex-1 rounded-[3px] border-grey-800 bg-transparent px-0 py-2 font-sans text-[11px] font-normal text-grey-350",
-            "hover:border-grey-500 hover:bg-transparent hover:text-grey-200",
-            "data-pressed:border-grey-500 data-pressed:bg-grey-600 data-pressed:text-grey-100",
-            "aria-pressed:border-grey-500 aria-pressed:bg-grey-600 aria-pressed:text-grey-100",
+            "h-auto flex-1 rounded-[5px] border-grey-800/80 bg-grey-880/40 px-0 py-[7px] font-sans text-[11px] font-normal text-grey-350 transition-colors",
+            "hover:border-grey-700 hover:bg-grey-850/60 hover:text-grey-150",
+            "data-pressed:border-grey-500/70 data-pressed:bg-grey-100 data-pressed:font-medium data-pressed:text-grey-950",
+            "aria-pressed:border-grey-500/70 aria-pressed:bg-grey-100 aria-pressed:font-medium aria-pressed:text-grey-950",
           )}
         >
           {op.label}

@@ -29,7 +29,7 @@ function TextRowInner({ paramKey, placeholder, muted, className }: TextRowProps)
         setState({ [paramKey]: e.target.value } as Parameters<typeof setState>[0])
       }
       className={cn(
-        "h-[38px] rounded-[3px] border-grey-780 bg-grey-880 px-3 font-sans text-[12px] text-ink",
+        "h-[38px] rounded-[5px] border-grey-800/80 bg-grey-880/40 px-3 font-sans text-[12px] text-ink transition-colors hover:border-grey-700 focus-visible:border-grey-600",
         muted ? "font-normal text-grey-200" : "font-medium",
         className,
       )}

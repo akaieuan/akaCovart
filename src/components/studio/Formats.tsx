@@ -3,14 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Download, Loader2 } from "lucide-react";
 
+import { renderFormatTo } from "@/engine";
 import { renderParams, useStudio } from "@/lib/store";
-import { exportFormat, paintFormat } from "@/lib/export";
-import { FORMATS, fitDims, type Format } from "@/lib/formats";
+import { exportFormat } from "@/lib/export";
+import { FORMATS, getFormat, type Format, fitDims } from "@/lib/formats";
 import { ensureCoverFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
 // Longest edge of each preview canvas (cheap; the square is re-rendered per tile).
 const PREVIEW_PX = 640;
+
+// Hand-balanced bento columns (by format id). Tile heights vary wildly by aspect
+// (a 9:16 is ~3× a 3:1), so we place them into columns of roughly equal height
+// instead of letting auto-masonry leave gaps. On mobile the columns stack in
+// order, so Square (the cover) still leads.
+const COLUMNS: string[][] = [
+  ["square", "landscape"],
+  ["story"],
+  ["portrait", "wide"],
+];
 
 function FormatTile({
   f,
@@ -41,7 +52,7 @@ function FormatTile({
       if (cancelled) return;
       requestAnimationFrame(() => {
         if (cancelled) return;
-        paintFormat(c, Math.max(w, h), f, params);
+        renderFormatTo(c, params);
       });
     });
     return () => {
@@ -207,17 +218,23 @@ export default function Formats() {
         </button>
       </header>
 
-      {/* Bento — masonry so each tile keeps its true aspect with no dead space. */}
+      {/* Bento — balanced columns; each tile keeps its true aspect, no dead space. */}
       <div className="pnl min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="mx-auto max-w-[1040px] columns-1 gap-4 sm:columns-2 xl:columns-3">
-          {FORMATS.map((f) => (
-            <div key={f.id} className="mb-4 break-inside-avoid">
-              <FormatTile
-                f={f}
-                open={open}
-                active={f.id === activeFormat}
-                onFocus={() => focus(f.id)}
-              />
+        <div className="mx-auto flex max-w-[1040px] flex-col gap-4 md:flex-row md:items-start">
+          {COLUMNS.map((col, i) => (
+            <div key={i} className="flex flex-1 flex-col gap-4">
+              {col.map((id) => {
+                const f = getFormat(id);
+                return (
+                  <FormatTile
+                    key={id}
+                    f={f}
+                    open={open}
+                    active={f.id === activeFormat}
+                    onFocus={() => focus(f.id)}
+                  />
+                );
+              })}
             </div>
           ))}
         </div>

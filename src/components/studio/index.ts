@@ -7,3 +7,5 @@ export { ResetButton } from "./ResetButton";
 export { ExportButton } from "./ExportButton";
 export { FormatsButton } from "./FormatsButton";
 export { default as Formats } from "./Formats";
+export { default as Preview } from "./Preview";
+export { default as Header } from "./Header";

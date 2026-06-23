@@ -1,4 +1,4 @@
-import type { AnimState, Mood, RenderResult } from "./types";
+import type { AnimState, Mood, RenderResult, TextBox } from "./types";
 import { getEngine } from "./registry";
 import { palettes, recolorPalette, resolveMood, transformPalette } from "./palettes";
 import { prng } from "./prng";
@@ -175,9 +175,64 @@ export function renderTo(
   }
 
   let textBox;
-  if (params.showText) {
-    textBox = drawText(ctx, S, params, mood, prng(seed ^ 0x3b9a73c1));
+  // `_skipText` lets renderFormatTo draw the type AFTER cropping (in frame space)
+  // so it is placed for the chosen format rather than baked into the square.
+  if (params.showText && !params._skipText) {
+    textBox = drawText(ctx, S, S, params, mood, prng(seed ^ 0x3b9a73c1));
   }
 
+  return { textBox };
+}
+
+// ── Format render (square field cover-cropped into a non-square frame) ────────
+// The engines draw SQUARE; a delivery format is a centre cover-crop of that
+// square. The TYPE is drawn AFTER the crop, in FRAME space, so textX/textY place
+// it relative to THIS format (same relative spot in every ratio — never awkwardly
+// cropped). For a square destination this defers to renderTo (identical output).
+// `dest.width`/`dest.height` must already be set to the target frame size.
+// Pass a persistent `scratch` canvas in hot loops (the live animate path) to
+// avoid per-frame canvas allocation / GC churn.
+export function renderFormatTo(
+  dest: HTMLCanvasElement,
+  params: Record<string, any>,
+  scratch?: HTMLCanvasElement,
+): RenderResult {
+  const w = dest.width;
+  const h = dest.height;
+  if (w === h) {
+    return renderTo(dest, w, params);
+  }
+  const ctx = dest.getContext("2d");
+  if (!ctx) return {};
+
+  // Render the square field+effects WITHOUT type at the frame's longer edge so
+  // the cropped result is full-resolution on both axes.
+  const side = Math.max(w, h);
+  const off = scratch ?? document.createElement("canvas");
+  off.width = side; // (re)setting width also clears the scratch bitmap
+  off.height = side;
+  renderTo(off, side, { ...params, _skipText: true });
+
+  // Centre cover-crop the square field into the destination frame.
+  const a = w / h;
+  let sw: number;
+  let sh: number;
+  if (a >= 1) {
+    sw = side;
+    sh = side / a;
+  } else {
+    sh = side;
+    sw = side * a;
+  }
+  ctx.clearRect(0, 0, w, h);
+  ctx.drawImage(off, (side - sw) / 2, (side - sh) / 2, sw, sh, 0, 0, w, h);
+
+  // Type drawn in FRAME space (correct placement for this format).
+  let textBox: TextBox | undefined;
+  if (params.showText) {
+    const seed = (params.seed >>> 0) || 1;
+    const mood: Mood = resolveMood(seed, (params.mood ?? "random") as Mood | "random");
+    textBox = drawText(ctx, w, h, params, mood, prng(seed ^ 0x3b9a73c1));
+  }
   return { textBox };
 }

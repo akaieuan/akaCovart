@@ -165,8 +165,10 @@ export interface StudioState {
   // delivery format (output aspect ratio). The engine renders square; this is a
   // cover-crop applied to the live edit frame + export. See src/lib/formats.ts.
   format: string;
-  // multi-format bento overlay open?
+  // nav: multi-format bento overlay open? / preview overlay open? / sidebar collapsed?
   showFormats: boolean;
+  showPreview: boolean;
+  sidebarCollapsed: boolean;
 
   // actions
   setState: (patch: Partial<StudioState>) => void;
@@ -335,6 +337,8 @@ export const useStudio = create<StudioState>((set) => ({
   gallerySeeds: INITIAL_GALLERY,
   format: DEFAULT_FORMAT,
   showFormats: false,
+  showPreview: false,
+  sidebarCollapsed: false,
 
   setState: (patch) => set((s) => ({ ...s, ...patch })),
   toggleSection: (key) =>
