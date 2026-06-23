@@ -201,14 +201,17 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-0 z-30 p-3 transition-opacity duration-300 md:hidden",
+        // Lift the dock off the very bottom edge so the toggle clears the home
+        // indicator / browser chrome and sits in thumb reach (this is a web app
+        // on iOS, where the bottom edge is the worst place to tap).
+        "pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+18px)] transition-opacity duration-300 md:hidden",
         overlayOpen && "opacity-0",
       )}
     >
       <div className="pointer-events-auto flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/85 shadow-[0_18px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
         {/* Nav row: scrollable tabs (incl. Engine) + collapse toggle. Always shown,
             so when collapsed this slim bar is all that remains. */}
-        <div className="flex flex-none items-center gap-1 px-2 py-2">
+        <div className="flex flex-none items-center gap-1.5 px-2 py-2">
           <div className="flex flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {tabs.map((t) => (
               <button
@@ -217,7 +220,7 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
                 onClick={() => pick(t.id)}
                 aria-pressed={!collapsed && activeId === t.id}
                 className={cn(
-                  "flex-none rounded-full px-3.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors",
+                  "flex-none rounded-full px-3.5 py-2 text-[12px] font-medium whitespace-nowrap transition-colors",
                   !collapsed && activeId === t.id
                     ? "bg-grey-100 text-bg"
                     : "text-grey-300 hover:bg-white/5 hover:text-white",
@@ -227,17 +230,19 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
               </button>
             ))}
           </div>
+          {/* Bigger, clearly-tappable expand/collapse target (was a tiny edge
+              icon). Solid chip + larger icon so it reads as a button on touch. */}
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
             aria-label={collapsed ? "Expand controls" : "Collapse controls"}
             aria-expanded={!collapsed}
-            className="flex-none rounded-full p-1.5 text-grey-300 transition-colors hover:bg-white/5 hover:text-white"
+            className="flex-none rounded-full bg-white/8 px-3 py-2 text-grey-200 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
           >
             {collapsed ? (
-              <ChevronUp className="size-4" />
+              <ChevronUp className="size-5" />
             ) : (
-              <ChevronDown className="size-4" />
+              <ChevronDown className="size-5" />
             )}
           </button>
         </div>

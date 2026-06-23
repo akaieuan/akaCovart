@@ -8,7 +8,7 @@ import "./globals.css";
 // --font-app and points --font-sans/-mono/-heading at.
 
 export const metadata: Metadata = {
-  title: "akaTOOL — Album Art Engine",
+  title: "akaCOVART — Album Art Engine",
   description: "Generative album-art studio.",
 };
 
