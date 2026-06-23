@@ -165,7 +165,14 @@ export default function Intro({ onStart }: { onStart: () => void }) {
   // only — opacity is owned by the CSS transition, so the two never fight).
   const kenBurns = useCallback((layer: Layer, rt: number) => {
     const ph = layer.preset * 1.7;
-    const s = 1.025 + Math.sin(rt * 0.26 + ph) * 0.012; // zoomed out (was 1.06)
+    // object-fit:cover scales the square art to the viewport's LARGER side, so a
+    // tall/narrow phone renders it zoomed-OUT vs a wide desktop. Boost small
+    // viewports up to a desktop-ish reference so the start page reads the SAME on
+    // every screen. Desktop (cover >= REF) is unchanged (zoom = 1).
+    const REF = 1280;
+    const cover = Math.max(window.innerWidth, window.innerHeight) || REF;
+    const zoom = Math.max(1, REF / cover);
+    const s = (1.025 + Math.sin(rt * 0.26 + ph) * 0.012) * zoom;
     const tx = Math.sin(rt * 0.21 + ph) * 6;
     const ty = Math.cos(rt * 0.17 + ph * 1.3) * 6;
     layer.el.style.transform = `translate3d(${tx.toFixed(2)}px, ${ty.toFixed(2)}px, 0) scale(${s.toFixed(4)})`;

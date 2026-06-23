@@ -16,6 +16,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, type ReactNode } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -182,6 +183,7 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
 
   const tabs = mode === "animate" ? ANIM_TABS : STILL_TABS;
   const [tab, setTab] = useState<string>("composition");
+  const [collapsed, setCollapsed] = useState(false);
   // Tab state persists across STILL/ANIMATE swaps; clamp to a valid one.
   const activeId = tabs.some((t) => t.id === tab)
     ? tab
@@ -189,6 +191,12 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
       ? "motion"
       : "composition";
   const ActiveBody = tabs.find((t) => t.id === activeId)!.Body;
+
+  // Tapping a section always reveals it (auto-expand if collapsed).
+  const pick = (id: string) => {
+    setTab(id);
+    setCollapsed(false);
+  };
 
   return (
     <div
@@ -198,40 +206,58 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
       )}
     >
       <div className="pointer-events-auto flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/85 shadow-[0_18px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
-        {/* Horizontal nav — every group (incl. Engine) is a tab. Scrolls sideways. */}
-        <div className="flex flex-none gap-1 overflow-x-auto border-b border-white/[0.06] px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              aria-pressed={activeId === t.id}
-              className={cn(
-                "flex-none rounded-full px-3.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors",
-                activeId === t.id
-                  ? "bg-grey-100 text-bg"
-                  : "text-grey-300 hover:bg-white/5 hover:text-white",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Params — FIXED height so switching tabs never moves the page; scrolls
-            internally so the dock stays compact. */}
-        <div className="pnl h-[24vh] max-h-[260px] min-h-[140px] overflow-y-auto px-3 py-2.5">
-          <ActiveBody />
-        </div>
-
-        {/* Slim action footer: mode + reset + export. */}
-        <div className="flex flex-none flex-col gap-2 border-t border-white/[0.06] px-3 py-2.5">
-          <div className="flex gap-2">
-            <ModeToggle className="flex-1" />
-            <ResetButton />
+        {/* Nav row: scrollable tabs (incl. Engine) + collapse toggle. Always shown,
+            so when collapsed this slim bar is all that remains. */}
+        <div className="flex flex-none items-center gap-1 px-2 py-2">
+          <div className="flex flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => pick(t.id)}
+                aria-pressed={!collapsed && activeId === t.id}
+                className={cn(
+                  "flex-none rounded-full px-3.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors",
+                  !collapsed && activeId === t.id
+                    ? "bg-grey-100 text-bg"
+                    : "text-grey-300 hover:bg-white/5 hover:text-white",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-          <ExportButton onExport={onExport} />
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-label={collapsed ? "Expand controls" : "Collapse controls"}
+            aria-expanded={!collapsed}
+            className="flex-none rounded-full p-1.5 text-grey-300 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            {collapsed ? (
+              <ChevronUp className="size-4" />
+            ) : (
+              <ChevronDown className="size-4" />
+            )}
+          </button>
         </div>
+
+        {/* Params + footer collapse away to free the canvas. Params keep a FIXED
+            height so switching tabs never moves the page; they scroll internally. */}
+        {!collapsed && (
+          <>
+            <div className="pnl h-[20vh] max-h-[230px] min-h-[132px] overflow-y-auto border-t border-white/[0.06] px-3 py-2.5">
+              <ActiveBody />
+            </div>
+            <div className="flex flex-none flex-col gap-2 border-t border-white/[0.06] px-3 py-2.5">
+              <div className="flex gap-2">
+                <ModeToggle className="flex-1" />
+                <ResetButton />
+              </div>
+              <ExportButton onExport={onExport} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
