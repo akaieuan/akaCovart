@@ -1,3 +1,5 @@
+import { drawBlurred } from "../blur";
+
 // Additive bloom pass — ported from the prototype (index.html `bloom`).
 export function bloom(ctx: CanvasRenderingContext2D, size: number, amount: number): void {
   if (amount <= 0) return;
@@ -9,9 +11,7 @@ export function bloom(ctx: CanvasRenderingContext2D, size: number, amount: numbe
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.globalAlpha = 0.42 * b;
-  ctx.filter = "blur(" + size * 0.018 + "px)";
-  ctx.drawImage(t, 0, 0);
+  drawBlurred(ctx, t, size, size * 0.018);
   ctx.restore();
-  ctx.filter = "none";
   ctx.globalAlpha = 1;
 }

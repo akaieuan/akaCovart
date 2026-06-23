@@ -1,5 +1,6 @@
 import type { Palette } from "../types";
 import { rgb } from "../color";
+import { drawBlurred } from "../blur";
 
 // Soften / blur pass — ported from the prototype (index.html renderTo soften block).
 // Re-floors the base color before re-blitting so edges fade into the base, not black.
@@ -19,8 +20,6 @@ export function soften(
   ctx.fillStyle = rgb(cfg.base);
   ctx.fillRect(0, 0, size, size);
   ctx.save();
-  ctx.filter = "blur(" + sof * size * 0.05 + "px)";
-  ctx.drawImage(tb, 0, 0);
+  drawBlurred(ctx, tb, size, sof * size * 0.05);
   ctx.restore();
-  ctx.filter = "none";
 }

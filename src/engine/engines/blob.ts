@@ -2,6 +2,7 @@ import type { FieldArgs, FieldEngine, ParamDef, RNG } from "../types";
 import { registerEngine } from "../registry";
 import { prng } from "../prng";
 import { rgba } from "../color";
+import { drawBlurred } from "../blur";
 
 // BLOB field — ported from the else-branch of the prototype `renderTo`
 // (paint / diamonds / accents / blur).
@@ -369,18 +370,14 @@ const blob: FieldEngine = {
 
     const blurPx = S * (0.012 + (p.smear / 100) * 0.055);
     ctx.save();
-    ctx.filter = "blur(" + blurPx + "px)";
-    ctx.drawImage(paint, 0, 0);
+    drawBlurred(ctx, paint, S, blurPx);
     ctx.restore();
-    ctx.filter = "none";
 
     if (p.diamonds) {
       const dBlur = Math.max(0.5, blurPx * 0.42);
       ctx.save();
-      ctx.filter = "blur(" + dBlur + "px)";
-      ctx.drawImage(paintD, 0, 0);
+      drawBlurred(ctx, paintD, S, dBlur);
       ctx.restore();
-      ctx.filter = "none";
     }
   },
 };
