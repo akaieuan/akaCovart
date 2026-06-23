@@ -8,7 +8,7 @@
 
 ![The akaCOVART studio — a generated blob cover beside the control panel](docs/studio.jpg)
 
-**akaCOVART** (working name **akaTOOL**) is a browser-based studio for generating album art. You pick a field engine, give it a seed, and shape the result with palettes, composition controls, film texture, and a type overlay — then export a 3000×3000 PNG or a looping video. Every image is deterministic: the same seed and parameters always produce the same artwork, so a result you like is always reproducible and shareable as data.
+**akaCOVART** is a browser-based studio for generating album art. You pick a field engine, give it a seed, and shape the result with palettes, composition controls, film texture, and a type overlay — then export a 3000×3000 PNG or a looping video. Every image is deterministic: the same seed and parameters always produce the same artwork, so a result you like is always reproducible and shareable as data.
 
 It is aimed at musicians, labels, and designers who want distinctive cover art fast, and at developers who want a clean, framework-agnostic generative engine to build on. Built by Ieuan King (akaBuild) as a single Next.js + Tailwind app, with the generative core isolated as a pure module under [`src/engine`](./src/engine).
 
@@ -492,4 +492,4 @@ Contributions are welcome. New engines and presets should follow the two contrib
 
 Licensed under [Apache-2.0](./LICENSE).
 
-**Trademark:** "akaCOVART" and "akaTOOL" are trademarks of the project owner and are **not** licensed under Apache-2.0. The source license does not grant rights to use these names, marks, or logos except as required for reasonable and customary use in describing the origin of the work. See [NOTICE](./NOTICE) for details.
+**Trademark:** "akaCOVART" is a trademark of the project owner and is **not** licensed under Apache-2.0. The source license does not grant rights to use this name, mark, or logos except as required for reasonable and customary use in describing the origin of the work. See [NOTICE](./NOTICE) for details.
