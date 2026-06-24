@@ -70,6 +70,26 @@ export interface StudioState {
   contourSway: number; // 0..100; whole-frame camera parallax/sway (anim only).
   contourLift: number; // 0..100; beat-driven terrain + camera lift (anim only).
 
+  // flux (liquid-marble colour field) params
+  fluxScale: number;
+  fluxWarp: number;
+  fluxBands: number;
+  fluxDepth: number;
+  fluxFlow: number;
+  fluxDrift: number;
+  fluxSwirl: number;
+  fluxPulse: number;
+
+  // signal (interference / moiré) params
+  signalFreq: number;
+  signalLayers: number;
+  signalSpread: number;
+  signalSharp: number;
+  signalDrift: number;
+  signalSwirl: number;
+  signalPulse: number;
+  signalFlow: number;
+
   // seed
   seed: number;
 
@@ -250,6 +270,24 @@ const defaults = {
   contourFill: 60,
   contourSway: 50,
   contourLift: 55,
+
+  fluxScale: 50,
+  fluxWarp: 55,
+  fluxBands: 45,
+  fluxDepth: 50,
+  fluxFlow: 50,
+  fluxDrift: 45,
+  fluxSwirl: 40,
+  fluxPulse: 50,
+
+  signalFreq: 50,
+  signalLayers: 50,
+  signalSpread: 50,
+  signalSharp: 50,
+  signalDrift: 50,
+  signalSwirl: 40,
+  signalPulse: 50,
+  signalFlow: 45,
 
   soften: 0,
   density: 60,

@@ -8,5 +8,5 @@ export * from "./sharedParams";
 export * from "./effects";
 export * from "./render";
 
-// Self-register the built-in engines (blob/grid/waves/orb).
+// Self-register the built-in engines (blob/grid/contours/flux/signal).
 import "./engines";

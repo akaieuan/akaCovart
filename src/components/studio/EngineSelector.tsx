@@ -1,6 +1,6 @@
 "use client";
 
-import { Circle, Grid3x3, Waves, Droplet, Spline } from "lucide-react";
+import { Circle, Grid3x3, Activity, Droplet, Spline, Wind } from "lucide-react";
 import { listEngines } from "@/engine";
 import { useStudio } from "@/lib/store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -17,8 +17,9 @@ type EngineDef = {
 const ENGINE_DEFS: EngineDef[] = [
   { value: "blob", label: "Blob", Icon: Droplet },
   { value: "grid", label: "Grid", Icon: Grid3x3 },
-  { value: "waves", label: "Wave", Icon: Waves },
   { value: "contours", label: "Contours", Icon: Spline },
+  { value: "flux", label: "Flux", Icon: Wind },
+  { value: "signal", label: "Signal", Icon: Activity },
 ];
 
 const DEF_BY_ID = new Map(ENGINE_DEFS.map((d) => [d.value, d]));
@@ -53,7 +54,7 @@ export default function EngineSelector({ className }: { className?: string }) {
       }}
       spacing={0}
       className={cn(
-        "grid w-full grid-cols-4 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
+        "grid w-full grid-cols-5 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
         className,
       )}
     >
@@ -63,7 +64,7 @@ export default function EngineSelector({ className }: { className?: string }) {
           value={value}
           aria-label={label}
           className={cn(
-            "flex h-11 flex-col items-center justify-center gap-[3px] rounded-[3px] border-0 bg-transparent text-[12px] font-normal text-grey-300 transition-colors",
+            "flex h-11 flex-col items-center justify-center gap-[3px] rounded-[3px] border-0 bg-transparent px-0.5 text-[10px] leading-tight font-normal text-grey-300 transition-colors",
             // idle hover
             "hover:bg-grey-850 hover:text-grey-150",
             // SELECTED: override the shadcn/base-ui default (data-[state=on]:bg-muted /
@@ -74,7 +75,7 @@ export default function EngineSelector({ className }: { className?: string }) {
             "aria-pressed:hover:bg-grey-100 aria-pressed:hover:text-bg",
           )}
         >
-          <Icon className="size-[15px]" />
+          <Icon className="size-[14px]" />
           {label}
         </ToggleGroupItem>
       ))}

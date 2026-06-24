@@ -76,18 +76,18 @@ const CHANNELS: AutoChannel[] = [
   // engine-specific (grid)
   { key: "gridDensity", min: 0, max: 100, freq: 0.031, phase: 2.0, rangeFrac: 0.24, band: "energy" },
   { key: "gridMagnet", min: 0, max: 100, freq: 0.021, phase: 4.0, rangeFrac: 0.26, band: "bass" },
-  // engine-specific (waves)
-  { key: "waveAmp", min: 0, max: 100, freq: 0.027, phase: 1.4, rangeFrac: 0.26, band: "bass" },
-  { key: "waveTurbulence", min: 0, max: 100, freq: 0.039, phase: 5.6, rangeFrac: 0.24, band: "high" },
+  // engine-specific (flux)
+  { key: "fluxWarp", min: 0, max: 100, freq: 0.027, phase: 1.4, rangeFrac: 0.24, band: "bass" },
+  { key: "fluxBands", min: 0, max: 100, freq: 0.039, phase: 5.6, rangeFrac: 0.20, band: "high" },
   // engine-specific (orb 2D)
   { key: "orbMelt", min: 0, max: 100, freq: 0.025, phase: 3.3, rangeFrac: 0.24, band: "mid" },
   { key: "orbHalftone", min: 0, max: 100, freq: 0.033, phase: 0.9, rangeFrac: 0.20, band: "high" },
   { key: "orbSize", min: 0, max: 100, freq: 0.020, phase: 1.2, rangeFrac: 0.16, band: "bass" },
   { key: "orbSoft", min: 0, max: 100, freq: 0.030, phase: 4.7, rangeFrac: 0.18, band: "mid" },
   { key: "orbShade", min: 0, max: 100, freq: 0.024, phase: 2.6, rangeFrac: 0.16, band: "energy" },
-  // engine-specific (waves) extra
-  { key: "waveDetail", min: 0, max: 100, freq: 0.022, phase: 0.8, rangeFrac: 0.18, band: "mid" },
-  { key: "wavePerspective", min: 0, max: 100, freq: 0.016, phase: 3.4, rangeFrac: 0.16, band: "bass" },
+  // engine-specific (signal)
+  { key: "signalFreq", min: 0, max: 100, freq: 0.022, phase: 0.8, rangeFrac: 0.18, band: "mid" },
+  { key: "signalSpread", min: 0, max: 100, freq: 0.016, phase: 3.4, rangeFrac: 0.18, band: "bass" },
   // engine-specific (grid) extra
   { key: "gridPerspective", min: 0, max: 100, freq: 0.018, phase: 5.1, rangeFrac: 0.16, band: "energy" },
   // engine-specific (contours)

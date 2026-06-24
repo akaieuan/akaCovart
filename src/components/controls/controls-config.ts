@@ -62,15 +62,17 @@ export interface ControlGroup {
 export const ENGINE_TAB_LABELS: Record<string, string> = {
   blob: "Blob",
   grid: "Grid",
-  waves: "Wave",
   contours: "Contours",
+  flux: "Flux",
+  signal: "Signal",
 };
 
 export const FALLBACK_ENGINES: SegOption[] = [
   { value: "blob", label: "Blob" },
   { value: "grid", label: "Grid" },
-  { value: "waves", label: "Wave" },
   { value: "contours", label: "Contours" },
+  { value: "flux", label: "Flux" },
+  { value: "signal", label: "Signal" },
 ];
 
 // ── PALETTE / MOOD ───────────────────────────────────────────────────────────
@@ -144,15 +146,23 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
       ],
     },
   ],
-  waves: [
+  flux: [
     {
       controls: [
-        { kind: "slider", key: "waveCount", label: "Lines", min: 10, max: 160 },
-        { kind: "slider", key: "waveAmp", label: "Amplitude", min: 0, max: 100 },
-        { kind: "slider", key: "waveDetail", label: "Detail", min: 0, max: 100 },
-        { kind: "slider", key: "waveTurbulence", label: "Turbulence", min: 0, max: 100 },
-        { kind: "slider", key: "wavePerspective", label: "Perspective", min: 0, max: 100 },
-        { kind: "slider", key: "waveFill", label: "Colour fill", min: 0, max: 100 },
+        { kind: "slider", key: "fluxScale", label: "Scale", min: 0, max: 100 },
+        { kind: "slider", key: "fluxWarp", label: "Warp", min: 0, max: 100 },
+        { kind: "slider", key: "fluxBands", label: "Veins", min: 0, max: 100 },
+        { kind: "slider", key: "fluxDepth", label: "Depth", min: 0, max: 100 },
+      ],
+    },
+  ],
+  signal: [
+    {
+      controls: [
+        { kind: "slider", key: "signalFreq", label: "Frequency", min: 0, max: 100 },
+        { kind: "slider", key: "signalLayers", label: "Layers", min: 0, max: 100 },
+        { kind: "slider", key: "signalSpread", label: "Angle spread", min: 0, max: 100 },
+        { kind: "slider", key: "signalSharp", label: "Sharpness", min: 0, max: 100 },
       ],
     },
   ],
@@ -263,13 +273,17 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "contourSway", label: "Camera sway", min: 0, max: 100 },
     { kind: "slider", key: "contourLift", label: "Beat lift", min: 0, max: 100 },
   ],
-  waves: [
-    { kind: "slider", key: "waveFlow", label: "Flow", min: 0, max: 100 },
-    { kind: "slider", key: "waveSwell", label: "Swell", min: 0, max: 100 },
-    { kind: "slider", key: "waveSurge", label: "Surge", min: 0, max: 100 },
-    { kind: "slider", key: "waveChurn", label: "Churn", min: 0, max: 100 },
-    { kind: "slider", key: "waveUndulate", label: "Undulate", min: 0, max: 100 },
-    { kind: "slider", key: "waveDrift", label: "Drift", min: 0, max: 100 },
+  flux: [
+    { kind: "slider", key: "fluxFlow", label: "Flow", min: 0, max: 100 },
+    { kind: "slider", key: "fluxDrift", label: "Drift", min: 0, max: 100 },
+    { kind: "slider", key: "fluxSwirl", label: "Swirl", min: 0, max: 100 },
+    { kind: "slider", key: "fluxPulse", label: "Pulse", min: 0, max: 100 },
+  ],
+  signal: [
+    { kind: "slider", key: "signalDrift", label: "Drift", min: 0, max: 100 },
+    { kind: "slider", key: "signalSwirl", label: "Swirl", min: 0, max: 100 },
+    { kind: "slider", key: "signalPulse", label: "Pulse", min: 0, max: 100 },
+    { kind: "slider", key: "signalFlow", label: "Shimmer", min: 0, max: 100 },
   ],
   grid: [
     { kind: "slider", key: "gridRipple", label: "Ripple", min: 0, max: 100 },
