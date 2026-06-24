@@ -105,7 +105,7 @@ function FormatTile({
           onClick={handleExport}
           disabled={busy}
           aria-label={`Export ${f.label}`}
-          className="pointer-events-auto inline-flex h-8 items-center gap-1.5 rounded-[5px] border border-white/15 bg-black/55 px-2.5 text-[11px] font-medium text-grey-100 opacity-0 backdrop-blur-sm transition-all hover:bg-black/80 hover:text-white focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-100"
+          className="pointer-events-auto inline-flex h-8 items-center gap-1.5 rounded-[5px] border border-white/15 bg-black/55 px-2.5 text-[11px] font-medium text-grey-100 opacity-100 backdrop-blur-sm transition-all hover:bg-black/80 hover:text-white focus-visible:opacity-100 disabled:opacity-100 md:opacity-0 md:group-hover:opacity-100"
         >
           {busy ? (
             <Loader2 className="size-[12px] animate-spin" />
@@ -179,10 +179,19 @@ export default function Formats() {
     <div
       aria-hidden={!open}
       className={cn(
+        // `invisible` when closed is load-bearing: this overlay is ALWAYS mounted
+        // (for the fade/scale), sits at z-50, and its per-tile Export buttons set
+        // `pointer-events-auto` (to escape the tile's own pointer-events-none top
+        // row). That auto ALSO escapes this overlay's `pointer-events-none` while
+        // closed, leaving invisible Export buttons hit-testable across the whole
+        // screen — so taps on the editor/drawer underneath would randomly trigger a
+        // download. `visibility:hidden` removes the entire subtree from hit-testing
+        // and can't be overridden by a child's pointer-events. transition-all keeps
+        // visibility's special-cased timing so the fade-OUT still plays.
         "absolute inset-0 z-50 flex flex-col bg-bg transition-all duration-300 ease-out",
         open
-          ? "pointer-events-auto opacity-100 scale-100"
-          : "pointer-events-none scale-[0.99] opacity-0",
+          ? "pointer-events-auto visible scale-100 opacity-100"
+          : "pointer-events-none invisible scale-[0.99] opacity-0",
       )}
     >
       {/* Header */}

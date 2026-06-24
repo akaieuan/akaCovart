@@ -201,14 +201,21 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
   return (
     <div
       className={cn(
-        // Lift the dock off the very bottom edge so the toggle clears the home
-        // indicator / browser chrome and sits in thumb reach (this is a web app
-        // on iOS, where the bottom edge is the worst place to tap).
-        "pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+18px)] transition-opacity duration-300 md:hidden",
-        overlayOpen && "opacity-0",
+        // In-flow bottom dock (a flex sibling of the canvas, not an overlay) so it
+        // RESERVES its height — the artwork always sits fully visible above it and
+        // never hides behind the controls. Lifted off the very bottom edge with
+        // safe-area padding so the toggle clears the iOS home indicator / browser
+        // chrome and stays in thumb reach. When COLLAPSED the dock is just the slim
+        // tab bar, so we lift it further up the screen — easier to tap and clear of
+        // the floating iOS Safari toolbar — without disturbing the expanded layout.
+        "z-30 flex-none px-3 pt-2 transition-[padding,opacity] duration-300 md:hidden",
+        collapsed
+          ? "pb-[calc(env(safe-area-inset-bottom)+34px)]"
+          : "pb-[calc(env(safe-area-inset-bottom)+10px)]",
+        overlayOpen && "pointer-events-none opacity-0",
       )}
     >
-      <div className="pointer-events-auto flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/85 shadow-[0_18px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
+      <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/95 shadow-[0_-8px_40px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
         {/* Nav row: scrollable tabs (incl. Engine) + collapse toggle. Always shown,
             so when collapsed this slim bar is all that remains. */}
         <div className="flex flex-none items-center gap-1.5 px-2 py-2">
@@ -251,7 +258,7 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
             height so switching tabs never moves the page; they scroll internally. */}
         {!collapsed && (
           <>
-            <div className="pnl h-[20vh] max-h-[230px] min-h-[132px] overflow-y-auto border-t border-white/[0.06] px-3 py-2.5">
+            <div className="pnl h-[30vh] max-h-[300px] min-h-[148px] overflow-y-auto overscroll-contain border-t border-white/[0.06] px-3 py-2.5">
               <ActiveBody />
             </div>
             <div className="flex flex-none flex-col gap-2 border-t border-white/[0.06] px-3 py-2.5">
@@ -259,7 +266,10 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
                 <ModeToggle className="flex-1" />
                 <ResetButton />
               </div>
-              <ExportButton onExport={onExport} />
+              {/* Still-image download now lives in the top bar (Export → Formats),
+                  so the dock only carries the export button for VIDEO, which the
+                  Formats screen can't produce. Keeps the dock lean in Still mode. */}
+              {mode === "animate" && <ExportButton onExport={onExport} />}
             </div>
           </>
         )}

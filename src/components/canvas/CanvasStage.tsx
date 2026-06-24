@@ -20,9 +20,18 @@ const DRAFT = 560;
 // cheap and the motion stays fluid. It auto-tunes between these bounds from the
 // measured frame time, and snaps back to full DISPLAY at rest + when baking an
 // export frame.
-const ANIM_MIN = 440;
-const ANIM_MAX = 820;
-const ANIM_START = 700;
+//
+// PARITY: the floor + ceiling are kept CLOSE to the still's DISPLAY (880) so the
+// live animation is a faithful moving version of the still on every screen. On a
+// small phone the canvas displays at ~340px, so the still (880) is ~2.5× super-
+// sampled and very smooth; if the animation dropped to a low backing-store size it
+// would render coarser, thicker-floored lines and read as a DIFFERENT, busier
+// image. Holding the floor near DISPLAY makes "Animate" look like the same art the
+// still shows, just in motion. The adaptive valve still gives a little relief under
+// sustained load without visibly changing the look.
+const ANIM_MIN = 640;
+const ANIM_MAX = 880;
+const ANIM_START = 820;
 function nextAnimRes(cur: number, emaMs: number): number {
   if (emaMs > 21 && cur > ANIM_MIN) return Math.max(ANIM_MIN, cur - 48);
   if (emaMs < 13 && cur < ANIM_MAX) return Math.min(ANIM_MAX, cur + 24);
@@ -624,19 +633,22 @@ export default function CanvasStage({
   };
 
   // Active delivery format — the square render is shown via object-cover inside a
-  // frame of this aspect ratio. We size by WIDTH only (height follows from
-  // aspect-ratio) and cap that width three ways so it always fits without ever
-  // breaking the ratio: the container (100%), the viewport height (82vh × aspect,
-  // so tall formats stay within the stage), and a hard 760px ceiling.
+  // frame of this aspect ratio. The <section> is a SIZE CONTAINER, so we size the
+  // frame against the stage's OWN box (container-query units) rather than the
+  // viewport: width is capped three ways so it always fits without breaking the
+  // ratio — the stage width (100cqw), the stage height (100cqh × aspect, minus a
+  // small reserve for the caption row below), and a hard 760px ceiling. Because
+  // this tracks the real stage box, the art fits perfectly whether the mobile
+  // dock is expanded or collapsed, with no viewport-height guesswork.
   const fmt = getFormat(state.format);
   const aspect = fmt.w / fmt.h;
   const frameStyle: React.CSSProperties = {
     aspectRatio: `${fmt.w} / ${fmt.h}`,
-    width: `min(100%, calc(82vh * ${aspect}), 760px)`,
+    width: `min(100cqw, calc((100cqh - 2.5rem) * ${aspect}), 760px)`,
   };
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-4 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] px-4 pt-16 pb-44 sm:gap-[18px] sm:px-8 md:py-8">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-start gap-2.5 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] px-3 pt-14 pb-2 [container-type:size] sm:gap-[18px] sm:px-8 md:justify-center md:py-8">
       <div
         className="relative overflow-hidden bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65),0_0_0_1px_#1c1c20] transition-[width,height] duration-300 ease-out"
         style={frameStyle}

@@ -66,7 +66,7 @@ export default function Studio() {
   }
 
   return (
-    <div className="relative flex h-screen w-full overflow-hidden bg-bg text-ink">
+    <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-bg text-ink md:flex-row">
       {/* Transparent floating header: wordmark + Edit / Formats / Preview nav */}
       <Header onHome={() => setStarted(false)} />
 

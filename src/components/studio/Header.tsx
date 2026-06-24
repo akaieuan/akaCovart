@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, LayoutGrid, SlidersHorizontal } from "lucide-react";
+import { Download, Eye, LayoutGrid, SlidersHorizontal } from "lucide-react";
 
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -43,26 +43,42 @@ export default function Header({ onHome }: { onHome?: () => void }) {
         <span className="text-[15px] font-semibold text-grey-100">COVART</span>
       </button>
 
-      <nav className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-panel/70 p-1 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-        {items.map(({ key, label, Icon, onClick, active }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={onClick}
-            aria-label={label}
-            aria-pressed={active}
-            className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors",
-              active
-                ? "bg-grey-100 text-bg"
-                : "text-grey-300 hover:bg-white/5 hover:text-white",
-            )}
-          >
-            <Icon className="size-[14px]" />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
-        ))}
-      </nav>
+      <div className="pointer-events-auto flex items-center gap-2">
+        <nav className="flex items-center gap-1 rounded-full border border-white/10 bg-panel/70 p-1 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          {items.map(({ key, label, Icon, onClick, active }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={onClick}
+              aria-label={label}
+              aria-pressed={active}
+              className={cn(
+                "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors",
+                active
+                  ? "bg-grey-100 text-bg"
+                  : "text-grey-300 hover:bg-white/5 hover:text-white",
+              )}
+            >
+              <Icon className="size-[14px]" />
+              <span className="hidden sm:inline">{label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* Phone-only Export entry point. On small screens the artwork download
+            lives up here (not in the edit dock) — tapping it opens the Formats
+            screen to pick a size and download, which frees the dock for controls.
+            On md+ the sidebar owns export, so this is hidden. */}
+        <button
+          type="button"
+          onClick={goFormats}
+          aria-label="Export"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-grey-100 px-3.5 text-[12px] font-semibold text-bg shadow-[0_8px_30px_rgba(0,0,0,0.45)] transition-colors hover:bg-white active:scale-95 md:hidden"
+        >
+          <Download className="size-[14px]" />
+          Export
+        </button>
+      </div>
     </header>
   );
 }

@@ -177,7 +177,12 @@ const contours: FieldEngine = {
       ctx.moveTo(xs[0], ys[0]);
       for (let ci = 1; ci < C; ci++) ctx.lineTo(xs[ci], ys[ci]);
       ctx.strokeStyle = rgba(col, a);
-      ctx.lineWidth = weight * (0.45 + depth * 0.85);
+      // Floor the stroke at ~0.6px so ridgelines stay visible when the field is
+      // rendered SMALL (e.g. the 156px gallery variation thumbnails, where the
+      // size-scaled weight would otherwise go sub-pixel and the engine looked
+      // blank). At full export size the natural weight is always well above this,
+      // so the floor never engages and the output is unchanged.
+      ctx.lineWidth = Math.max(0.6, weight * (0.45 + depth * 0.85));
       ctx.stroke();
     }
     ctx.restore();

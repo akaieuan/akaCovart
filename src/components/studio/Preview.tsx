@@ -116,10 +116,13 @@ export default function Preview() {
     <div
       aria-hidden={!open}
       className={cn(
+        // `invisible` when closed removes this always-mounted z-50 overlay from
+        // hit-testing entirely (see Formats.tsx for the full rationale) so its
+        // controls can't intercept taps meant for the editor underneath.
         "absolute inset-0 z-50 flex flex-col bg-bg transition-all duration-300 ease-out",
         open
-          ? "pointer-events-auto opacity-100 scale-100"
-          : "pointer-events-none scale-[0.99] opacity-0",
+          ? "pointer-events-auto visible opacity-100 scale-100"
+          : "pointer-events-none invisible scale-[0.99] opacity-0",
       )}
     >
       {/* Header — sibling of the Formats header. */}
