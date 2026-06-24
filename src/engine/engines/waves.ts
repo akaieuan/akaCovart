@@ -25,12 +25,19 @@ const waves: FieldEngine = {
   field(args: FieldArgs): void {
     const { ctx, size: S, params: p, cfg, seed, anim } = args;
     const r: RNG = prng(seed ^ 0x2bd1e44f);
+    // Separate stream for the macro-camera phases so we never perturb the order
+    // of `r` draws the field shape depends on (keeps the still deterministic).
+    const rM: RNG = prng(seed ^ 0x7a3c9d11);
+    const mpx = rM() * 6.2832;
+    const mpy = rM() * 6.2832;
 
     const lines = Math.max(8, Math.round(p.waveCount == null ? 60 : p.waveCount));
     const amp = ((p.waveAmp == null ? 50 : p.waveAmp) / 100) * S * 0.07;
     const det = (p.waveDetail == null ? 45 : p.waveDetail) / 100;
     const turb = (p.waveTurbulence == null ? 25 : p.waveTurbulence) / 100;
     const persp = (p.wavePerspective == null ? 0 : p.wavePerspective) / 100;
+    // FILL — translucent colour bands between consecutive lines (0 = pure lines).
+    const fill = (p.waveFill == null ? 60 : p.waveFill) / 100;
 
     // Motion params (0..1). Defaults chosen so a still render is unaffected
     // (every motion term is gated by ANIM below).
@@ -39,6 +46,7 @@ const waves: FieldEngine = {
     const surge = (p.waveSurge == null ? 55 : p.waveSurge) / 100;
     const churn = (p.waveChurn == null ? 40 : p.waveChurn) / 100;
     const undulate = (p.waveUndulate == null ? 45 : p.waveUndulate) / 100;
+    const wDrift = (p.waveDrift == null ? 50 : p.waveDrift) / 100;
 
     const ANIM = anim.anim;
     const T = ANIM ? anim.t : 0;
@@ -74,25 +82,61 @@ const waves: FieldEngine = {
 
     // SWELL — slow global amplitude breathing. SURGE — signed, bouncy beat pulse.
     // pumpEnv adds a gentle synchronized breath on top of swell.
-    const swellLFO = ANIM ? 1 + 0.35 * swell * Math.sin(T * 0.7) + 0.18 * swell * pumpEnv : 1;
+    const swellLFO = ANIM ? 1 + 0.55 * swell * Math.sin(T * 0.7) + 0.30 * swell * pumpEnv : 1;
     const surgeA = ANIM ? 1 + surge * kickSpring * 0.9 : 1;
     const beatA = swellLFO * surgeA;
     const step = Math.max(2, S / 240);
+    // Shared x grid — matches the original `for (x=0; x<=S; x+=step)` march so the
+    // stroked line stays byte-identical to before at fill=0.
+    const xs: number[] = [];
+    for (let x = 0; x <= S; x += step) xs.push(x);
+    const ncol = xs.length;
+    // Two reusable double-precision y-buffers (curr + prev line) so the band fill
+    // never allocates per frame. FILL paints the band between each pair of lines
+    // in the upper line's colour — large coherent colour areas that survive blur.
+    const bufA = new Float64Array(ncol);
+    const bufB = new Float64Array(ncol);
+    let useA = true;
+    let prevYs: Float64Array | null = null;
+    let prevCol: number[] | null = null;
+    const fillA = 0.2 + fill * 0.6;
+
+    // MACRO CAMERA — a whole-field transform (drift + breathing zoom + micro-roll)
+    // so the blurred wash visibly moves as one mass (the reason Blob reads through
+    // blur). Gated by ANIM => skipped for the still, which stays byte-identical
+    // apart from the intentional fill bands.
+    if (ANIM) {
+      const txM = S * (0.030 * wDrift + 0.020 * dr) * Math.sin(T * 0.23 * spd + mpx);
+      const tyM =
+        S * (0.042 * wDrift + 0.014 * swell) * Math.sin(T * 0.17 * spd + mpy) +
+        S * 0.018 * sw * Math.sin(T * 0.13 * spd);
+      const scM = 1 + 0.05 * swell * Math.sin(T * 0.31 * spd) + 0.05 * pumpEnv + 0.035 * surge * kickSpring;
+      const rotM = (0.012 * sw + 0.010 * wDrift) * Math.sin(T * 0.11 * spd + mpx);
+      ctx.save();
+      ctx.translate(S * 0.5 + txM, S * 0.5 + tyM);
+      ctx.rotate(rotM);
+      ctx.scale(scM, scM);
+      ctx.translate(-S * 0.5, -S * 0.5);
+    }
 
     for (let li = 0; li < lines; li++) {
       const t01 = li / lines,
         yp = persp > 0 ? Math.pow(t01, 1 + persp * 1.7) : t01;
       let baseY = S * (0.05 + 0.9 * yp);
       if (ANIM) {
-        // UNDULATE — vertical baseline cross-drift; gentle global drift/swirl ride along.
+        // UNDULATE — vertical baseline cross-drift. Lower cross-line stagger +
+        // bigger amplitude => neighbours move together as broad bands the blur
+        // keeps, instead of a fine shimmer it averages to nothing. (Anim only.)
         const und = 0.4 * undulate + 0.5 * dr + 0.25 * sw;
-        baseY += Math.sin(T * 0.5 * spd + li * 0.22) * amp * 1.4 * und;
+        baseY += Math.sin(T * 0.5 * spd + li * 0.12) * amp * 2.4 * und;
       }
       const col = cfg.colors[Math.floor(r() * cfg.colors.length)];
       const ampSc = persp > 0 ? 0.2 + 1.6 * t01 : 1;
       const ampL = amp * beatA * ampSc;
-      ctx.beginPath();
-      for (let x = 0; x <= S; x += step) {
+      const ys = useA ? bufA : bufB;
+      useA = !useA;
+      for (let xi = 0; xi < ncol; xi++) {
+        const x = xs[xi];
         let y = baseY;
         for (let c3 = 0; c3 < comps.length; c3++) {
           const cc = comps[c3];
@@ -106,14 +150,32 @@ const waves: FieldEngine = {
             y += Math.sin(x * tt.f + tt.ph + churnPh * tt.sp + li * 0.5) * ampL * turb * tt.a * 0.6;
           }
         }
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        ys[xi] = y;
       }
+      // FILL — the band between the previous line and this one, in the previous
+      // line's colour (drawn back-to-front so the bands tile cleanly).
+      if (fill > 0 && prevYs && prevCol) {
+        ctx.beginPath();
+        ctx.moveTo(xs[0], prevYs[0]);
+        for (let xi = 1; xi < ncol; xi++) ctx.lineTo(xs[xi], prevYs[xi]);
+        for (let xi = ncol - 1; xi >= 0; xi--) ctx.lineTo(xs[xi], ys[xi]);
+        ctx.closePath();
+        ctx.globalAlpha = fillA;
+        ctx.fillStyle = rgb(prevCol);
+        ctx.fill();
+      }
+      // STROKE — identical points + parameters to the original line.
+      ctx.beginPath();
+      ctx.moveTo(xs[0], ys[0]);
+      for (let xi = 1; xi < ncol; xi++) ctx.lineTo(xs[xi], ys[xi]);
       ctx.strokeStyle = rgb(col);
       ctx.globalAlpha = 0.28 + r() * 0.5;
       ctx.lineWidth = Math.max(0.6, S * 0.0016 * (0.6 + r() * 1.3) * (persp > 0 ? 0.5 + t01 : 1));
       ctx.stroke();
+      prevYs = ys;
+      prevCol = col;
     }
+    if (ANIM) ctx.restore();
     ctx.globalAlpha = 1;
   },
 };
@@ -125,11 +187,13 @@ function waveParams(): ParamDef[] {
     { key: "waveDetail", label: "DETAIL", type: "range", group: "composition", min: 0, max: 100, default: 45 },
     { key: "waveTurbulence", label: "TURBULENCE", type: "range", group: "composition", min: 0, max: 100, default: 25 },
     { key: "wavePerspective", label: "PERSPECTIVE", type: "range", group: "composition", min: 0, max: 100, default: 0 },
+    { key: "waveFill", label: "FILL", type: "range", group: "composition", min: 0, max: 100, default: 60 },
     { key: "waveFlow", label: "FLOW", type: "range", group: "motion", min: 0, max: 100, default: 50 },
     { key: "waveSwell", label: "SWELL", type: "range", group: "motion", min: 0, max: 100, default: 40 },
     { key: "waveSurge", label: "SURGE", type: "range", group: "motion", min: 0, max: 100, default: 55 },
     { key: "waveChurn", label: "CHURN", type: "range", group: "motion", min: 0, max: 100, default: 40 },
     { key: "waveUndulate", label: "UNDULATE", type: "range", group: "motion", min: 0, max: 100, default: 45 },
+    { key: "waveDrift", label: "DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 50 },
   ];
 }
 

@@ -26,7 +26,8 @@ import {
   type Control,
   type ControlGroup,
   MOOD_OPTIONS,
-  COLOR_TONE_GROUP,
+  COLOR_GROUP,
+  ATMOSPHERE_GROUP,
   COMPOSITION_BY_ENGINE,
   FINISH_GROUP,
   TEXTURE_GROUPS,
@@ -222,17 +223,18 @@ export default function Controls() {
       defaultValue={DEFAULT_OPEN}
       className="flex w-full flex-col"
     >
-      {/* STARTING POINTS */}
-      <PanelSection value="library" title="Starting points">
-        <Presets />
-        <Gallery />
-      </PanelSection>
-
-      {/* PALETTE / MOOD */}
-      <PanelSection value="palette" title="Palette · mood">
+      {/* LOOK — colour + atmosphere (blur) lead the first step; quick-starts below */}
+      <PanelSection value="look" title="Look">
         <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
         <ColorPicker paramKey="colorPick" label="Color" />
-        {renderGroups([COLOR_TONE_GROUP])}
+        {renderGroups([COLOR_GROUP])}
+        <Divider />
+        <GroupLabel variant="sub">Atmosphere</GroupLabel>
+        {renderGroups([ATMOSPHERE_GROUP])}
+        <Divider />
+        <GroupLabel variant="sub">Starting points</GroupLabel>
+        <Presets />
+        <Gallery />
       </PanelSection>
 
       {/* COMPOSITION (engine-specific + shared FINISH) */}

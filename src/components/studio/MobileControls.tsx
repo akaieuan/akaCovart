@@ -22,6 +22,7 @@ import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
   GroupLabel,
+  Divider,
   SliderRow,
   ToggleRow,
   Segmented,
@@ -37,7 +38,8 @@ import {
   type Control,
   type ControlGroup,
   MOOD_OPTIONS,
-  COLOR_TONE_GROUP,
+  COLOR_GROUP,
+  ATMOSPHERE_GROUP,
   COMPOSITION_BY_ENGINE,
   FINISH_GROUP,
   TEXTURE_GROUPS,
@@ -93,21 +95,19 @@ function renderGroups(groups: ControlGroup[]): ReactNode {
 }
 
 // ── Section bodies (composition mirrors Controls.tsx; params come from config) ─
-function StartBody() {
-  return (
-    <>
-      <Presets />
-      <Gallery />
-    </>
-  );
-}
-
-function PaletteBody() {
+function LookBody() {
   return (
     <>
       <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
       <ColorPicker paramKey="colorPick" label="Color" />
-      {renderGroups([COLOR_TONE_GROUP])}
+      {renderGroups([COLOR_GROUP])}
+      <Divider />
+      <GroupLabel variant="sub">Atmosphere</GroupLabel>
+      {renderGroups([ATMOSPHERE_GROUP])}
+      <Divider />
+      <GroupLabel variant="sub">Starting points</GroupLabel>
+      <Presets />
+      <Gallery />
     </>
   );
 }
@@ -163,8 +163,7 @@ type Tab = { id: string; label: string; Body: () => ReactNode };
 
 const STILL_TABS: Tab[] = [
   { id: "engine", label: "Engine", Body: EngineBody },
-  { id: "library", label: "Looks", Body: StartBody },
-  { id: "palette", label: "Palette", Body: PaletteBody },
+  { id: "look", label: "Look", Body: LookBody },
   { id: "composition", label: "Compose", Body: ComposeBody },
   { id: "texture", label: "Texture", Body: TextureBody },
   { id: "type", label: "Type", Body: TypeBody },

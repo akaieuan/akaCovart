@@ -37,6 +37,9 @@ export interface StudioState {
   // light->dark range. null = use the mood palette's original colours.
   colorPick: string | null;
   colorTone: number; // 0..100; 50 = neutral. <50 darkens (incl. base), >50 lightens.
+  colorHue: number; // 0..100; 50 = neutral. Rotates the whole palette's hue ±180°.
+  colorSat: number; // 0..100; 50 = neutral. Vibrance: <50 toward grey, >50 more vivid.
+  colorWarm: number; // 0..100; 50 = neutral. Temperature: <50 cooler, >50 warmer.
 
   // engine + engine-specific composition params
   engine: string;
@@ -49,6 +52,7 @@ export interface StudioState {
   waveDetail: number;
   waveTurbulence: number;
   wavePerspective: number;
+  waveFill: number; // 0..100; translucent colour bands between lines (0 = lines only).
   orbSize: number;
   orbSoft: number;
   orbHalftone: number;
@@ -62,6 +66,9 @@ export interface StudioState {
   contourRelief: number;
   contourMorph: number;
   contourFlow: number;
+  contourFill: number; // 0..100; colour strata under each ridge (0 = bg occlusion only).
+  contourSway: number; // 0..100; whole-frame camera parallax/sway (anim only).
+  contourLift: number; // 0..100; beat-driven terrain + camera lift (anim only).
 
   // seed
   seed: number;
@@ -150,6 +157,7 @@ export interface StudioState {
   waveSurge: number;
   waveChurn: number;
   waveUndulate: number;
+  waveDrift: number; // 0..100; whole-field camera drift/parallax (anim only).
   gridRipple: number;
   gridBob: number;
   gridPop: number;
@@ -211,6 +219,9 @@ const defaults = {
   // palette transform (Color controls) — neutral defaults => unchanged output.
   colorPick: null as string | null,
   colorTone: 50,
+  colorHue: 50,
+  colorSat: 50,
+  colorWarm: 50,
 
   engine: "blob",
   gridCols: 9,
@@ -222,6 +233,7 @@ const defaults = {
   waveDetail: 45,
   waveTurbulence: 25,
   wavePerspective: 0,
+  waveFill: 60,
   orbSize: 55,
   orbSoft: 55,
   orbHalftone: 40,
@@ -235,6 +247,9 @@ const defaults = {
   contourRelief: 30,
   contourMorph: 55,
   contourFlow: 35,
+  contourFill: 60,
+  contourSway: 50,
+  contourLift: 55,
 
   soften: 0,
   density: 60,
@@ -308,6 +323,7 @@ const defaults = {
   waveSurge: 55,
   waveChurn: 40,
   waveUndulate: 45,
+  waveDrift: 50,
   gridRipple: 45,
   gridBob: 40,
   gridPop: 55,

@@ -81,14 +81,27 @@ export const MOOD_OPTIONS: SegOption[] = [
   { value: "random", label: "Random" },
 ];
 
-// Color transform: a real colour picker (rendered directly in Controls.tsx)
-// shifts the whole palette toward a picked colour, plus a Tone slider that runs
-// the palette light<->dark. Tone below 50 darkens — including the background —
-// which is the readability fix. (Hue/Saturation sliders were replaced by the
-// picker, which sets store `colorPick`.)
-export const COLOR_TONE_GROUP: ControlGroup = {
+// Color transform: a colour picker (rendered directly in Controls.tsx) shifts the
+// whole palette toward a picked colour, plus four sliders that recolour EVERY
+// engine via the shared palette transform — Tone (light<->dark, <50 darkens the
+// background too), Hue shift (rotate the whole wheel), Vibrance (grey<->vivid) and
+// Warmth (cool<->warm). All are 50-neutral, so the default output is unchanged.
+export const COLOR_GROUP: ControlGroup = {
   controls: [
     { kind: "slider", key: "colorTone", label: "Tone dark–light", min: 0, max: 100 },
+    { kind: "slider", key: "colorHue", label: "Hue shift", min: 0, max: 100 },
+    { kind: "slider", key: "colorSat", label: "Vibrance", min: 0, max: 100 },
+    { kind: "slider", key: "colorWarm", label: "Warmth cool–warm", min: 0, max: 100 },
+  ],
+};
+
+// Atmosphere: the abstraction controls that bring the animation to life through
+// blur. Promoted to the first ("Look") panel. `soften` is the soft-focus blur and
+// `bloom` the glow bleed — both global finish passes that apply to every engine.
+export const ATMOSPHERE_GROUP: ControlGroup = {
+  controls: [
+    { kind: "slider", key: "soften", label: "Blur", min: 0, max: 100 },
+    { kind: "slider", key: "bloom", label: "Glow", min: 0, max: 100 },
   ],
 };
 
@@ -139,6 +152,7 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
         { kind: "slider", key: "waveDetail", label: "Detail", min: 0, max: 100 },
         { kind: "slider", key: "waveTurbulence", label: "Turbulence", min: 0, max: 100 },
         { kind: "slider", key: "wavePerspective", label: "Perspective", min: 0, max: 100 },
+        { kind: "slider", key: "waveFill", label: "Colour fill", min: 0, max: 100 },
       ],
     },
   ],
@@ -151,6 +165,7 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
         { kind: "slider", key: "contourDetail", label: "Detail", min: 0, max: 100 },
         { kind: "slider", key: "contourWarp", label: "Warp", min: 0, max: 100 },
         { kind: "slider", key: "contourRelief", label: "Height", min: 0, max: 100 },
+        { kind: "slider", key: "contourFill", label: "Colour fill", min: 0, max: 100 },
       ],
     },
   ],
@@ -163,8 +178,6 @@ export const FINISH_GROUP: ControlGroup = {
     { kind: "slider", key: "contrast", label: "Contrast", min: 0, max: 100, sub: true },
     { kind: "slider", key: "saturation", label: "Saturation", min: 0, max: 100, sub: true },
     { kind: "slider", key: "vignette", label: "Vignette", min: 0, max: 100, sub: true },
-    { kind: "slider", key: "bloom", label: "Bloom", min: 0, max: 100, sub: true },
-    { kind: "slider", key: "soften", label: "Soften · blur", min: 0, max: 100, sub: true },
   ],
 };
 
@@ -247,6 +260,8 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
   contours: [
     { kind: "slider", key: "contourMorph", label: "Morph speed", min: 0, max: 100 },
     { kind: "slider", key: "contourFlow", label: "Fly forward", min: 0, max: 100 },
+    { kind: "slider", key: "contourSway", label: "Camera sway", min: 0, max: 100 },
+    { kind: "slider", key: "contourLift", label: "Beat lift", min: 0, max: 100 },
   ],
   waves: [
     { kind: "slider", key: "waveFlow", label: "Flow", min: 0, max: 100 },
@@ -254,6 +269,7 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "waveSurge", label: "Surge", min: 0, max: 100 },
     { kind: "slider", key: "waveChurn", label: "Churn", min: 0, max: 100 },
     { kind: "slider", key: "waveUndulate", label: "Undulate", min: 0, max: 100 },
+    { kind: "slider", key: "waveDrift", label: "Drift", min: 0, max: 100 },
   ],
   grid: [
     { kind: "slider", key: "gridRipple", label: "Ripple", min: 0, max: 100 },

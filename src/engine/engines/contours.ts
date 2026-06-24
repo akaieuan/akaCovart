@@ -42,6 +42,10 @@ const contours: FieldEngine = {
     const oz = r() * 128;
     const wox = r() * 128;
     const woy = r() * 128;
+    // Macro-camera phases — drawn AFTER the offset stream so seedHash/offsets are
+    // unchanged (still deterministic); only used by the ANIM-gated camera below.
+    const camx = r() * 6.2832;
+    const camy = r() * 6.2832;
 
     const hash3 = (x: number, y: number, z: number): number => {
       let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(z, 2147483647) + seedHash) | 0;
@@ -81,6 +85,10 @@ const contours: FieldEngine = {
     const relief = (p.contourRelief == null ? 30 : p.contourRelief) / 100;
     const linesP = (p.contourLines == null ? 55 : p.contourLines) / 100;
     const weightP = (p.contourWeight == null ? 40 : p.contourWeight) / 100;
+    // FILL — colour strata under each ridge (0 = original bg-occlusion look).
+    const fillAmt = (p.contourFill == null ? 60 : p.contourFill) / 100;
+    const swayP = (p.contourSway == null ? 50 : p.contourSway) / 100;
+    const liftP = (p.contourLift == null ? 55 : p.contourLift) / 100;
     const baseFreq = 1.6 + scale * 5.0;
     const octaves = 2 + Math.round(detail * 3);
     const warpAmt = warp * 1.0;
@@ -90,7 +98,7 @@ const contours: FieldEngine = {
     const morph = (p.contourMorph == null ? 55 : p.contourMorph) / 100;
     const flow = (p.contourFlow == null ? 35 : p.contourFlow) / 100;
     const zT = oz + (ANIM ? anim.t * (0.04 + morph * 0.4) : 0); // terrain morph
-    const scroll = ANIM ? anim.t * flow * 0.18 : 0; // fly forward (rows scroll in)
+    const scroll = ANIM ? anim.t * flow * 0.42 : 0; // fly forward (rows scroll in)
     const T = ANIM ? anim.t : 0;
     // Audio-/beat-driven deformations — rich + layered + SPACE-only. In Track
     // mode these envelopes are pulled straight from the music's bands; in BPM
@@ -98,9 +106,11 @@ const contours: FieldEngine = {
     // drift≈mids, swirl≈highs. Each shapes the landscape a different way.
     const kickEnv = anim.kickEnv;
     const kickSpring = anim.kickSpring;
-    const swell = 1 + anim.pumpEnv * 0.5; // bass swells the whole relief
-    const beatLift = kickEnv * 0.16 + kickSpring * 0.1; // beat lifts the terrain
-    const midSwayA = ANIM ? anim.drift * 0.11 : 0; // mids warp it sideways
+    // bass swells the relief; a slow sine breathes it even on the BPM path (T=0
+    // when still, so this stays exactly 1.0 for the still render).
+    const swell = 1 + anim.pumpEnv * 0.7 + 0.06 * Math.sin(T * 0.5);
+    const beatLift = (kickEnv * 0.26 + kickSpring * 0.16) * (0.4 + liftP * 1.2); // beat lifts the terrain
+    const midSwayA = ANIM ? anim.drift * 0.16 : 0; // mids warp it sideways
     const shimmerA = ANIM ? anim.swirl * 0.045 : 0; // highs add fine surface ripple
 
     // Terrain height at normalised (nx across, ny depth) -> [0,1] above ground.
@@ -132,6 +142,23 @@ const contours: FieldEngine = {
     ctx.save();
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
+    // MACRO CAMERA — parallax sway + vertical bob + breathing zoom + micro-roll so
+    // the whole blurred terrain visibly moves. ANIM-gated => the still is unchanged.
+    // swayP carries an always-on component so it drifts even when the audio path's
+    // drift/swirl envelopes sit near zero in quiet passages.
+    if (ANIM) {
+      const camDrift = 0.35 * swayP + 0.45 * anim.drift + 0.35 * anim.swirl + 0.4 * flow;
+      const camTX = S * 0.032 * camDrift * Math.sin(T * 0.19 + camx);
+      const camTY =
+        S * 0.020 * (0.4 * swayP + anim.drift) * Math.sin(T * 0.14 + camy) +
+        S * 0.024 * liftP * (kickEnv * 0.5 + anim.pumpEnv * 0.5);
+      const camSC = 1 + 0.035 * anim.pumpEnv + 0.022 * swayP * Math.sin(T * 0.27);
+      const camROT = 0.010 * (anim.swirl + 0.4 * swayP) * Math.sin(T * 0.09 + camx);
+      ctx.translate(S * 0.5 + camTX, S * 0.5 + camTY);
+      ctx.rotate(camROT);
+      ctx.scale(camSC, camSC);
+      ctx.translate(-S * 0.5, -S * 0.5);
+    }
 
     const xs = new Float32Array(C);
     const ys = new Float32Array(C);
@@ -160,18 +187,32 @@ const contours: FieldEngine = {
         ys[ci] = rowY - h * hScale;
       }
 
-      // Occlusion fill: ridge -> down to the bottom -> back, painted in bg.
+      // STRATA fill: ridge -> down past the bottom -> back. fillAmt=0 paints the
+      // background (the original hidden-line occlusion); higher blends in this
+      // ridge's palette colour (depth-faded) for a bold layered-terrain look. The
+      // skirt extends well off-frame when animating so the camera transform never
+      // exposes an unpainted edge (still keeps the original nearY+4).
+      const col = colors[ri % colors.length];
+      const skirt = ANIM ? S * 1.25 : nearY + 4;
       ctx.beginPath();
       ctx.moveTo(xs[0], ys[0]);
       for (let ci = 1; ci < C; ci++) ctx.lineTo(xs[ci], ys[ci]);
-      ctx.lineTo(xs[C - 1], nearY + 4);
-      ctx.lineTo(xs[0], nearY + 4);
+      ctx.lineTo(xs[C - 1], skirt);
+      ctx.lineTo(xs[0], skirt);
       ctx.closePath();
-      ctx.fillStyle = baseRGB;
+      if (fillAmt > 0) {
+        const bf = fillAmt * (0.22 + depth * 0.78);
+        ctx.fillStyle = rgb([
+          Math.round(cfg.base[0] + (col[0] - cfg.base[0]) * bf),
+          Math.round(cfg.base[1] + (col[1] - cfg.base[1]) * bf),
+          Math.round(cfg.base[2] + (col[2] - cfg.base[2]) * bf),
+        ]);
+      } else {
+        ctx.fillStyle = baseRGB;
+      }
       ctx.fill();
 
       // Ridgeline stroke — palette colour, faded toward the back (atmosphere).
-      const col = colors[ri % colors.length];
       const a = 0.2 + depth * 0.7;
       ctx.beginPath();
       ctx.moveTo(xs[0], ys[0]);
@@ -197,8 +238,11 @@ function contourParams(): ParamDef[] {
     { key: "contourDetail", label: "DETAIL", type: "range", group: "composition", min: 0, max: 100, default: 50 },
     { key: "contourWarp", label: "WARP", type: "range", group: "composition", min: 0, max: 100, default: 50 },
     { key: "contourRelief", label: "HEIGHT", type: "range", group: "composition", min: 0, max: 100, default: 40 },
+    { key: "contourFill", label: "FILL", type: "range", group: "composition", min: 0, max: 100, default: 60 },
     { key: "contourMorph", label: "MORPH SPEED", type: "range", group: "motion", min: 0, max: 100, default: 55 },
     { key: "contourFlow", label: "FLY FORWARD", type: "range", group: "motion", min: 0, max: 100, default: 35 },
+    { key: "contourSway", label: "CAMERA SWAY", type: "range", group: "motion", min: 0, max: 100, default: 50 },
+    { key: "contourLift", label: "BEAT LIFT", type: "range", group: "motion", min: 0, max: 100, default: 55 },
   ];
 }
 

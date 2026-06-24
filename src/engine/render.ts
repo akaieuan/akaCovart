@@ -123,11 +123,20 @@ export function renderTo(
   const recolored = picked
     ? recolorPalette(moodPalette, picked)
     : moodPalette;
+  // Combine the user Color sliders with AUTO mode's slow hue/sat evolution.
+  // The Hue slider is centre-neutral (50 = 0°, mapped to ±180°); AUTO adds on
+  // top. The Vibrance slider is 50-neutral; AUTO contributes its delta from 50.
+  // Warmth is user-only. At defaults every term is neutral => transform no-ops.
+  const userHue = ((((params.colorHue as number) ?? 50) - 50) / 50) * 50;
+  const autoHue = (params._autoHue as number) ?? 0;
+  const userSat = (params.colorSat as number) ?? 50;
+  const autoSat = (params._autoSat as number) ?? 50;
   const cfg = transformPalette(
     recolored,
     params.colorTone ?? 50,
-    (params._autoHue as number) ?? 0,
-    (params._autoSat as number) ?? 50,
+    userHue + autoHue,
+    userSat + (autoSat - 50),
+    (params.colorWarm as number) ?? 50,
   );
   const anim = buildAnim(params);
 

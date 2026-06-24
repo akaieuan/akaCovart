@@ -161,8 +161,8 @@ function clamp255(v: number): number {
   return v < 0 ? 0 : v > 255 ? 255 : v;
 }
 
-// Transform a single rgb triple: hue rotation -> saturation scale -> tone bias.
-function transformColor(c: number[], deg: number, sat: number, t: number): number[] {
+// Transform a single rgb triple: hue rotation -> saturation -> warmth -> tone.
+function transformColor(c: number[], deg: number, sat: number, t: number, warm: number): number[] {
   // 1) Hue rotation (degrees), reusing the prototype's HSL rotation.
   let out = deg ? huerot(c, deg) : [c[0], c[1], c[2]];
   // 2) Saturation: pull toward / push away from luma. sat==50 -> identity.
@@ -175,7 +175,17 @@ function transformColor(c: number[], deg: number, sat: number, t: number): numbe
       clamp255(gray + (out[2] - gray) * k),
     ];
   }
-  // 3) Tone lightness bias. t<0 darkens (incl. the base), t>0 lightens.
+  // 3) Warmth / temperature. warm>0 pushes toward amber (R up, B down); warm<0
+  // toward cool blue. A gentle green lift on the warm side keeps amber natural.
+  if (warm !== 0) {
+    const amt = warm * 38;
+    out = [
+      clamp255(out[0] + amt),
+      clamp255(out[1] + amt * 0.12),
+      clamp255(out[2] - amt),
+    ];
+  }
+  // 4) Tone lightness bias. t<0 darkens (incl. the base), t>0 lightens.
   if (t !== 0) {
     out =
       t < 0
@@ -290,13 +300,15 @@ export function transformPalette(
   tone: number,
   hue: number,
   sat: number,
+  warm: number = 50,
 ): Palette {
   // Defaults -> no-op, so existing art is unchanged to the byte.
-  if (tone === 50 && hue === 0 && sat === 50) return cfg;
+  if (tone === 50 && hue === 0 && sat === 50 && warm === 50) return cfg;
 
   const deg = (hue / 100) * 360;
   const t = (tone - 50) / 50;
-  const c1 = (c: number[]) => transformColor(c, deg, sat, t);
+  const w = (warm - 50) / 50;
+  const c1 = (c: number[]) => transformColor(c, deg, sat, t, w);
   const cN = (cs: number[][]) => cs.map(c1);
 
   return {
