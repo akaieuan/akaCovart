@@ -156,8 +156,8 @@ export default function Header({ onHome }: { onHome?: () => void }) {
   ];
 
   return (
-    <header className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between px-4 py-2.5 sm:px-5">
-      <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-2 px-3 py-2.5 sm:px-5">
+      <div className="pointer-events-auto flex min-w-0 items-center gap-1.5 sm:gap-3">
         <button
           type="button"
           onClick={onHome}
@@ -172,7 +172,7 @@ export default function Header({ onHome }: { onHome?: () => void }) {
         <StartMenu />
       </div>
 
-      <div className="pointer-events-auto flex items-center gap-2">
+      <div className="pointer-events-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
         <nav className="flex items-center gap-0.5 rounded-full border border-white/10 bg-panel/70 p-0.5 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           {items.map(({ key, label, Icon, onClick, active }) => (
             <button
@@ -202,10 +202,10 @@ export default function Header({ onHome }: { onHome?: () => void }) {
           type="button"
           onClick={goFormats}
           aria-label="Export"
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-grey-100 px-3.5 text-[12px] font-semibold text-bg shadow-[0_8px_30px_rgba(0,0,0,0.45)] transition-colors hover:bg-white active:scale-95 md:hidden"
+          title="Export"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-grey-100 text-bg shadow-[0_8px_30px_rgba(0,0,0,0.45)] transition-colors hover:bg-white active:scale-95 md:hidden"
         >
-          <Download className="size-[14px]" />
-          Export
+          <Download className="size-[15px]" />
         </button>
       </div>
     </header>
