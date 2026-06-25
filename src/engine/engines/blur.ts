@@ -43,20 +43,25 @@ const blur: FieldEngine = {
     const spd = ANIM ? 0.5 + anim.speed : 1;
     const T = ANIM ? anim.t * spd : 0;
 
-    // Offscreen res for the blur+threshold (low-freq goo upscales cleanly).
-    const side = Math.max(64, Math.min(S, 720)) | 0;
+    // Offscreen res for the blur+threshold. Modest (perf) — the goo is low-freq
+    // and upscales cleanly, and the soft-threshold below keeps the edges crisp.
+    const side = Math.max(64, Math.min(S, 560)) | 0;
 
-    // Motion DRAMATICALLY morphs the blur radius + threshold so the goo melts,
-    // merges and reforms — a two-rate organic morph (not a plain sine) + a beat
-    // punch. Space/shape only (never a brightness strobe), so it stays flicker-free.
-    const morph = ANIM ? Math.sin(T * 0.55) * 0.62 + Math.sin(T * 0.23 + 1.7) * 0.34 : 0; // ~[-0.96,0.96]
-    const flowR = 1 + morph * flow * 0.9;
-    const beatR = ANIM ? 1 + (anim.kickSpring * 0.32 + anim.pumpEnv * 0.2) * pulse : 1;
-    const radius = Math.max(0.5, (0.004 + amount * 0.06) * side * flowR * beatR);
-    let thrA = 30 + threshP * 180; // 30..210
-    // the threshold swings hard so blobs visibly merge ↔ split as it flows
-    if (ANIM) thrA -= morph * flow * 50 + anim.pumpEnv * pulse * 40;
-    thrA = Math.max(8, Math.min(247, thrA));
+    // DRAMATIC merge-breathing: one clear cycle whose SPEED + DEPTH both scale with
+    // Flow, so the letters visibly MELT into fat gooey blobs and REFORM, with a hard
+    // beat punch on top. The threshold rises as it merges so the blob stays crisp +
+    // contained (clean, not mush). Shape-only → flicker-free.
+    const cyc = ANIM ? Math.sin(T * (0.5 + flow * 0.7)) * 0.5 + 0.5 : 0; // 0..1
+    const punch = ANIM ? anim.kickSpring * 0.55 + anim.pumpEnv * 0.32 : 0;
+    // At the crest both push toward FATTER, MERGED goo: more blur AND a lower
+    // threshold (so the spread-thin alpha is still caught — it grows, never
+    // vanishes). Floors/caps keep it from filling the frame or collapsing.
+    const radius = Math.max(
+      0.5,
+      (0.004 + amount * 0.05) * side * (1 + cyc * (0.25 + flow * 1.6) + punch * pulse * 0.7),
+    );
+    let thrA = 30 + threshP * 180 - cyc * flow * 40 - punch * pulse * 18;
+    thrA = Math.max(26, Math.min(225, thrA));
 
     // Two-tone: direct bg/ink (txtBg/txtInk) or derived from the mood.
     const { bg, ink } = txtTones(p, cfg);
@@ -77,29 +82,34 @@ const blur: FieldEngine = {
     bctx.clearRect(0, 0, side, side);
     drawBlurred(bctx, mask.canvas, side, radius);
 
-    // Threshold the blurred ALPHA → ink where goo, transparent elsewhere.
+    // SOFT-threshold the blurred ALPHA over a narrow band → clean anti-aliased
+    // gooey edges (crisper-looking than a hard 1-bit cut), ink over the base.
     const img = bctx.getImageData(0, 0, side, side);
     const data = img.data;
     const ir = ink[0], ig = ink[1], ib = ink[2];
+    const lo = thrA - 5;
     for (let i = 0; i < data.length; i += 4) {
-      const goo = data[i + 3] > thrA;
-      const lit = invert ? !goo : goo;
-      if (lit) {
+      let m = (data[i + 3] - lo) / 10;
+      if (m < 0) m = 0;
+      else if (m > 1) m = 1;
+      if (invert) m = 1 - m;
+      if (m > 0) {
         data[i] = ir;
         data[i + 1] = ig;
         data[i + 2] = ib;
-        data[i + 3] = 255;
+        data[i + 3] = (m * 255) | 0;
       } else {
         data[i + 3] = 0;
       }
     }
     bctx.putImageData(img, 0, 0);
 
-    // Upscale (smoothed) onto the base with a wandering drift + a breathing zoom
-    // so the whole gooey field is alive (space-only).
-    const dxp = ANIM ? (Math.sin(T * 0.4) * 0.6 + Math.sin(T * 0.93 + 2) * 0.34) * drift * S * 0.04 : 0;
-    const dyp = ANIM ? (Math.cos(T * 0.33) * 0.6 + Math.cos(T * 0.71) * 0.34) * drift * S * 0.035 : 0;
-    const zoom = ANIM ? 1 + Math.sin(T * 0.45 + 0.5) * flow * 0.06 + anim.pumpEnv * pulse * 0.05 : 1;
+    // A bold directional sweep + a breathing zoom synced to the merge cycle so the
+    // whole gooey field is alive (space-only).
+    const ang = ANIM ? T * 0.5 : 0;
+    const dxp = ANIM ? Math.cos(ang) * drift * S * 0.06 : 0;
+    const dyp = ANIM ? Math.sin(ang * 0.8) * drift * S * 0.05 : 0;
+    const zoom = ANIM ? 1 + cyc * (0.03 + flow * 0.06) + punch * pulse * 0.07 : 1;
     const dw = S * zoom;
     const dh = S * zoom;
     const ox = dxp - (dw - S) / 2;
