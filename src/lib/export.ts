@@ -110,6 +110,15 @@ export function exportVideo(
       setTimeout(() => URL.revokeObjectURL(url), 4000);
       done();
     };
+    // Record an INTEGER number of resolve-cycles so the loop is seamless: the TxT
+    // engines return to their still every cycle (loopPhase wraps), so recording
+    // whole cycles means the first and last frames match. (Art engines get a
+    // beat-aligned length too — their abstract drift may still seam slightly.)
+    const bps = (state.animBPM || 128) / 60;
+    const loopBeats = Math.max(1, Math.round(0.5 + ((state.txtLoopBeats ?? 20) / 100) * 7.5));
+    const cycleSec = loopBeats / bps;
+    const nCycles = Math.max(1, Math.round(6 / cycleSec));
+    const durationMs = Math.round(nCycles * cycleSec * 1000);
     rec.start();
     setTimeout(() => {
       try {
@@ -117,6 +126,6 @@ export function exportVideo(
       } catch {
         /* ignore */
       }
-    }, 6200);
+    }, durationMs);
   }, 60);
 }

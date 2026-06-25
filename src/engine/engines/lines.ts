@@ -1,7 +1,7 @@
 import type { FieldArgs, FieldEngine, ParamDef } from "../types";
 import { registerEngine } from "../registry";
 import { rgb } from "../color";
-import { getTextMask, txtTones } from "./txtMask";
+import { getTextMask, txtTones, resolveEnv } from "./txtMask";
 
 // LINES — the display text hatched with PARALLEL ROUND-CAPPED STROKES that BREAK
 // wherever they leave the glyph, so each line becomes a string of oval segments of
@@ -38,25 +38,28 @@ const lines: FieldEngine = {
     const scroll = (p.lineScroll == null ? 40 : p.lineScroll) / 100;
     const pulse = (p.linePulse == null ? 45 : p.linePulse) / 100;
     const waveP = (p.lineWave == null ? 30 : p.lineWave) / 100;
-    const spd = ANIM ? 0.5 + anim.speed : 1;
-    const T = ANIM ? anim.t * spd : 0;
 
-    // Sizes as fractions of S (resolution-independent). Strong beat thickness pop.
-    const beat = ANIM ? 1 + (anim.kickSpring * 0.36 + anim.pumpEnv * 0.2) * pulse : 1;
+    // RESOLVE LOOP: at D=0 the hatch is the readable base-angle still; as D rises the
+    // angle SWEEPS away, the lines travel + wave, then it all returns to the base on
+    // the beat. Keyed off loopPhase → seamless. D=0 ⇒ the still.
+    const D = ANIM ? resolveEnv(anim.loopPhase) : 0;
+    const punch = anim.kickSpring * 0.36 + anim.pumpEnv * 0.2;
+    const beat = ANIM ? 1 + D * punch * pulse * 1.3 : 1;
     const weight = Math.max(1, (0.004 + sizeP * 0.03) * S * beat);
     const spacing = (0.006 + gapP * 0.04) * S + weight;
     const stepPx = Math.max(2, weight * 0.5);
 
-    // The angle SWEEPS (spins faster) + wobbles; the hatch travels + waves harder.
-    const angle = angP * Math.PI + (ANIM ? T * rotate * 0.85 + Math.sin(T * 0.4) * 0.14 * pulse : 0);
+    // angle sweeps out + back from the base; travel + wave grow then resolve.
+    const angle = angP * Math.PI + D * (0.18 + rotate * 0.95) * Math.PI;
     const dx = Math.cos(angle);
     const dy = Math.sin(angle);
     const perpX = -dy;
     const perpY = dx;
 
-    const waveAmp = ANIM ? waveP * spacing * 1.4 * (1 + anim.pumpEnv * 0.5) : 0;
+    const lp = anim.loopPhase * Math.PI * 2;
+    const waveAmp = ANIM ? D * waveP * spacing * 1.7 : 0;
     const waveK = (2 * Math.PI) / (S * (0.18 + 0.5 * (1 - sizeP)));
-    const scrollOff = ANIM ? T * (0.15 + scroll * 1.7) * spacing : 0;
+    const scrollOff = ANIM ? Math.sin(lp) * D * (0.4 + scroll * 1.4) * spacing : 0;
 
     // Two-tone: direct bg/ink (txtBg/txtInk) or derived from the mood.
     const { bg, ink } = txtTones(p, cfg);
@@ -80,7 +83,7 @@ const lines: FieldEngine = {
       let sx = 0;
       let sy = 0;
       for (let m = -diag; m <= diag; m += stepPx) {
-        const wave = waveAmp ? waveAmp * Math.sin(m * waveK + T * 1.3 + d * 0.01) : 0;
+        const wave = waveAmp ? waveAmp * Math.sin(m * waveK + lp + d * 0.01) : 0;
         const dp = d + wave;
         const x = cx + dp * perpX + m * dx;
         const y = cy + dp * perpY + m * dy;

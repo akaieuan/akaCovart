@@ -157,7 +157,7 @@ export const TXT_START_LOOKS: Preset[] = [
   // blue glow goo
   {
     label: "Blur",
-    params: { engine: "blur", txtBg: "#0a0f1e", txtInk: "#7db4ff", seed: 2231, txtText: "GLOW", txtSub: "", textFont: "Syne", textCase: "upper", blurAmount: 52, blurThreshold: 46 },
+    params: { engine: "blur", txtBg: "#0a0f1e", txtInk: "#7db4ff", seed: 2231, txtText: "GLOW", txtSub: "", textFont: "Syne", textCase: "upper", blurAmount: 32, blurThreshold: 54 },
   },
   // cream round pixels
   {
@@ -172,7 +172,7 @@ export const TXT_START_LOOKS: Preset[] = [
   // deep-blue melt
   {
     label: "Blur II",
-    params: { engine: "blur", txtBg: "#0b0e1a", txtInk: "#9fc2ff", seed: 5560, txtText: "MELT", txtSub: "", textFont: "Anton", textCase: "upper", blurAmount: 64, blurThreshold: 40 },
+    params: { engine: "blur", txtBg: "#0b0e1a", txtInk: "#9fc2ff", seed: 5560, txtText: "MELT", txtSub: "", textFont: "Anton", textCase: "upper", blurAmount: 46, blurThreshold: 46 },
   },
   // magenta inverted dither
   {

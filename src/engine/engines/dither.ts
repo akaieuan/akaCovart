@@ -1,7 +1,7 @@
 import type { FieldArgs, FieldEngine, ParamDef } from "../types";
 import { registerEngine } from "../registry";
 import { rgb } from "../color";
-import { getTextMask, txtTones } from "./txtMask";
+import { getTextMask, txtTones, resolveEnv } from "./txtMask";
 
 // DITHER — the display text PIXELATED into a coarse grid of square (or round)
 // pixels, then BROKEN: each pixel is only drawn if a per-cell dropout passes.
@@ -47,8 +47,7 @@ const dither: FieldEngine = {
     const jitterP = (p.ditherJitter == null ? 35 : p.ditherJitter) / 100;
     const pulse = (p.ditherPulse == null ? 55 : p.ditherPulse) / 100;
     const swell = (p.ditherSwell == null ? 40 : p.ditherSwell) / 100;
-    const spd = ANIM ? 0.5 + anim.speed : 1;
-    const T = ANIM ? anim.t * spd : 0;
+    const D = ANIM ? resolveEnv(anim.loopPhase) : 0;
 
     // Sizes as fractions of S so still (880) and export (3000) look identical.
     const cell = Math.max(2, (0.012 + sizeP * 0.05) * S); // pixel size
@@ -63,14 +62,16 @@ const dither: FieldEngine = {
     ctx.fillStyle = rgb(ink);
     ctx.imageSmoothingEnabled = false;
 
-    // Motion — the broken pixels CHURN + SCATTER, harder on the beat (glitchy,
-    // shattering type). Dropout reshuffle + position scatter are the creative core.
-    const breath = ANIM ? 1 + (Math.sin(T * 0.5) * 0.06 + anim.pumpEnv * 0.09) * (0.4 + swell) : 1;
-    const pop = ANIM ? 1 + (anim.kickSpring * 0.3 + anim.pumpEnv * 0.16) * pulse : 1;
-    const pixScale = pop; // pixels pop on the beat
-    // scatter grows with Jitter + a beat burst (kickSpring) so pixels fly out then settle
-    const jitterAmp = ANIM ? (jitterP * 0.95 + anim.kickSpring * 0.5) * cell : 0;
-    const timeStep = ANIM ? Math.floor(T * (1 + shuffle * 9)) : 0; // faster reshuffle
+    // RESOLVE LOOP: at D=0 the word is the SOLID clean pixelated still; as D rises
+    // mid-cycle the pixels break MORE, SCATTER and reshuffle, then snap back to the
+    // word on the beat. The beat kick spikes the scatter WITHIN the cycle (gated by
+    // D so the resolve stays clean). All keyed off loopPhase → seamless loop.
+    const punch = anim.kickSpring * 0.45 + anim.pumpEnv * 0.18;
+    const breath = ANIM ? 1 + D * (0.05 + swell * 0.12) : 1;
+    const pixScale = ANIM ? 1 + D * (0.12 + anim.kickSpring * 0.28) * pulse : 1;
+    const jitterAmp = ANIM ? D * (jitterP * 1.0 + punch * 0.7) * cell : 0;
+    const breakEff = breakP * (1 - D * (0.18 + shuffle * 0.5)); // sparser/broken mid-cycle
+    const timeStep = ANIM && D > 0.001 ? Math.floor(anim.loopPhase * (1 + shuffle * 16)) : 0;
 
     const cols = Math.ceil(S / stepPx) + 1;
     const rows = Math.ceil(S / stepPx) + 1;
@@ -87,14 +88,15 @@ const dither: FieldEngine = {
         const cov = mask.sample(cxp / S, cyp / S);
         const on = cov > 0.5;
         if ((invert ? on : !on)) continue; // outside the drawn region
-        // per-cell broken dropout (reshuffles with timeStep)
-        if (hash3(gx, gy, timeStep + (seed | 0)) > breakP) continue;
-        // time jitter of the pixel position (space-only)
+        // per-cell broken dropout (reshuffles with timeStep; more drops mid-cycle)
+        if (hash3(gx, gy, timeStep + (seed | 0)) > breakEff) continue;
+        // scatter the pixel position (cycle-periodic → seamless; 0 at the resolve)
         let px = cxp;
         let py = cyp;
         if (jitterAmp > 0) {
-          px += Math.sin(T * 1.3 + idx * 12.9898) * jitterAmp;
-          py += Math.cos(T * 1.1 + idx * 78.233) * jitterAmp;
+          const lp = anim.loopPhase * 6.2831853;
+          px += Math.sin(lp + idx * 12.9898) * jitterAmp;
+          py += Math.cos(lp + idx * 78.233) * jitterAmp;
         }
         const d = cell * pixScale;
         if (round) {

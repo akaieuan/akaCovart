@@ -126,6 +126,10 @@ export interface StudioState {
   blurPulse: number; // beat fatten (anim)
   blurDrift: number; // slow spatial drift (anim)
 
+  // Shared TxT resolve-loop length: how many beats per reform. The word returns to
+  // its readable still on the beat; lower = reforms more often. 0..100 -> ~1..8 beats.
+  txtLoopBeats: number;
+
 
   // seed
   seed: number;
@@ -336,12 +340,14 @@ const defaults = {
   linePulse: 60,
   lineWave: 48,
 
-  blurAmount: 45,
-  blurThreshold: 50,
+  blurAmount: 30,
+  blurThreshold: 52,
   blurInvert: false,
   blurFlow: 70,
   blurPulse: 60,
   blurDrift: 45,
+
+  txtLoopBeats: 20,
 
 
   soften: 0,

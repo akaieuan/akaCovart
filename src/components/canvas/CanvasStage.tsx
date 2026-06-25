@@ -464,6 +464,11 @@ export default function CanvasStage({
         );
         const t = rt * (0.45 + speed);
 
+        // Beat-synced resolve-loop phase (matches the BPM driver — integer beats).
+        const bps = (s.animBPM || 128) / 60;
+        const loopBeats = Math.max(1, Math.round(0.5 + ((s.txtLoopBeats ?? 20) / 100) * 7.5));
+        const loopPhase = ((rt * bps) / loopBeats) % 1;
+
         const builtState = {
           anim: true,
           t,
@@ -476,6 +481,7 @@ export default function CanvasStage({
           drift,
           swirl,
           speed,
+          loopPhase,
         };
 
         // AUTO: wander curated params around their manual base, swing additionally

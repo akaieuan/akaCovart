@@ -8,8 +8,22 @@ import "./globals.css";
 // --font-app and points --font-sans/-mono/-heading at.
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://akacovart.com"),
   title: "akaCOVART — Album Art Engine",
-  description: "Generative album-art studio.",
+  description:
+    "A generative album-art studio. Shape it, sync the motion to your track, and export the cover.",
+  openGraph: {
+    type: "website",
+    siteName: "akaCOVART",
+    url: "https://akacovart.com",
+    title: "akaCOVART — Album Art Engine",
+    description: "A generative album-art studio.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "akaCOVART — Album Art Engine",
+    description: "A generative album-art studio.",
+  },
 };
 
 export default function RootLayout({

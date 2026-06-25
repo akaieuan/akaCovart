@@ -2,7 +2,7 @@ import type { FieldArgs, FieldEngine, ParamDef } from "../types";
 import { registerEngine } from "../registry";
 import { rgb } from "../color";
 import { drawBlurred } from "../blur";
-import { getTextMask, txtTones } from "./txtMask";
+import { getTextMask, txtTones, resolveEnv } from "./txtMask";
 
 // BLUR — the display text BLURRED then HARD-THRESHOLDED into gooey, merged
 // metaball letterforms (the letters fuse as the blur rises). Faithful to
@@ -40,27 +40,24 @@ const blur: FieldEngine = {
     const flow = (p.blurFlow == null ? 50 : p.blurFlow) / 100;
     const pulse = (p.blurPulse == null ? 45 : p.blurPulse) / 100;
     const drift = (p.blurDrift == null ? 35 : p.blurDrift) / 100;
-    const spd = ANIM ? 0.5 + anim.speed : 1;
-    const T = ANIM ? anim.t * spd : 0;
 
     // Offscreen res for the blur+threshold. Modest (perf) — the goo is low-freq
     // and upscales cleanly, and the soft-threshold below keeps the edges crisp.
     const side = Math.max(64, Math.min(S, 560)) | 0;
 
-    // DRAMATIC merge-breathing: one clear cycle whose SPEED + DEPTH both scale with
-    // Flow, so the letters visibly MELT into fat gooey blobs and REFORM, with a hard
-    // beat punch on top. The threshold rises as it merges so the blob stays crisp +
-    // contained (clean, not mush). Shape-only → flicker-free.
-    const cyc = ANIM ? Math.sin(T * (0.5 + flow * 0.7)) * 0.5 + 0.5 : 0; // 0..1
-    const punch = ANIM ? anim.kickSpring * 0.55 + anim.pumpEnv * 0.32 : 0;
-    // At the crest both push toward FATTER, MERGED goo: more blur AND a lower
-    // threshold (so the spread-thin alpha is still caught — it grows, never
-    // vanishes). Floors/caps keep it from filling the frame or collapsing.
-    const radius = Math.max(
-      0.5,
-      (0.004 + amount * 0.05) * side * (1 + cyc * (0.25 + flow * 1.6) + punch * pulse * 0.7),
-    );
-    let thrA = 30 + threshP * 180 - cyc * flow * 40 - punch * pulse * 18;
+    // RESOLVE LOOP: A is the distort amount — 0 at each resolve (so the blur == its
+    // readable STILL), rising mid-cycle and back to 0 by the next beat. The beat
+    // kick modulates it WITHIN the cycle (suppressed at the resolve so the word
+    // stays clean). At the crest: more blur + LOWER threshold so the letters MELT /
+    // merge into fat goo, then REFORM. Everything keys off loopPhase → cycle-
+    // periodic → seamless loop; D=0 ⇒ byte-identical to the still.
+    const D = ANIM ? resolveEnv(anim.loopPhase) : 0;
+    const punch = anim.kickSpring * 0.55 + anim.pumpEnv * 0.32;
+    const A = ANIM ? D * (1 + punch * pulse * 0.6) : 0;
+    // Lower BASE blur so the still (the resolve) reads as letters; the melt (A·flow)
+    // drives the merging during the cycle, then it reforms.
+    const radius = Math.max(0.5, (0.0028 + amount * 0.035) * side * (1 + A * (0.5 + flow * 2.6)));
+    let thrA = 30 + threshP * 180 - A * flow * 44;
     thrA = Math.max(26, Math.min(225, thrA));
 
     // Two-tone: direct bg/ink (txtBg/txtInk) or derived from the mood.
@@ -104,12 +101,12 @@ const blur: FieldEngine = {
     }
     bctx.putImageData(img, 0, 0);
 
-    // A bold directional sweep + a breathing zoom synced to the merge cycle so the
-    // whole gooey field is alive (space-only).
-    const ang = ANIM ? T * 0.5 : 0;
-    const dxp = ANIM ? Math.cos(ang) * drift * S * 0.06 : 0;
-    const dyp = ANIM ? Math.sin(ang * 0.8) * drift * S * 0.05 : 0;
-    const zoom = ANIM ? 1 + cyc * (0.03 + flow * 0.06) + punch * pulse * 0.07 : 1;
+    // A circular drift + breathing zoom over the cycle, gated by A so it returns to
+    // dead-centre at the resolve (cycle-periodic → seamless).
+    const ang = anim.loopPhase * Math.PI * 2;
+    const dxp = ANIM ? Math.cos(ang) * A * drift * S * 0.05 : 0;
+    const dyp = ANIM ? Math.sin(ang) * A * drift * S * 0.05 : 0;
+    const zoom = ANIM ? 1 + A * (0.03 + flow * 0.06) : 1;
     const dw = S * zoom;
     const dh = S * zoom;
     const ox = dxp - (dw - S) / 2;

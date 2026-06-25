@@ -150,6 +150,16 @@ export function pickInk(base: number[], colors: number[][]): number[] {
   return best;
 }
 
+// Beat-synced RESOLVE envelope (0..1). 0 while the word is HELD readable (a `hold`
+// window at the start of each loop), then a smooth bump to its peak and back to 0
+// by the next resolve. The TxT engines gate ALL motion by this so the type returns
+// to its readable STILL on the beat (D=0 ⇒ the still) and the loop is seamless.
+export function resolveEnv(loopPhase: number, hold = 0.22): number {
+  if (loopPhase <= hold) return 0;
+  const x = (loopPhase - hold) / (1 - hold); // 0..1 across the distort span
+  return Math.sin(x * Math.PI); // 0 → 1 → 0
+}
+
 // Resolve the two-tone colours for a TxT engine: direct `txtBg`/`txtInk` hex
 // overrides when set, else derived from the mood (bg = base, ink = pickInk).
 export function txtTones(

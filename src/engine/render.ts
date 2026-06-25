@@ -36,6 +36,7 @@ function buildAnim(params: Record<string, any>): AnimState {
       drift: audioAnim.drift ?? 0,
       swirl: audioAnim.swirl ?? 0,
       speed: audioAnim.speed ?? 0,
+      loopPhase: audioAnim.loopPhase ?? 0,
     };
   }
 
@@ -53,6 +54,7 @@ function buildAnim(params: Record<string, any>): AnimState {
       drift: 0,
       swirl: 0,
       speed: 0,
+      loopPhase: 0,
     };
   }
   const t: number = params._t || 0;
@@ -76,6 +78,14 @@ function buildAnim(params: Record<string, any>): AnimState {
   const kickSpring = kick * Math.exp(-3.2 * beat) * Math.cos(2 * Math.PI * 1.6 * beat);
   const pumpEnv = pump * Math.pow(1 - beat, 2.0);
 
+  // Beat-synced resolve-loop phase: wraps every `loopBeats` beats (integer so the
+  // per-beat kick aligns + the loop stays seamless), 0 at each resolve.
+  const loopBeats = Math.max(
+    1,
+    Math.round(0.5 + ((params.txtLoopBeats == null ? 20 : params.txtLoopBeats) / 100) * 7.5),
+  );
+  const loopPhase = ((rt * bps) / loopBeats) % 1;
+
   return {
     anim: true,
     t,
@@ -88,6 +98,7 @@ function buildAnim(params: Record<string, any>): AnimState {
     drift,
     swirl,
     speed,
+    loopPhase,
   };
 }
 

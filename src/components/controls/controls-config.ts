@@ -345,19 +345,22 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
   ],
   // ── TxT focus engines ──
   dither: [
+    { kind: "slider", key: "txtLoopBeats", label: "Resolve", min: 0, max: 100 },
     { kind: "slider", key: "ditherShuffle", label: "Shuffle", min: 0, max: 100 },
     { kind: "slider", key: "ditherJitter", label: "Jitter", min: 0, max: 100 },
     { kind: "slider", key: "ditherPulse", label: "Pulse", min: 0, max: 100 },
     { kind: "slider", key: "ditherSwell", label: "Breathe", min: 0, max: 100 },
   ],
   lines: [
-    { kind: "slider", key: "lineRotate", label: "Rotate", min: 0, max: 100 },
+    { kind: "slider", key: "txtLoopBeats", label: "Resolve", min: 0, max: 100 },
+    { kind: "slider", key: "lineRotate", label: "Sweep", min: 0, max: 100 },
     { kind: "slider", key: "lineScroll", label: "Scroll", min: 0, max: 100 },
     { kind: "slider", key: "linePulse", label: "Pulse", min: 0, max: 100 },
     { kind: "slider", key: "lineWave", label: "Wave", min: 0, max: 100 },
   ],
   blur: [
-    { kind: "slider", key: "blurFlow", label: "Flow", min: 0, max: 100 },
+    { kind: "slider", key: "txtLoopBeats", label: "Resolve", min: 0, max: 100 },
+    { kind: "slider", key: "blurFlow", label: "Melt", min: 0, max: 100 },
     { kind: "slider", key: "blurPulse", label: "Pulse", min: 0, max: 100 },
     { kind: "slider", key: "blurDrift", label: "Drift", min: 0, max: 100 },
   ],
