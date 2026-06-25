@@ -78,16 +78,17 @@ const flux: FieldEngine = {
 
     // ── Motion (gated, SPACE only) ────────────────────────────────────────────
     const ANIM = anim.anim;
-    const flow = (p.fluxFlow == null ? 50 : p.fluxFlow) / 100;
-    const dft = (p.fluxDrift == null ? 45 : p.fluxDrift) / 100;
-    const swl = (p.fluxSwirl == null ? 40 : p.fluxSwirl) / 100;
-    const pulse = (p.fluxPulse == null ? 50 : p.fluxPulse) / 100;
+    const flow = (p.fluxFlow == null ? 62 : p.fluxFlow) / 100;
+    const dft = (p.fluxDrift == null ? 55 : p.fluxDrift) / 100;
+    const swl = (p.fluxSwirl == null ? 48 : p.fluxSwirl) / 100;
+    const pulse = (p.fluxPulse == null ? 58 : p.fluxPulse) / 100;
     const spd = ANIM ? 0.5 + anim.speed : 1;
     const T = ANIM ? anim.t * spd : 0;
     // time-driven offsets churn the field; drift slides it; swirl rotates samples.
-    const tx = ANIM ? T * (0.04 + flow * 0.22) + dft * 0.5 * Math.sin(T * 0.12) : 0;
-    const ty = ANIM ? T * (0.03 + flow * 0.16) : 0;
-    const rot = ANIM ? (0.15 * swl + anim.swirl * 0.2) * Math.sin(T * 0.1) : 0;
+    // Tuned lively so the marbling is clearly in motion (still gated by ANIM).
+    const tx = ANIM ? T * (0.06 + flow * 0.40) + dft * 0.7 * Math.sin(T * 0.16) : 0;
+    const ty = ANIM ? T * (0.045 + flow * 0.30) : 0;
+    const rot = ANIM ? (0.22 * swl + anim.swirl * 0.28) * Math.sin(T * 0.14) : 0;
     const cosR = Math.cos(rot), sinR = Math.sin(rot);
 
     // ── Colour ramp = the palette, cycled into smooth marble veins ────────────
@@ -121,8 +122,8 @@ const flux: FieldEngine = {
     const data = bufImg.data;
     const inv = 1 / (NX - 1);
     const gamma = 0.7 + (1 - depth) * 0.9;
-    const sinT2 = Math.sin(T * 0.2 + wphx);
-    const cosT2 = Math.cos(T * 0.17 + wphy);
+    const sinT2 = Math.sin(T * 0.42 + wphx);
+    const cosT2 = Math.cos(T * 0.36 + wphy);
     for (let yy = 0; yy < NX; yy++) {
       const nyc = yy * inv - 0.5;
       for (let xx = 0; xx < NX; xx++) {
@@ -150,7 +151,7 @@ const flux: FieldEngine = {
     bctx.putImageData(bufImg, 0, 0);
 
     // ── Upscale (smoothed) with a beat zoom — silky liquid, SPACE-only motion ──
-    const sc = 1 + (anim.pumpEnv * 0.05 + anim.kickSpring * 0.03) * (0.4 + pulse);
+    const sc = 1 + (anim.pumpEnv * 0.07 + anim.kickSpring * 0.045) * (0.4 + pulse);
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
@@ -170,10 +171,10 @@ function fluxParams(): ParamDef[] {
     { key: "fluxWarp", label: "WARP", type: "range", group: "composition", min: 0, max: 100, default: 55 },
     { key: "fluxBands", label: "VEINS", type: "range", group: "composition", min: 0, max: 100, default: 45 },
     { key: "fluxDepth", label: "DEPTH", type: "range", group: "composition", min: 0, max: 100, default: 50 },
-    { key: "fluxFlow", label: "FLOW", type: "range", group: "motion", min: 0, max: 100, default: 50 },
-    { key: "fluxDrift", label: "DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 45 },
-    { key: "fluxSwirl", label: "SWIRL", type: "range", group: "motion", min: 0, max: 100, default: 40 },
-    { key: "fluxPulse", label: "PULSE", type: "range", group: "motion", min: 0, max: 100, default: 50 },
+    { key: "fluxFlow", label: "FLOW", type: "range", group: "motion", min: 0, max: 100, default: 62 },
+    { key: "fluxDrift", label: "DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 55 },
+    { key: "fluxSwirl", label: "SWIRL", type: "range", group: "motion", min: 0, max: 100, default: 48 },
+    { key: "fluxPulse", label: "PULSE", type: "range", group: "motion", min: 0, max: 100, default: 58 },
   ];
 }
 

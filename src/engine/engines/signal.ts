@@ -45,10 +45,10 @@ const signal: FieldEngine = {
     const sharp = (p.signalSharp == null ? 50 : p.signalSharp) / 100;
 
     const ANIM = anim.anim;
-    const drift = (p.signalDrift == null ? 50 : p.signalDrift) / 100;
-    const swl = (p.signalSwirl == null ? 40 : p.signalSwirl) / 100;
-    const pulse = (p.signalPulse == null ? 50 : p.signalPulse) / 100;
-    const shimmer = (p.signalFlow == null ? 45 : p.signalFlow) / 100;
+    const drift = (p.signalDrift == null ? 60 : p.signalDrift) / 100;
+    const swl = (p.signalSwirl == null ? 48 : p.signalSwirl) / 100;
+    const pulse = (p.signalPulse == null ? 58 : p.signalPulse) / 100;
+    const shimmer = (p.signalFlow == null ? 55 : p.signalFlow) / 100;
     const spd = ANIM ? 0.5 + anim.speed : 1;
     const T = ANIM ? anim.t * spd : 0;
 
@@ -70,12 +70,13 @@ const signal: FieldEngine = {
     }
 
     // beat breathing of grating frequency + slow whole-field roll (SPACE only).
-    const freqBeat = 1 + (anim.pumpEnv * 0.06 + anim.kickSpring * 0.04) * (0.4 + pulse);
-    const rotT = ANIM ? (anim.swirl * 0.2 + swl * 0.25) * Math.sin(T * 0.08) : 0;
+    const freqBeat = 1 + (anim.pumpEnv * 0.08 + anim.kickSpring * 0.055) * (0.4 + pulse);
+    const rotT = ANIM ? (anim.swirl * 0.3 + swl * 0.4) * Math.sin(T * 0.12) : 0;
     const cosR = Math.cos(rotT), sinR = Math.sin(rotT);
     // per-grating travelling phase (fringes sweep across the frame over time).
+    // Tuned lively so the interference visibly flows + shimmers (gated by ANIM).
     const phs = gratings.map((G) =>
-      ANIM ? T * G.sp * (0.4 + drift * 2.2) + shimmer * Math.sin(T * 0.3 + G.ph) : 0,
+      ANIM ? T * G.sp * (0.6 + drift * 3.4) + shimmer * 1.6 * Math.sin(T * 0.5 + G.ph) : 0,
     );
 
     // ── Render into the offscreen buffer ──────────────────────────────────────
@@ -144,10 +145,10 @@ function signalParams(): ParamDef[] {
     { key: "signalLayers", label: "LAYERS", type: "range", group: "composition", min: 0, max: 100, default: 50 },
     { key: "signalSpread", label: "ANGLE SPREAD", type: "range", group: "composition", min: 0, max: 100, default: 50 },
     { key: "signalSharp", label: "SHARPNESS", type: "range", group: "composition", min: 0, max: 100, default: 50 },
-    { key: "signalDrift", label: "DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 50 },
-    { key: "signalSwirl", label: "SWIRL", type: "range", group: "motion", min: 0, max: 100, default: 40 },
-    { key: "signalPulse", label: "PULSE", type: "range", group: "motion", min: 0, max: 100, default: 50 },
-    { key: "signalFlow", label: "SHIMMER", type: "range", group: "motion", min: 0, max: 100, default: 45 },
+    { key: "signalDrift", label: "DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 60 },
+    { key: "signalSwirl", label: "SWIRL", type: "range", group: "motion", min: 0, max: 100, default: 48 },
+    { key: "signalPulse", label: "PULSE", type: "range", group: "motion", min: 0, max: 100, default: 58 },
+    { key: "signalFlow", label: "SHIMMER", type: "range", group: "motion", min: 0, max: 100, default: 55 },
   ];
 }
 
