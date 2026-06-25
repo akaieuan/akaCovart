@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Check, ChevronDown, Download, Eye, LayoutGrid, Proportions, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, Download, Eye, Proportions, SlidersHorizontal } from "lucide-react";
 
 import { listEnginesByFocus } from "@/engine";
 import { useStudio } from "@/lib/store";
@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import StartGrid from "./StartGrid";
 
 type Focus = "art" | "txt";
 
@@ -97,6 +98,33 @@ function FocusMenu() {
   );
 }
 
+// "Starts" dropdown — re-open the focus-aware starting-point grid as a compact
+// popover (mirrors the Focus dropdown beside it). Picking a tile loads it.
+function StartMenu() {
+  const setState = useStudio((s) => s.setState);
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        className="inline-flex cursor-pointer items-center gap-0.5 rounded-md px-1.5 py-1 text-[12px] font-medium text-grey-300 transition-colors hover:text-grey-100"
+        aria-label="Starting points"
+      >
+        <span>Starts</span>
+        <ChevronDown className="size-3 text-grey-500" />
+      </PopoverTrigger>
+      <PopoverContent align="start" sideOffset={8} className="w-[300px] gap-0 p-2.5">
+        <StartGrid
+          className="gap-1.5"
+          onPick={(look) => {
+            setState({ ...look.params, showStart: false });
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /**
  * Transparent floating header. Wordmark (click → home) + Focus switcher on the
  * left, a glassy nav pill on the right with three EQUAL view tabs:
@@ -137,19 +165,7 @@ export default function Header({ onHome }: { onHome?: () => void }) {
         </button>
 
         <FocusMenu />
-
-        {/* Re-open the blank-canvas starting-point grid for the current focus —
-            a minimal word button, styled like the Focus dropdown beside it. */}
-        <button
-          type="button"
-          onClick={() => setState({ showStart: true })}
-          aria-label="Starting points"
-          title="Starting points"
-          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-[12px] font-medium text-grey-300 transition-colors hover:text-grey-100"
-        >
-          <LayoutGrid className="size-[12px] text-grey-500" />
-          <span>Starts</span>
-        </button>
+        <StartMenu />
       </div>
 
       <div className="pointer-events-auto flex items-center gap-2">
