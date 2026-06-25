@@ -33,6 +33,7 @@ const flux: FieldEngine = {
   id: "flux",
   label: "Flux",
   kind: "2d",
+  focus: "art",
   params: fluxParams(),
   field(args: FieldArgs): void {
     const { ctx, size: S, params: p, cfg, seed, anim } = args;

@@ -155,7 +155,11 @@ export function renderTo(
     soften(ctx, S, params.soften || 0, cfg);
   }
 
-  if (params.scratches) {
+  // TxT engines are meant to read as smooth, high-res, stark two-tone type, so
+  // the film-grain / scratch texture is skipped for them (it muddies the look).
+  const smoothTxt = engine?.focus === "txt";
+
+  if (params.scratches && !smoothTxt) {
     scratches(ctx, S, params.scratchCount == null ? 6 : params.scratchCount, prng(seed ^ 0x2c1b3d77), cfg);
   }
 
@@ -172,7 +176,7 @@ export function renderTo(
     vignette(ctx, S, params.vignette || 0);
   }
 
-  if ((params.grain || 0) > 0 || (params.dust || 0) > 0) {
+  if (!smoothTxt && ((params.grain || 0) > 0 || (params.dust || 0) > 0)) {
     grain(
       ctx,
       S,
@@ -186,7 +190,9 @@ export function renderTo(
   let textBox;
   // `_skipText` lets renderFormatTo draw the type AFTER cropping (in frame space)
   // so it is placed for the chosen format rather than baked into the square.
-  if (params.showText && !params._skipText) {
+  // TxT engines render the type AS the field, so the corner-credit overlay is
+  // suppressed for them (no double-draw) regardless of the showText flag.
+  if (params.showText && !params._skipText && engine?.focus !== "txt") {
     textBox = drawText(ctx, S, S, params, mood, prng(seed ^ 0x3b9a73c1));
   }
 
@@ -236,9 +242,11 @@ export function renderFormatTo(
   ctx.clearRect(0, 0, w, h);
   ctx.drawImage(off, (side - sw) / 2, (side - sh) / 2, sw, sh, 0, 0, w, h);
 
-  // Type drawn in FRAME space (correct placement for this format).
+  // Type drawn in FRAME space (correct placement for this format). Suppressed
+  // for TxT engines, which render the type as the field itself.
   let textBox: TextBox | undefined;
-  if (params.showText) {
+  const isTxtEngine = getEngine(params.engine || "blob")?.focus === "txt";
+  if (params.showText && !isTxtEngine) {
     const seed = (params.seed >>> 0) || 1;
     const mood: Mood = resolveMood(seed, (params.mood ?? "random") as Mood | "random");
     textBox = drawText(ctx, w, h, params, mood, prng(seed ^ 0x3b9a73c1));

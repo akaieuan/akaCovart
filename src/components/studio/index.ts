@@ -9,3 +9,5 @@ export { FormatsButton } from "./FormatsButton";
 export { default as Formats } from "./Formats";
 export { default as Preview } from "./Preview";
 export { default as Header } from "./Header";
+export { default as MobileControls } from "./MobileControls";
+export { default as StartPicker } from "./StartPicker";

@@ -92,17 +92,6 @@ function paramSig(s: StudioState): string {
     s.gridDensity,
     s.gridPerspective,
     s.gridMagnet,
-    s.waveCount,
-    s.waveAmp,
-    s.waveDetail,
-    s.waveTurbulence,
-    s.wavePerspective,
-    s.waveFill,
-    s.orbSize,
-    s.orbSoft,
-    s.orbHalftone,
-    s.orbMelt,
-    s.orbShade,
     s.contourLines,
     s.contourWeight,
     s.contourScale,
@@ -118,6 +107,21 @@ function paramSig(s: StudioState): string {
     s.signalLayers,
     s.signalSpread,
     s.signalSharp,
+    // TxT engine composition params (motion params are excluded, like the others)
+    s.ditherSize,
+    s.ditherBreak,
+    s.ditherGap,
+    s.ditherRound,
+    s.ditherInvert,
+    s.lineSize,
+    s.lineGap,
+    s.lineAngle,
+    s.lineInvert,
+    s.blurAmount,
+    s.blurThreshold,
+    s.blurInvert,
+    s.txtBg,
+    s.txtInk,
     s.soften,
     s.density,
     s.smear,
@@ -153,6 +157,12 @@ function textSig(s: StudioState): string {
     s.textX,
     s.textY,
     s.textAlign,
+    // TxT display text (the subject the txt engines rasterize)
+    s.txtText,
+    s.txtSub,
+    s.txtSize,
+    s.txtAlign,
+    s.txtVAlign,
   ].join("|");
 }
 
@@ -661,7 +671,7 @@ export default function CanvasStage({
   };
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-start gap-2.5 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] px-3 pt-14 pb-2 [container-type:size] sm:gap-[18px] sm:px-8 md:justify-center md:py-8">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-start gap-2.5 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] px-3 pt-14 pb-2 [container-type:size] sm:gap-[18px] sm:px-8 md:justify-center md:pt-16 md:pb-8">
       <div
         className="relative overflow-hidden bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65),0_0_0_1px_#1c1c20] transition-[width,height] duration-300 ease-out"
         style={frameStyle}

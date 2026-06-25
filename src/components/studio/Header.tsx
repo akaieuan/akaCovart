@@ -1,13 +1,105 @@
 "use client";
 
-import { Download, Eye, LayoutGrid, SlidersHorizontal } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, ChevronDown, Download, Eye, LayoutGrid, Proportions, SlidersHorizontal } from "lucide-react";
 
+import { listEnginesByFocus } from "@/engine";
 import { useStudio } from "@/lib/store";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+type Focus = "art" | "txt";
+
+const FOCUS_OPTIONS: { value: Focus; label: string; hint: string }[] = [
+  { value: "art", label: "Art", hint: "Abstract generative fields" },
+  { value: "txt", label: "TxT", hint: "Type as the subject" },
+];
+
+// First registered engine for a focus (fallbacks keep this safe pre-registration).
+function defaultEngine(focus: Focus): string {
+  return listEnginesByFocus(focus)[0]?.id ?? (focus === "txt" ? "dither" : "blob");
+}
+
 /**
- * Transparent floating header. Wordmark (click → home) on the left, a glassy
- * nav pill on the right with three EQUAL view tabs:
+ * Focus switcher — flips the studio between the Art (abstract field) engines and
+ * the TxT (type-driven) engines. A small dropdown next to the wordmark, so it
+ * sits "above the sidebar" on desktop and at the top of the page on mobile (the
+ * header is the same element in both layouts). Remembers the last-used engine in
+ * each focus so round-trips feel natural.
+ */
+function FocusMenu() {
+  const focus = useStudio((s) => s.focus);
+  const setState = useStudio((s) => s.setState);
+  const [open, setOpen] = useState(false);
+  // Per-focus engine memory (component-scoped; seeded with the defaults).
+  const lastEngine = useRef<Record<Focus, string>>({ art: "blob", txt: "dither" });
+
+  const pick = (next: Focus) => {
+    setOpen(false);
+    if (next === focus) return;
+    const cur = useStudio.getState();
+    // Stash the engine we're leaving, restore (or default) the one we're entering.
+    lastEngine.current[cur.focus as Focus] = cur.engine;
+    const remembered = lastEngine.current[next];
+    const known = listEnginesByFocus(next).some((e) => e.id === remembered);
+    setState({ focus: next, engine: known ? remembered : defaultEngine(next) });
+  };
+
+  const active = FOCUS_OPTIONS.find((o) => o.value === focus) ?? FOCUS_OPTIONS[0];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        className="inline-flex cursor-pointer items-center gap-0.5 rounded-md px-1.5 py-1 text-[12px] font-medium text-grey-300 transition-colors hover:text-grey-100"
+        aria-label={`Focus: ${active.label}`}
+      >
+        <span>{active.label}</span>
+        <ChevronDown className="size-3 text-grey-500" />
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={8}
+        className="w-52 gap-1 p-1.5"
+      >
+        {FOCUS_OPTIONS.map((o) => {
+          const on = o.value === focus;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => pick(o.value)}
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
+                on ? "bg-white/[0.07]" : "hover:bg-white/5",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex size-4 flex-none items-center justify-center",
+                  on ? "text-grey-100" : "text-transparent",
+                )}
+              >
+                <Check className="size-3.5" />
+              </span>
+              <span className="flex flex-col">
+                <span className="text-[13px] font-medium text-grey-100">{o.label}</span>
+                <span className="text-[11px] text-grey-400">{o.hint}</span>
+              </span>
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * Transparent floating header. Wordmark (click → home) + Focus switcher on the
+ * left, a glassy nav pill on the right with three EQUAL view tabs:
  *  - Edit    → the editor (closes any overlay).
  *  - Formats → the multi-format bento.
  *  - Preview → the still + motion preview page.
@@ -27,24 +119,41 @@ export default function Header({ onHome }: { onHome?: () => void }) {
 
   const items = [
     { key: "edit", label: "Edit", Icon: SlidersHorizontal, onClick: goEdit, active: view === "edit" },
-    { key: "formats", label: "Formats", Icon: LayoutGrid, onClick: goFormats, active: view === "formats" },
+    { key: "formats", label: "Formats", Icon: Proportions, onClick: goFormats, active: view === "formats" },
     { key: "preview", label: "Preview", Icon: Eye, onClick: goPreview, active: view === "preview" },
   ];
 
   return (
-    <header className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5">
-      <button
-        type="button"
-        onClick={onHome}
-        aria-label="Back to start"
-        className="pointer-events-auto inline-flex cursor-pointer items-baseline select-none transition-opacity hover:opacity-70"
-      >
-        <span className="text-[15px] font-light text-grey-350">aka</span>
-        <span className="text-[15px] font-semibold text-grey-100">COVART</span>
-      </button>
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between px-4 py-2.5 sm:px-5">
+      <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={onHome}
+          aria-label="Back to start"
+          className="inline-flex cursor-pointer items-baseline select-none transition-opacity hover:opacity-70"
+        >
+          <span className="text-[15px] font-light text-grey-350">aka</span>
+          <span className="text-[15px] font-semibold text-grey-100">COVART</span>
+        </button>
+
+        <FocusMenu />
+
+        {/* Re-open the blank-canvas starting-point grid for the current focus —
+            a minimal word button, styled like the Focus dropdown beside it. */}
+        <button
+          type="button"
+          onClick={() => setState({ showStart: true })}
+          aria-label="Starting points"
+          title="Starting points"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 text-[12px] font-medium text-grey-300 transition-colors hover:text-grey-100"
+        >
+          <LayoutGrid className="size-[12px] text-grey-500" />
+          <span>Starts</span>
+        </button>
+      </div>
 
       <div className="pointer-events-auto flex items-center gap-2">
-        <nav className="flex items-center gap-1 rounded-full border border-white/10 bg-panel/70 p-1 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <nav className="flex items-center gap-0.5 rounded-full border border-white/10 bg-panel/70 p-0.5 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           {items.map(({ key, label, Icon, onClick, active }) => (
             <button
               key={key}
@@ -53,13 +162,13 @@ export default function Header({ onHome }: { onHome?: () => void }) {
               aria-label={label}
               aria-pressed={active}
               className={cn(
-                "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition-colors",
+                "inline-flex h-[26px] items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-colors",
                 active
                   ? "bg-grey-100 text-bg"
                   : "text-grey-300 hover:bg-white/5 hover:text-white",
               )}
             >
-              <Icon className="size-[14px]" />
+              <Icon className="size-[12px]" />
               <span className="hidden sm:inline">{label}</span>
             </button>
           ))}

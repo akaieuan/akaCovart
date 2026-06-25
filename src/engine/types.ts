@@ -66,6 +66,11 @@ export interface FieldEngine {
   id: string;
   label: string;
   kind: "2d";
+  // Which creative mode this engine belongs to. "art" = the abstract field
+  // engines (the default); "txt" = the type-driven engines where the letterforms
+  // are the subject. The header Focus switch + EngineSelector filter on this.
+  // Optional so existing engines (untagged) default to "art".
+  focus?: "art" | "txt";
   params: ParamDef[];
   field(args: FieldArgs): void;
 }

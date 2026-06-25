@@ -65,6 +65,10 @@ export const ENGINE_TAB_LABELS: Record<string, string> = {
   contours: "Contours",
   flux: "Flux",
   signal: "Signal",
+  // TxT focus
+  dither: "Dither",
+  lines: "Lines",
+  blur: "Blur",
 };
 
 export const FALLBACK_ENGINES: SegOption[] = [
@@ -73,6 +77,9 @@ export const FALLBACK_ENGINES: SegOption[] = [
   { value: "contours", label: "Contours" },
   { value: "flux", label: "Flux" },
   { value: "signal", label: "Signal" },
+  { value: "dither", label: "Dither" },
+  { value: "lines", label: "Lines" },
+  { value: "blur", label: "Blur" },
 ];
 
 // ── PALETTE / MOOD ───────────────────────────────────────────────────────────
@@ -179,6 +186,37 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
       ],
     },
   ],
+  // ── TxT focus engines ──────────────────────────────────────────────────────
+  dither: [
+    {
+      controls: [
+        { kind: "slider", key: "ditherSize", label: "Pixel size", min: 0, max: 100 },
+        { kind: "slider", key: "ditherBreak", label: "Break", min: 0, max: 100 },
+        { kind: "slider", key: "ditherGap", label: "Spacing", min: 0, max: 100 },
+        { kind: "toggle", key: "ditherRound", label: "Round pixels" },
+        { kind: "toggle", key: "ditherInvert", label: "Invert" },
+      ],
+    },
+  ],
+  lines: [
+    {
+      controls: [
+        { kind: "slider", key: "lineSize", label: "Thickness", min: 0, max: 100 },
+        { kind: "slider", key: "lineGap", label: "Spacing", min: 0, max: 100 },
+        { kind: "slider", key: "lineAngle", label: "Angle", min: 0, max: 100 },
+        { kind: "toggle", key: "lineInvert", label: "Invert" },
+      ],
+    },
+  ],
+  blur: [
+    {
+      controls: [
+        { kind: "slider", key: "blurAmount", label: "Blur", min: 0, max: 100 },
+        { kind: "slider", key: "blurThreshold", label: "Threshold", min: 0, max: 100 },
+        { kind: "toggle", key: "blurInvert", label: "Invert" },
+      ],
+    },
+  ],
 };
 
 // Shared FINISH group, appended to every engine's COMPOSITION section.
@@ -220,6 +258,19 @@ export const TEXT_COLOR_OPTIONS: SegOption[] = [
   { value: "auto", label: "Auto" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
+];
+
+// TxT display-text alignment + vertical position (the type IS the subject).
+export const TXT_ALIGN_OPTIONS: SegOption[] = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Center" },
+  { value: "right", label: "Right" },
+];
+
+export const TXT_VALIGN_OPTIONS: SegOption[] = [
+  { value: "top", label: "Top" },
+  { value: "middle", label: "Middle" },
+  { value: "bottom", label: "Bottom" },
 ];
 
 // Curated cover faces. `value` is the real CSS family name (loaded via the
@@ -291,5 +342,23 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "gridPop", label: "Pop", min: 0, max: 100 },
     { kind: "slider", key: "gridOrbit", label: "Orbit", min: 0, max: 100 },
     { kind: "slider", key: "gridFlow", label: "Flow", min: 0, max: 100 },
+  ],
+  // ── TxT focus engines ──
+  dither: [
+    { kind: "slider", key: "ditherShuffle", label: "Shuffle", min: 0, max: 100 },
+    { kind: "slider", key: "ditherJitter", label: "Jitter", min: 0, max: 100 },
+    { kind: "slider", key: "ditherPulse", label: "Pulse", min: 0, max: 100 },
+    { kind: "slider", key: "ditherSwell", label: "Breathe", min: 0, max: 100 },
+  ],
+  lines: [
+    { kind: "slider", key: "lineRotate", label: "Rotate", min: 0, max: 100 },
+    { kind: "slider", key: "lineScroll", label: "Scroll", min: 0, max: 100 },
+    { kind: "slider", key: "linePulse", label: "Pulse", min: 0, max: 100 },
+    { kind: "slider", key: "lineWave", label: "Wave", min: 0, max: 100 },
+  ],
+  blur: [
+    { kind: "slider", key: "blurFlow", label: "Flow", min: 0, max: 100 },
+    { kind: "slider", key: "blurPulse", label: "Pulse", min: 0, max: 100 },
+    { kind: "slider", key: "blurDrift", label: "Drift", min: 0, max: 100 },
   ],
 };

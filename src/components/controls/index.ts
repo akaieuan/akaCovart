@@ -1,5 +1,4 @@
 export { default as Controls } from "./Controls";
-export { default as Gallery } from "./Gallery";
 export { Presets } from "./Presets";
 export { PositionGrid } from "./PositionGrid";
 export * from "./controls-config";

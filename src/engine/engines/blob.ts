@@ -25,6 +25,7 @@ const blob: FieldEngine = {
   id: "blob",
   label: "Blob",
   kind: "2d",
+  focus: "art",
   params: blobParams(),
   field(args: FieldArgs): void {
     const { ctx, size: S, params: p, mood, cfg, seed, anim } = args;

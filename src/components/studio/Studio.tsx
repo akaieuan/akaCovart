@@ -15,6 +15,7 @@ import { ExportButton } from "./ExportButton";
 import Formats from "./Formats";
 import Preview from "./Preview";
 import MobileControls from "./MobileControls";
+import StartPicker from "./StartPicker";
 import { useStudio } from "@/lib/store";
 import { exportPng, exportVideo } from "@/lib/export";
 import { cn } from "@/lib/utils";
@@ -25,18 +26,18 @@ export default function Studio() {
   // Landing gate: show the intro until the user clicks Start, then the studio.
   const [started, setStarted] = useState(false);
 
-  // Nav state — overlays cover the editor; collapse hides the sidebar.
+  // Nav state — overlays cover the editor; collapse hides the sidebar. `showStart`
+  // is the blank-canvas starting-point picker (first entry + header re-open).
   const showFormats = useStudio((s) => s.showFormats);
   const showPreview = useStudio((s) => s.showPreview);
   const collapsed = useStudio((s) => s.sidebarCollapsed);
+  const showStart = useStudio((s) => s.showStart);
   const overlayOpen = showFormats || showPreview;
 
-  // Randomize seed + gallery after hydration (initial values are deterministic
-  // to avoid an SSR/client mismatch). Gives fresh art on every load.
+  // Randomize seed after hydration (initial values are deterministic to avoid an
+  // SSR/client mismatch) so the blank canvas behind the picker is fresh art.
   useEffect(() => {
-    const s = useStudio.getState();
-    s.newSeed();
-    s.rerollGallery();
+    useStudio.getState().newSeed();
   }, []);
 
   const handleExport = () => {
@@ -61,8 +62,16 @@ export default function Studio() {
   };
 
   // Landing first: a full-bleed looping generative backdrop + Start button.
+  // Entering the studio opens the blank-canvas starting-point picker.
   if (!started) {
-    return <Intro onStart={() => setStarted(true)} />;
+    return (
+      <Intro
+        onStart={() => {
+          setStarted(true);
+          useStudio.getState().setState({ showStart: true });
+        }}
+      />
+    );
   }
 
   return (
@@ -71,9 +80,17 @@ export default function Studio() {
       <Header onHome={() => setStarted(false)} />
 
       {/* HERO: canvas centered, fills remaining space. Expands when the sidebar
-          collapses. Stage forwards canvasRef to the 2D CanvasStage. */}
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          collapses. Stage forwards canvasRef to the 2D CanvasStage. The blank-
+          canvas starting-point picker overlays it on first entry. */}
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <Stage canvasRef={canvasRef} />
+        {showStart && (
+          <StartPicker
+            onPick={(look) =>
+              useStudio.getState().setState({ ...look.params, showStart: false })
+            }
+          />
+        )}
       </main>
 
       {/* ── DESKTOP SIDEBAR (md+) ─────────────────────────────────────────────

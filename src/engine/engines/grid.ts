@@ -16,6 +16,7 @@ const grid: FieldEngine = {
   id: "grid",
   label: "Grid",
   kind: "2d",
+  focus: "art",
   params: gridParams(),
   field(args: FieldArgs): void {
     const { ctx, size: S, params: p, cfg, seed, anim } = args;

@@ -79,12 +79,6 @@ const CHANNELS: AutoChannel[] = [
   // engine-specific (flux)
   { key: "fluxWarp", min: 0, max: 100, freq: 0.027, phase: 1.4, rangeFrac: 0.24, band: "bass" },
   { key: "fluxBands", min: 0, max: 100, freq: 0.039, phase: 5.6, rangeFrac: 0.20, band: "high" },
-  // engine-specific (orb 2D)
-  { key: "orbMelt", min: 0, max: 100, freq: 0.025, phase: 3.3, rangeFrac: 0.24, band: "mid" },
-  { key: "orbHalftone", min: 0, max: 100, freq: 0.033, phase: 0.9, rangeFrac: 0.20, band: "high" },
-  { key: "orbSize", min: 0, max: 100, freq: 0.020, phase: 1.2, rangeFrac: 0.16, band: "bass" },
-  { key: "orbSoft", min: 0, max: 100, freq: 0.030, phase: 4.7, rangeFrac: 0.18, band: "mid" },
-  { key: "orbShade", min: 0, max: 100, freq: 0.024, phase: 2.6, rangeFrac: 0.16, band: "energy" },
   // engine-specific (signal)
   { key: "signalFreq", min: 0, max: 100, freq: 0.022, phase: 0.8, rangeFrac: 0.18, band: "mid" },
   { key: "signalSpread", min: 0, max: 100, freq: 0.016, phase: 3.4, rangeFrac: 0.18, band: "bass" },

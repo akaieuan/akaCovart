@@ -1,14 +1,21 @@
 "use client";
 
 import { memo, useEffect, useState } from "react";
-import { HexColorPicker } from "react-colorful";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
+
+// Code-split react-colorful — it's only needed once the picker popover opens, so
+// keep it out of the initial bundle (it loads on first open).
+const HexColorPicker = dynamic(
+  () => import("react-colorful").then((m) => m.HexColorPicker),
+  { ssr: false },
+);
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useStudio } from "@/lib/store";
+import { useStudio, type StudioState } from "@/lib/store";
 import { parseHex } from "@/engine";
 import { Label } from "./Label";
 
@@ -39,19 +46,23 @@ const DEFAULT_PICK = "#888888";
 
 export interface ColorPickerProps {
   /** Store key holding the picked hex (or null). */
-  paramKey: "colorPick";
+  paramKey: "colorPick" | "txtBg" | "txtInk";
   label?: string;
+  /** Text shown in the "no colour picked" (auto) state. */
+  emptyLabel?: string;
   className?: string;
 }
 
 function ColorPickerInner({
   paramKey,
   label = "Color",
+  emptyLabel = "Original palette",
   className,
 }: ColorPickerProps) {
   const value = useStudio((s) => s[paramKey]); // string | null
   const setState = useStudio((s) => s.setState);
-  const set = (hex: string | null) => setState({ [paramKey]: hex });
+  const set = (hex: string | null) =>
+    setState({ [paramKey]: hex } as Partial<StudioState>);
 
   // Local draft for the hex text field so typing partial values doesn't thrash
   // the store; commit only when it parses to a valid colour.
@@ -115,7 +126,7 @@ function ColorPickerInner({
                 }
               />
               <span className="font-sans text-[12px] font-normal text-grey-200">
-                {active ? value : "Original palette"}
+                {active ? value : emptyLabel}
               </span>
             </button>
           }

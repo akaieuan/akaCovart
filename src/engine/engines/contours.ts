@@ -30,6 +30,7 @@ const contours: FieldEngine = {
   id: "contours",
   label: "Contours",
   kind: "2d",
+  focus: "art",
   params: contourParams(),
   field(args: FieldArgs): void {
     const { ctx, size: S, params: p, cfg, seed, anim } = args;

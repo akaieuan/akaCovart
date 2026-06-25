@@ -1,7 +1,17 @@
 "use client";
 
-import { Circle, Grid3x3, Activity, Droplet, Spline, Wind } from "lucide-react";
-import { listEngines } from "@/engine";
+import {
+  Circle,
+  Grid3x3,
+  Activity,
+  Droplet,
+  Spline,
+  Wind,
+  Grip,
+  AlignJustify,
+  Sparkles,
+} from "lucide-react";
+import { listEnginesByFocus } from "@/engine";
 import { useStudio } from "@/lib/store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
@@ -14,21 +24,35 @@ type EngineDef = {
   Icon: React.ComponentType<{ className?: string }>;
 };
 
+// Art (abstract field) + TxT (type) engines. The registry decides which are
+// actually available + their order; this only supplies labels + icons.
 const ENGINE_DEFS: EngineDef[] = [
   { value: "blob", label: "Blob", Icon: Droplet },
   { value: "grid", label: "Grid", Icon: Grid3x3 },
   { value: "contours", label: "Contours", Icon: Spline },
   { value: "flux", label: "Flux", Icon: Wind },
   { value: "signal", label: "Signal", Icon: Activity },
+  { value: "dither", label: "Dither", Icon: Grip },
+  { value: "lines", label: "Lines", Icon: AlignJustify },
+  { value: "blur", label: "Blur", Icon: Sparkles },
 ];
 
 const DEF_BY_ID = new Map(ENGINE_DEFS.map((d) => [d.value, d]));
 
-// Prefer the live registry (matches whatever engines are registered) but fall
-// back to the known four so the selector renders even if registration is empty.
-function engineList(): EngineDef[] {
-  const reg = listEngines();
-  if (!reg.length) return ENGINE_DEFS;
+// Tailwind needs static column classes; map the visible count (Art=5, TxT=4).
+const GRID_COLS: Record<number, string> = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+  5: "grid-cols-5",
+  6: "grid-cols-6",
+};
+
+// Engines for the active focus, in registration order, decorated with icon/label.
+function engineList(focus: "art" | "txt"): EngineDef[] {
+  const reg = listEnginesByFocus(focus);
+  if (!reg.length) return ENGINE_DEFS.slice(0, 5);
   return reg.map(
     (e) =>
       DEF_BY_ID.get(e.id) ?? {
@@ -41,8 +65,9 @@ function engineList(): EngineDef[] {
 
 export default function EngineSelector({ className }: { className?: string }) {
   const engine = useStudio((s) => s.engine);
+  const focus = useStudio((s) => s.focus);
   const setState = useStudio((s) => s.setState);
-  const engines = engineList();
+  const engines = engineList(focus);
 
   return (
     <ToggleGroup
@@ -54,7 +79,8 @@ export default function EngineSelector({ className }: { className?: string }) {
       }}
       spacing={0}
       className={cn(
-        "grid w-full grid-cols-5 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
+        "grid w-full gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
+        GRID_COLS[engines.length] ?? "grid-cols-5",
         className,
       )}
     >

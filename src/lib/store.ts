@@ -41,23 +41,16 @@ export interface StudioState {
   colorSat: number; // 0..100; 50 = neutral. Vibrance: <50 toward grey, >50 more vivid.
   colorWarm: number; // 0..100; 50 = neutral. Temperature: <50 cooler, >50 warmer.
 
+  // creative focus: "art" = abstract field engines, "txt" = type-driven engines.
+  // Drives the header Focus switch + which engines the selector shows.
+  focus: "art" | "txt";
+
   // engine + engine-specific composition params
   engine: string;
   gridCols: number;
   gridDensity: number;
   gridPerspective: number;
   gridMagnet: number;
-  waveCount: number;
-  waveAmp: number;
-  waveDetail: number;
-  waveTurbulence: number;
-  wavePerspective: number;
-  waveFill: number; // 0..100; translucent colour bands between lines (0 = lines only).
-  orbSize: number;
-  orbSoft: number;
-  orbHalftone: number;
-  orbMelt: number;
-  orbShade: number;
   contourLines: number;
   contourWeight: number;
   contourScale: number;
@@ -89,6 +82,50 @@ export interface StudioState {
   signalSwirl: number;
   signalPulse: number;
   signalFlow: number;
+
+  // ── TxT focus ──────────────────────────────────────────────────────────────
+  // Shared display text — the subject every txt engine stylizes (font/case reuse
+  // the Type overlay's textFont/textCase). Separate from title/artist (the Art
+  // corner credit), which is suppressed while a txt engine is active.
+  txtText: string; // headline
+  txtSub: string; // optional subline
+  txtSize: number; // 0..100; type size as a fraction of the shorter edge
+  txtAlign: string; // "left" | "center" | "right"
+  txtVAlign: string; // "top" | "middle" | "bottom"
+  // Direct two-tone colour for the TxT engines. null = derive from the mood
+  // (bg = base, ink = the most-contrasting palette colour via pickInk).
+  txtBg: string | null;
+  txtInk: string | null;
+
+  // dither (pixelation + breakage of the type) params
+  ditherSize: number; // pixel cell size
+  ditherBreak: number; // dropout density (100 = solid, lower = sparse/broken)
+  ditherGap: number; // gap between pixels
+  ditherRound: boolean; // round pixels instead of square
+  ditherInvert: boolean; // draw pixels in the NON-glyph region
+  ditherShuffle: number; // reshuffle speed of the broken dropout (anim)
+  ditherJitter: number; // positional jitter over time (anim)
+  ditherPulse: number; // beat pop (anim)
+  ditherSwell: number; // breathing scale (anim)
+
+  // lines (clipped round-cap hatching of the type) params
+  lineSize: number; // stroke thickness
+  lineGap: number; // gap between lines
+  lineAngle: number; // hatch angle (0..100 -> 0..180°)
+  lineInvert: boolean; // hatch the NON-glyph region
+  lineRotate: number; // angle spin speed (anim)
+  lineScroll: number; // hatching travels ⟂ (anim)
+  linePulse: number; // beat thickness (anim)
+  lineWave: number; // sinusoidal sway (anim)
+
+  // blur (gooey blur -> threshold metaballs) params
+  blurAmount: number; // blur radius -> goo fatness
+  blurThreshold: number; // threshold cut -> merge amount
+  blurInvert: boolean; // ink the ground instead of the goo
+  blurFlow: number; // blur/threshold morph over time (anim)
+  blurPulse: number; // beat fatten (anim)
+  blurDrift: number; // slow spatial drift (anim)
+
 
   // seed
   seed: number;
@@ -167,17 +204,6 @@ export interface StudioState {
   blobPulse: number;
   blobWander: number;
   blobMorph: number;
-  orbSpin: number;
-  orbWobble: number;
-  orbBounce: number;
-  orbBreath: number;
-  orbChurn: number;
-  waveFlow: number;
-  waveSwell: number;
-  waveSurge: number;
-  waveChurn: number;
-  waveUndulate: number;
-  waveDrift: number; // 0..100; whole-field camera drift/parallax (anim only).
   gridRipple: number;
   gridBob: number;
   gridPop: number;
@@ -197,6 +223,8 @@ export interface StudioState {
   showFormats: boolean;
   showPreview: boolean;
   sidebarCollapsed: boolean;
+  // blank-canvas starting-point picker open? (first entry + the header re-open)
+  showStart: boolean;
 
   // actions
   setState: (patch: Partial<StudioState>) => void;
@@ -243,22 +271,13 @@ const defaults = {
   colorSat: 50,
   colorWarm: 50,
 
+  focus: "art" as "art" | "txt",
+
   engine: "blob",
   gridCols: 9,
   gridDensity: 55,
   gridPerspective: 0,
   gridMagnet: 0,
-  waveCount: 60,
-  waveAmp: 50,
-  waveDetail: 45,
-  waveTurbulence: 25,
-  wavePerspective: 0,
-  waveFill: 60,
-  orbSize: 55,
-  orbSoft: 55,
-  orbHalftone: 40,
-  orbMelt: 30,
-  orbShade: 55,
   contourLines: 55,
   contourWeight: 40,
   contourScale: 45,
@@ -288,6 +307,42 @@ const defaults = {
   signalSwirl: 48,
   signalPulse: 58,
   signalFlow: 55,
+
+  // ── TxT focus defaults — lively, on-brand showcase ──
+  txtText: "AKA",
+  txtSub: "COVART",
+  txtSize: 55,
+  txtAlign: "center",
+  txtVAlign: "middle",
+  txtBg: null as string | null,
+  txtInk: null as string | null,
+
+  ditherSize: 32,
+  ditherBreak: 80,
+  ditherGap: 12,
+  ditherRound: false,
+  ditherInvert: false,
+  ditherShuffle: 70,
+  ditherJitter: 55,
+  ditherPulse: 65,
+  ditherSwell: 48,
+
+  lineSize: 42,
+  lineGap: 20,
+  lineAngle: 26,
+  lineInvert: false,
+  lineRotate: 55,
+  lineScroll: 58,
+  linePulse: 60,
+  lineWave: 48,
+
+  blurAmount: 45,
+  blurThreshold: 50,
+  blurInvert: false,
+  blurFlow: 70,
+  blurPulse: 60,
+  blurDrift: 45,
+
 
   soften: 0,
   density: 60,
@@ -351,17 +406,6 @@ const defaults = {
   blobPulse: 55,
   blobWander: 50,
   blobMorph: 45,
-  orbSpin: 25,
-  orbWobble: 40,
-  orbBounce: 50,
-  orbBreath: 35,
-  orbChurn: 45,
-  waveFlow: 50,
-  waveSwell: 40,
-  waveSurge: 55,
-  waveChurn: 40,
-  waveUndulate: 45,
-  waveDrift: 50,
   gridRipple: 45,
   gridBob: 40,
   gridPop: 55,
@@ -393,6 +437,7 @@ export const useStudio = create<StudioState>((set) => ({
   showFormats: false,
   showPreview: false,
   sidebarCollapsed: false,
+  showStart: false,
 
   setState: (patch) => set((s) => ({ ...s, ...patch })),
   toggleSection: (key) =>

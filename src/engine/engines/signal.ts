@@ -34,6 +34,7 @@ const signal: FieldEngine = {
   id: "signal",
   label: "Signal",
   kind: "2d",
+  focus: "art",
   params: signalParams(),
   field(args: FieldArgs): void {
     const { ctx, size: S, params: p, cfg, seed, anim } = args;
