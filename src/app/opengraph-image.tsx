@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
-import { GridMark, LOGO_BG } from "./logoMark";
+import { LOGO_DATA_URI, LOGO_BG } from "./logoMark";
 
-// Share / OG image (Twitter, iMessage, Discord, …) — the grid mark centred on the
-// dark tile. Text-free brand mark. Generated at build (next/og), 1200×630.
+// Share / OG image (Twitter, iMessage, Discord, …) — the engine-style grid mark
+// centred on the dark tile. Text-free. Rasterised at build (next/og), 1200×630.
 export const dynamic = "force-static";
 export const alt = "akaCOVART — generative album-art studio";
 export const size = { width: 1200, height: 630 };
@@ -18,10 +18,11 @@ export default function OpengraphImage() {
           height: "100%",
           alignItems: "center",
           justifyContent: "center",
-          background: `radial-gradient(circle at 50% 44%, #14161a, ${LOGO_BG} 70%)`,
+          background: LOGO_BG,
         }}
       >
-        <GridMark box={520} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={LOGO_DATA_URI} width={552} height={552} alt="" />
       </div>
     ),
     { ...size },
