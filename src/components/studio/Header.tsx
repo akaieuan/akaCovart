@@ -102,7 +102,11 @@ function FocusMenu() {
 // popover (mirrors the Focus dropdown beside it). Picking a tile loads it.
 function StartMenu() {
   const setState = useStudio((s) => s.setState);
+  const showStart = useStudio((s) => s.showStart);
   const [open, setOpen] = useState(false);
+  // While the full-canvas starting-point picker is up (first run), the header
+  // dropdown is redundant — only show it once a starting point is selected.
+  if (showStart) return null;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
