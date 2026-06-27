@@ -533,7 +533,11 @@ export default function CanvasStage({
       if (!bake && ++animCtrRef.current % 12 === 0) {
         animResRef.current = nextAnimRes(animResRef.current, animEmaRef.current);
       }
-      const renderSize = bake ? DISPLAY : animResRef.current;
+      // Stack composites TWO engines per frame (art bg + type), so cap the LIVE
+      // backing-store lower to keep motion fluid on every device. Stills + exports
+      // (bake) are unaffected and snap back to full DISPLAY.
+      const liveCap = s.focus === "stack" ? 720 : ANIM_MAX;
+      const renderSize = bake ? DISPLAY : Math.min(animResRef.current, liveCap);
       const { w: tw, h: th } = fmtDims(renderSize);
       if (c.width !== tw || c.height !== th) {
         c.width = tw;

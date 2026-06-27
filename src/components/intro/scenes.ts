@@ -220,7 +220,7 @@ const STACK_BASE: Record<string, unknown> = {
 export const STACK_START_LOOKS: Preset[] = [
   {
     label: "Flux · Blur",
-    params: { ...STACK_BASE, engine: "flux", stackTxt: "blur", stackMode: "overlay", seed: 51871, txtText: "AKA", txtSub: "COVART", textFont: "Space Grotesk", txtInk: "#eaf1ff", blurAmount: 30, blurThreshold: 54, fluxFlow: 64, fluxWarp: 60 },
+    params: { ...STACK_BASE, engine: "flux", stackTxt: "blur", stackMode: "overlay", seed: 51871, txtText: "AKA", txtSub: "", textFont: "Space Grotesk", txtInk: "#eaf1ff", blurAmount: 30, blurThreshold: 54, fluxFlow: 64, fluxWarp: 60 },
   },
   {
     label: "Contours · Lines",
