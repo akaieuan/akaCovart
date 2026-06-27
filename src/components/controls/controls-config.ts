@@ -63,7 +63,6 @@ export const ENGINE_TAB_LABELS: Record<string, string> = {
   blob: "Blob",
   grid: "Grid",
   contours: "Contours",
-  flux: "Flux",
   signal: "Signal",
   // TxT focus
   dither: "Dither",
@@ -75,7 +74,6 @@ export const FALLBACK_ENGINES: SegOption[] = [
   { value: "blob", label: "Blob" },
   { value: "grid", label: "Grid" },
   { value: "contours", label: "Contours" },
-  { value: "flux", label: "Flux" },
   { value: "signal", label: "Signal" },
   { value: "dither", label: "Dither" },
   { value: "lines", label: "Lines" },
@@ -150,16 +148,6 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
         { kind: "slider", key: "gridDensity", label: "Fill density", min: 0, max: 100 },
         { kind: "slider", key: "gridPerspective", label: "3D plane", min: 0, max: 100 },
         { kind: "slider", key: "gridMagnet", label: "Magnet · scatter", min: 0, max: 100 },
-      ],
-    },
-  ],
-  flux: [
-    {
-      controls: [
-        { kind: "slider", key: "fluxScale", label: "Scale", min: 0, max: 100 },
-        { kind: "slider", key: "fluxWarp", label: "Warp", min: 0, max: 100 },
-        { kind: "slider", key: "fluxBands", label: "Veins", min: 0, max: 100 },
-        { kind: "slider", key: "fluxDepth", label: "Depth", min: 0, max: 100 },
       ],
     },
   ],
@@ -342,12 +330,6 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "contourFlow", label: "Fly forward", min: 0, max: 100 },
     { kind: "slider", key: "contourSway", label: "Camera sway", min: 0, max: 100 },
     { kind: "slider", key: "contourLift", label: "Beat lift", min: 0, max: 100 },
-  ],
-  flux: [
-    { kind: "slider", key: "fluxFlow", label: "Flow", min: 0, max: 100 },
-    { kind: "slider", key: "fluxDrift", label: "Drift", min: 0, max: 100 },
-    { kind: "slider", key: "fluxSwirl", label: "Swirl", min: 0, max: 100 },
-    { kind: "slider", key: "fluxPulse", label: "Pulse", min: 0, max: 100 },
   ],
   signal: [
     { kind: "slider", key: "signalDrift", label: "Drift", min: 0, max: 100 },

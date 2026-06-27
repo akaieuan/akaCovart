@@ -76,9 +76,6 @@ const CHANNELS: AutoChannel[] = [
   // engine-specific (grid)
   { key: "gridDensity", min: 0, max: 100, freq: 0.031, phase: 2.0, rangeFrac: 0.24, band: "energy" },
   { key: "gridMagnet", min: 0, max: 100, freq: 0.021, phase: 4.0, rangeFrac: 0.26, band: "bass" },
-  // engine-specific (flux)
-  { key: "fluxWarp", min: 0, max: 100, freq: 0.027, phase: 1.4, rangeFrac: 0.24, band: "bass" },
-  { key: "fluxBands", min: 0, max: 100, freq: 0.039, phase: 5.6, rangeFrac: 0.20, band: "high" },
   // engine-specific (signal)
   { key: "signalFreq", min: 0, max: 100, freq: 0.022, phase: 0.8, rangeFrac: 0.18, band: "mid" },
   { key: "signalSpread", min: 0, max: 100, freq: 0.016, phase: 3.4, rangeFrac: 0.18, band: "bass" },

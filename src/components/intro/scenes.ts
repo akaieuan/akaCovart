@@ -70,24 +70,6 @@ export const PRESETS: Preset[] = [
     },
   },
   {
-    label: "Flux",
-    params: {
-      ...BASE,
-      engine: "flux",
-      seed: 50231,
-      fluxScale: 46,
-      fluxWarp: 62,
-      fluxBands: 50,
-      fluxDepth: 52,
-      soften: 28,
-      glow: 60,
-      fluxFlow: 68,
-      fluxDrift: 58,
-      fluxSwirl: 52,
-      fluxPulse: 60,
-    },
-  },
-  {
     label: "Contours",
     params: {
       ...BASE,
@@ -127,17 +109,17 @@ export const PRESETS: Preset[] = [
   },
 ];
 
-// 8 ART starting points for the studio's blank-canvas picker (the 5 engine looks
-// + 3 seed variations). A 9th "Random" tile is added by the picker itself.
+// 8 ART starting points for the studio's blank-canvas picker (the 4 engine looks
+// + 4 seed variations). A 9th "Random" tile is added by the picker itself.
 export const ART_START_LOOKS: Preset[] = [
   PRESETS[1], // Blob
   PRESETS[0], // Grid
-  PRESETS[2], // Flux
-  PRESETS[3], // Contours
-  PRESETS[4], // Signal
+  PRESETS[2], // Contours
+  PRESETS[3], // Signal
   { label: "Blob II", params: { ...PRESETS[1].params, seed: 771203 } },
-  { label: "Flux II", params: { ...PRESETS[2].params, seed: 920577 } },
+  { label: "Contours II", params: { ...PRESETS[2].params, seed: 920577 } },
   { label: "Grid II", params: { ...PRESETS[0].params, seed: 558810 } },
+  { label: "Signal II", params: { ...PRESETS[3].params, seed: 305881 } },
 ];
 
 // 8 TxT starting points — distinct type treatments across Dither / Lines / Blur
@@ -219,8 +201,8 @@ const STACK_BASE: Record<string, unknown> = {
 // the picker (it mixes a random art bg + a random type engine).
 export const STACK_START_LOOKS: Preset[] = [
   {
-    label: "Flux · Blur",
-    params: { ...STACK_BASE, engine: "flux", stackTxt: "blur", stackMode: "overlay", seed: 51871, txtText: "AKA", txtSub: "", textFont: "Space Grotesk", txtInk: "#eaf1ff", blurAmount: 30, blurThreshold: 54, fluxFlow: 64, fluxWarp: 60 },
+    label: "Signal · Blur",
+    params: { ...STACK_BASE, engine: "signal", stackTxt: "blur", stackMode: "overlay", seed: 51871, txtText: "AKA", txtSub: "", textFont: "Space Grotesk", txtInk: "#eaf1ff", blurAmount: 30, blurThreshold: 54, signalFreq: 46, signalLayers: 52 },
   },
   {
     label: "Contours · Lines",
@@ -235,8 +217,8 @@ export const STACK_START_LOOKS: Preset[] = [
     params: { ...STACK_BASE, engine: "blob", stackTxt: "blur", stackMode: "knockout", seed: 41216, txtText: "GLOW", txtSub: "", textFont: "Syne", txtBg: "#080a10", blurAmount: 40, blurThreshold: 48, blobSize: 60, glow: 72 },
   },
   {
-    label: "Flux · Dither",
-    params: { ...STACK_BASE, engine: "flux", stackTxt: "dither", stackMode: "overlay", seed: 30312, txtText: "TYPE", txtSub: "", textFont: "Syne", txtInk: "#ffd6ff", ditherInvert: false, ditherBreak: 86, fluxWarp: 64 },
+    label: "Blob · Dither",
+    params: { ...STACK_BASE, engine: "blob", stackTxt: "dither", stackMode: "overlay", seed: 30312, txtText: "TYPE", txtSub: "", textFont: "Syne", txtInk: "#ffd6ff", ditherInvert: false, ditherBreak: 86, blobSize: 58, glow: 64 },
   },
   {
     label: "Grid · Lines",

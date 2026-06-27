@@ -17,12 +17,15 @@ import { prng } from "../prng";
 //    anim.anim so the still is a fixed interference pattern.
 
 interface Grating {
-  ax: number;
-  ay: number;
+  ang: number; // base angle (drifted over time for evolving moiré)
   f: number;
   ph: number;
   sp: number;
   col: number[];
+  fRate: number; // slow, distinct frequency-drift rate
+  fPh: number;
+  aRate: number; // slow, distinct angle-drift rate
+  aPh: number;
 }
 
 // Reusable offscreen buffer (singleton engine, synchronous self-contained calls).
@@ -61,12 +64,15 @@ const signal: FieldEngine = {
     for (let k = 0; k < layers; k++) {
       const ang = baseAng + (k / layers) * Math.PI * (0.4 + spread * 1.2) + (r() - 0.5) * 0.3;
       gratings.push({
-        ax: Math.cos(ang),
-        ay: Math.sin(ang),
+        ang,
         f: baseFreq * (0.82 + r() * 0.4), // close-but-different => moiré
         ph: r() * 6.2832,
         sp: 0.6 + r() * 1.0,
         col: cols[k % cols.length],
+        fRate: 0.018 + r() * 0.05, // slow + distinct so the drift never repeats
+        fPh: r() * 6.2832,
+        aRate: 0.013 + r() * 0.045,
+        aPh: r() * 6.2832,
       });
     }
 
@@ -79,6 +85,24 @@ const signal: FieldEngine = {
     const phs = gratings.map((G) =>
       ANIM ? T * G.sp * (0.6 + drift * 3.4) + shimmer * 1.6 * Math.sin(T * 0.5 + G.ph) : 0,
     );
+
+    // EVOLVING moiré — slowly drift each grating's FREQUENCY and ANGLE over time at
+    // distinct slow rates. Because the moiré beats depend on the DIFFERENCES between
+    // gratings, even small drift makes the interference nodes continuously migrate +
+    // reform, so the pattern keeps reorganizing instead of just sliding. Computed
+    // ONCE per grating per frame (no per-pixel cost). 0 when still => still unchanged.
+    const fDrift = ANIM ? 0.05 + drift * 0.13 : 0;
+    const aDrift = ANIM ? 0.06 + swl * 0.18 : 0;
+    const axk = new Float32Array(layers);
+    const ayk = new Float32Array(layers);
+    const fk = new Float32Array(layers);
+    for (let k = 0; k < layers; k++) {
+      const G = gratings[k];
+      const ang = G.ang + aDrift * Math.sin(T * G.aRate + G.aPh);
+      axk[k] = Math.cos(ang);
+      ayk[k] = Math.sin(ang);
+      fk[k] = G.f * (1 + fDrift * Math.sin(T * G.fRate + G.fPh)) * freqBeat;
+    }
 
     // ── Render into the offscreen buffer ──────────────────────────────────────
     if (!sbuf) sbuf = document.createElement("canvas");
@@ -107,7 +131,7 @@ const signal: FieldEngine = {
         let rr = 0, gg = 0, bb = 0, tot = 0;
         for (let k = 0; k < layers; k++) {
           const G = gratings[k];
-          const w = Math.sin((nx * G.ax + ny * G.ay) * G.f * freqBeat + G.ph + phs[k]);
+          const w = Math.sin((nx * axk[k] + ny * ayk[k]) * fk[k] + G.ph + phs[k]);
           if (w > 0) {
             const m = Math.pow(w, sharpPow); // only crests, sharpened into fringes
             const c = G.col;

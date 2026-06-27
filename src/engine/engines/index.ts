@@ -4,7 +4,6 @@
 import "./blob";
 import "./grid";
 import "./contours";
-import "./flux";
 import "./signal";
 // TxT focus (type-driven engines):
 import "./dither";

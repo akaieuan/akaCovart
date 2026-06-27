@@ -120,7 +120,7 @@ export default function StartGrid({
       // A random art background + a random type engine over it.
       onPick({
         label: "Random",
-        params: { focus: "stack", engine: pickId("art", "flux"), stackTxt: pickId("txt", "blur"), seed: randSeed() },
+        params: { focus: "stack", engine: pickId("art", "blob"), stackTxt: pickId("txt", "blur"), seed: randSeed() },
       });
       return;
     }

@@ -98,9 +98,16 @@ const contours: FieldEngine = {
     const ANIM = anim.anim;
     const morph = (p.contourMorph == null ? 55 : p.contourMorph) / 100;
     const flow = (p.contourFlow == null ? 35 : p.contourFlow) / 100;
-    const zT = oz + (ANIM ? anim.t * (0.04 + morph * 0.4) : 0); // terrain morph
-    const scroll = ANIM ? anim.t * flow * 0.42 : 0; // fly forward (rows scroll in)
     const T = ANIM ? anim.t : 0;
+    // Terrain morph — advance the noise z-axis so the surface continuously reshapes.
+    const zT = oz + (ANIM ? T * (0.05 + morph * 0.55) : 0);
+    const scroll = ANIM ? T * flow * 0.42 : 0; // fly forward (rows scroll in)
+    // EVOLVING domain drift — slowly TRANSLATE the noise sampling so terrain features
+    // MIGRATE across the frame as they morph (a linear advance never repeats; the
+    // slow wobble keeps it organic). With zT, the landscape keeps reorganizing
+    // instead of churning in place. 0 when still, so the still render is unchanged.
+    const driftX = ANIM ? T * (0.02 + morph * 0.03) + 0.07 * Math.sin(T * 0.05 + camx) : 0;
+    const driftY = ANIM ? T * (0.012 + flow * 0.03) + 0.05 * Math.sin(T * 0.041 + camy) : 0;
     // Audio-/beat-driven deformations — rich + layered + SPACE-only. In Track
     // mode these envelopes are pulled straight from the music's bands; in BPM
     // mode from the Beat/Drift sliders. pump≈bass/energy, kick≈onsets,
@@ -118,12 +125,12 @@ const contours: FieldEngine = {
     const height = (nx: number, ny: number): number => {
       let x = nx, y = ny;
       if (warpAmt > 0) {
-        const dx = fbm((x + wox) * baseFreq * 0.5, (y + woy) * baseFreq * 0.5, zT, 2) - 0.5;
-        const dy = fbm((x + wox + 6.2) * baseFreq * 0.5, (y + woy + 9.1) * baseFreq * 0.5, zT, 2) - 0.5;
+        const dx = fbm((x + wox + driftX) * baseFreq * 0.5, (y + woy + driftY) * baseFreq * 0.5, zT, 2) - 0.5;
+        const dy = fbm((x + wox + 6.2 + driftX) * baseFreq * 0.5, (y + woy + 9.1 + driftY) * baseFreq * 0.5, zT, 2) - 0.5;
         x += dx * warpAmt;
         y += dy * warpAmt;
       }
-      const v = fbm((x + ox) * baseFreq, (y + oy) * baseFreq, zT, octaves);
+      const v = fbm((x + ox + driftX) * baseFreq, (y + oy + driftY) * baseFreq, zT, octaves);
       return Math.pow(v, 1.15); // a touch of contrast for defined peaks
     };
 
@@ -148,13 +155,17 @@ const contours: FieldEngine = {
     // swayP carries an always-on component so it drifts even when the audio path's
     // drift/swirl envelopes sit near zero in quiet passages.
     if (ANIM) {
-      const camDrift = 0.35 * swayP + 0.45 * anim.drift + 0.35 * anim.swirl + 0.4 * flow;
-      const camTX = S * 0.032 * camDrift * Math.sin(T * 0.19 + camx);
+      // Organic camera — a NOISE-driven wander (smooth random walk) instead of pure
+      // sines, so the framing never visibly loops; amplitudes nudged up so the
+      // blurred terrain reads as continuously, naturally moving.
+      const camDrift = 0.4 * swayP + 0.5 * anim.drift + 0.4 * anim.swirl + 0.45 * flow;
+      const nw = (rate: number, lane: number): number => vnoise(T * rate + camx, lane, camy) - 0.5;
+      const camTX = S * 0.05 * camDrift * nw(0.05, 1.7);
       const camTY =
-        S * 0.020 * (0.4 * swayP + anim.drift) * Math.sin(T * 0.14 + camy) +
-        S * 0.024 * liftP * (kickEnv * 0.5 + anim.pumpEnv * 0.5);
-      const camSC = 1 + 0.035 * anim.pumpEnv + 0.022 * swayP * Math.sin(T * 0.27);
-      const camROT = 0.010 * (anim.swirl + 0.4 * swayP) * Math.sin(T * 0.09 + camx);
+        S * 0.038 * (0.4 * swayP + anim.drift) * nw(0.043, 4.3) +
+        S * 0.026 * liftP * (kickEnv * 0.5 + anim.pumpEnv * 0.5);
+      const camSC = 1 + 0.04 * anim.pumpEnv + 0.03 * swayP * (nw(0.037, 7.1) + 0.5);
+      const camROT = 0.016 * (anim.swirl + 0.5 * swayP) * nw(0.031, 9.6);
       ctx.translate(S * 0.5 + camTX, S * 0.5 + camTY);
       ctx.rotate(camROT);
       ctx.scale(camSC, camSC);

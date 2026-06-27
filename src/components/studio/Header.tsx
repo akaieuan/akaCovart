@@ -22,12 +22,10 @@ const FOCUS_OPTIONS: { value: Focus; label: string; hint: string }[] = [
 ];
 
 // First registered engine for a focus (fallbacks keep this safe pre-registration).
-// Stack's `engine` is the ART background, so it defaults to a flowing art engine.
+// Stack's `engine` is the ART background, so it defaults to the first art engine.
 function defaultEngine(focus: Focus): string {
   if (focus === "stack") {
-    return listEnginesByFocus("art").some((e) => e.id === "flux")
-      ? "flux"
-      : (listEnginesByFocus("art")[0]?.id ?? "blob");
+    return listEnginesByFocus("art")[0]?.id ?? "blob";
   }
   return listEnginesByFocus(focus)[0]?.id ?? (focus === "txt" ? "dither" : "blob");
 }
@@ -44,7 +42,7 @@ function FocusMenu() {
   const setState = useStudio((s) => s.setState);
   const [open, setOpen] = useState(false);
   // Per-focus engine memory (component-scoped; seeded with the defaults).
-  const lastEngine = useRef<Record<Focus, string>>({ art: "blob", txt: "dither", stack: "flux" });
+  const lastEngine = useRef<Record<Focus, string>>({ art: "blob", txt: "dither", stack: "blob" });
 
   const pick = (next: Focus) => {
     setOpen(false);
