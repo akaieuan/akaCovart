@@ -3,6 +3,8 @@ import type { Mood } from "@/engine";
 import { renderParams, type StudioState } from "@/lib/store";
 import { ensureCoverFont } from "@/lib/fonts";
 import { getFormat, type Format } from "@/lib/formats";
+import { audioSession } from "@/audio";
+import { createTrackMotion, stepTrackMotion } from "@/audio/trackMotion";
 
 // ── PNG export for a given format ────────────────────────────────────────────
 // renderFormatTo handles the square render -> cover-crop -> frame-space type, so
@@ -72,7 +74,15 @@ export function exportVideo(
   state: StudioState,
   done: () => void,
 ): void {
-  encodeLoopMp4(state)
+  // TRACK source (an analyzed clip is loaded): export the FULL clip window,
+  // motion-synced to the timeline, with the clip AUDIO muxed in. Otherwise (BPM):
+  // a short, silent, seamless loop.
+  const tl = audioSession.timeline;
+  const useTrack =
+    state.animSource === "track" && !!tl && tl.duration > 0 && !!audioSession.buffer;
+
+  const run = useTrack ? encodeTrackMp4(state) : encodeLoopMp4(state);
+  run
     .then((ok) => {
       if (ok) done();
       else recordCanvasFallback(canvas, state, done);
@@ -81,6 +91,23 @@ export function exportVideo(
       console.error("[export] mp4 encode failed; using recorder fallback", err);
       recordCanvasFallback(canvas, state, done);
     });
+}
+
+// Even, capped delivery dimensions for the encoder (keeps the format aspect).
+function exportDims(state: StudioState): { w: number; h: number } {
+  const f = getFormat(state.format);
+  const MAX_EDGE = 1080;
+  const scale = Math.min(1, MAX_EDGE / Math.max(f.w, f.h));
+  return { w: even(f.w * scale), h: even(f.h * scale) };
+}
+
+function videoBitrate(w: number, h: number, fps: number): number {
+  return Math.min(16_000_000, Math.max(6_000_000, Math.round(w * h * fps * 0.15)));
+}
+
+// Resolve-loop length in beats (shared with the live loop + the BPM encoder).
+function loopBeatsOf(state: StudioState): number {
+  return Math.max(1, Math.round(0.5 + ((state.txtLoopBeats ?? 20) / 100) * 7.5));
 }
 
 // H.264 needs even dimensions.
@@ -92,8 +119,7 @@ function even(n: number): number {
 // the live loop's beat math so the exported loop matches what plays in the editor.
 function loopFrames(state: StudioState, fps: number): number {
   const bps = (state.animBPM || 128) / 60;
-  const loopBeats = Math.max(1, Math.round(0.5 + ((state.txtLoopBeats ?? 20) / 100) * 7.5));
-  const cycleSec = loopBeats / bps;
+  const cycleSec = loopBeatsOf(state) / bps;
   const nCycles = Math.max(1, Math.round(6 / cycleSec));
   return Math.min(900, Math.max(1, Math.round(nCycles * cycleSec * fps)));
 }
@@ -124,13 +150,7 @@ async function encodeLoopMp4(state: StudioState): Promise<boolean> {
   if (typeof VideoEncoder === "undefined" || typeof VideoFrame === "undefined") return false;
 
   const fps = 30;
-  const f = getFormat(state.format);
-  // Cap the longest edge so the per-frame square render + encode stay quick and
-  // within the encoder's max dimensions; keep the delivery aspect ratio.
-  const MAX_EDGE = 1080;
-  const scale = Math.min(1, MAX_EDGE / Math.max(f.w, f.h));
-  const w = even(f.w * scale);
-  const h = even(f.h * scale);
+  const { w, h } = exportDims(state);
 
   const codec = await pickAvcCodec(w, h, fps);
   if (!codec) return false;
@@ -157,8 +177,7 @@ async function encodeLoopMp4(state: StudioState): Promise<boolean> {
       encErr = e;
     },
   });
-  const bitrate = Math.min(16_000_000, Math.max(6_000_000, Math.round(w * h * fps * 0.15)));
-  encoder.configure({ codec, width: w, height: h, bitrate, framerate: fps, latencyMode: "quality" });
+  encoder.configure({ codec, width: w, height: h, bitrate: videoBitrate(w, h, fps), framerate: fps, latencyMode: "quality" });
 
   // Offscreen frame canvas (delivery aspect) + a reused square scratch for the
   // cover-crop, so we never allocate a canvas per frame.
@@ -200,6 +219,183 @@ async function encodeLoopMp4(state: StudioState): Promise<boolean> {
     `akacovart_${state.seed >>> 0}.mp4`,
   );
   return true;
+}
+
+// Hard cap on the exported clip length (very long "full" tracks would take an
+// unreasonable time + memory to encode). Logged when it engages.
+const MAX_TRACK_SECONDS = 120;
+
+// TRACK export — the FULL analyzed clip window, motion-synced to the feature
+// timeline (the same springs the live preview uses, via trackMotion), with the
+// clip AUDIO encoded to AAC and muxed in. This is what fixes "60s exported as 6s
+// with no audio": the duration follows the clip + the sound is included.
+async function encodeTrackMp4(state: StudioState): Promise<boolean> {
+  if (typeof VideoEncoder === "undefined" || typeof VideoFrame === "undefined") return false;
+  const tl = audioSession.timeline;
+  const buf = audioSession.buffer;
+  if (!tl || !buf) return false;
+
+  const fps = 30;
+  const { w, h } = exportDims(state);
+  const codec = await pickAvcCodec(w, h, fps);
+  if (!codec) return false;
+
+  // Clip window the timeline was analyzed for (audio slice matches it exactly).
+  const clipStart = Math.max(0, audioSession.clipStart);
+  const clipEnd = Math.min(buf.duration, audioSession.clipEnd);
+  let clipDur = Math.max(0, Math.min(tl.duration, clipEnd - clipStart));
+  if (clipDur <= 0) return false;
+  if (clipDur > MAX_TRACK_SECONDS) {
+    console.warn(`[export] clip ${clipDur.toFixed(1)}s capped to ${MAX_TRACK_SECONDS}s`);
+    clipDur = MAX_TRACK_SECONDS;
+  }
+  const totalFrames = Math.max(1, Math.round(clipDur * fps));
+  const bps = (state.animBPM || 128) / 60;
+  const loopBeats = loopBeatsOf(state);
+  const intensity = (state.audioReactive ? state.audioIntensity : 0) / 50;
+
+  const [{ Muxer, ArrayBufferTarget }] = await Promise.all([
+    import("mp4-muxer"),
+    ensureCoverFont(state.textFont),
+  ]);
+
+  // Audio track only when AAC encoding is actually supported here; otherwise the
+  // file is still the FULL clip length, just silent (better than a 6s clip).
+  const sr = buf.sampleRate;
+  const ch = Math.min(2, buf.numberOfChannels);
+  let withAudio = false;
+  if (typeof AudioEncoder !== "undefined" && AudioEncoder.isConfigSupported) {
+    try {
+      const s = await AudioEncoder.isConfigSupported({
+        codec: "mp4a.40.2",
+        sampleRate: sr,
+        numberOfChannels: ch,
+        bitrate: 160_000,
+      });
+      withAudio = !!(s && s.supported);
+    } catch {
+      withAudio = false;
+    }
+  }
+
+  const muxer = new Muxer({
+    target: new ArrayBufferTarget(),
+    video: { codec: "avc", width: w, height: h, frameRate: fps },
+    ...(withAudio ? { audio: { codec: "aac" as const, numberOfChannels: ch, sampleRate: sr } } : {}),
+    fastStart: "in-memory",
+  });
+
+  let encErr: unknown = null;
+  const venc = new VideoEncoder({
+    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    error: (e) => {
+      encErr = e;
+    },
+  });
+  venc.configure({ codec, width: w, height: h, bitrate: videoBitrate(w, h, fps), framerate: fps, latencyMode: "quality" });
+
+  const off = document.createElement("canvas");
+  off.width = w;
+  off.height = h;
+  const scratch = document.createElement("canvas");
+  const base = renderParams(state);
+  const motion = createTrackMotion();
+  const frameDt = 1 / fps;
+
+  try {
+    // ── Video: each frame rendered at its clip-relative time, motion stepped from
+    // the timeline so it stays locked to the music.
+    for (let i = 0; i < totalFrames; i++) {
+      if (encErr) throw encErr;
+      const tc = i / fps; // clip-relative seconds
+      const raw = tl.sampleByTime(tc);
+      const anim = stepTrackMotion(motion, raw, frameDt, intensity, tc, bps, loopBeats, true);
+      renderFormatTo(off, { ...base, _anim: true, _bake: true, _audioAnim: anim, _t: anim.t, _rt: tc }, scratch);
+      const frame = new VideoFrame(off, {
+        timestamp: Math.round((i * 1_000_000) / fps),
+        duration: Math.round(1_000_000 / fps),
+      });
+      venc.encode(frame, { keyFrame: i % fps === 0 });
+      frame.close();
+      if (venc.encodeQueueSize > 8) await new Promise<void>((r) => setTimeout(r, 0));
+    }
+    await venc.flush();
+    if (encErr) throw encErr;
+
+    // ── Audio: the clip slice of the decoded buffer → AAC, muxed alongside.
+    if (withAudio) {
+      await encodeClipAudio(buf, clipStart, clipStart + clipDur, sr, ch, (c, m) =>
+        muxer.addAudioChunk(c, m),
+      );
+    }
+    muxer.finalize();
+  } finally {
+    try {
+      venc.close();
+    } catch {
+      /* already closed */
+    }
+  }
+
+  triggerDownload(new Blob([muxer.target.buffer], { type: "video/mp4" }), `akacovart_${state.seed >>> 0}.mp4`);
+  return true;
+}
+
+// Encode [startSec, endSec] of the decoded buffer to AAC, feeding chunks to `add`.
+async function encodeClipAudio(
+  buf: AudioBuffer,
+  startSec: number,
+  endSec: number,
+  sr: number,
+  ch: number,
+  add: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => void,
+): Promise<void> {
+  const start = Math.max(0, Math.floor(startSec * sr));
+  const end = Math.min(buf.length, Math.floor(endSec * sr));
+  const n = end - start;
+  if (n <= 0) return;
+  const chans: Float32Array[] = [];
+  for (let c = 0; c < ch; c++) chans.push(buf.getChannelData(Math.min(c, buf.numberOfChannels - 1)));
+
+  let aErr: unknown = null;
+  const aenc = new AudioEncoder({
+    output: (chunk, meta) => add(chunk, meta),
+    error: (e) => {
+      aErr = e;
+    },
+  });
+  aenc.configure({ codec: "mp4a.40.2", sampleRate: sr, numberOfChannels: ch, bitrate: 160_000 });
+
+  const BLOCK = 1024;
+  for (let o = 0; o < n; o += BLOCK) {
+    if (aErr) throw aErr;
+    const frames = Math.min(BLOCK, n - o);
+    // f32-planar layout: all of channel 0, then all of channel 1, …
+    const planar = new Float32Array(frames * ch);
+    for (let c = 0; c < ch; c++) {
+      const src = chans[c];
+      const dst = c * frames;
+      for (let j = 0; j < frames; j++) planar[dst + j] = src[start + o + j];
+    }
+    const ad = new AudioData({
+      format: "f32-planar",
+      sampleRate: sr,
+      numberOfFrames: frames,
+      numberOfChannels: ch,
+      timestamp: Math.round((o / sr) * 1_000_000),
+      data: planar,
+    });
+    aenc.encode(ad);
+    ad.close();
+    if (aenc.encodeQueueSize > 16) await new Promise<void>((r) => setTimeout(r, 0));
+  }
+  await aenc.flush();
+  if (aErr) throw aErr;
+  try {
+    aenc.close();
+  } catch {
+    /* already closed */
+  }
 }
 
 function triggerDownload(blob: Blob, name: string): void {
