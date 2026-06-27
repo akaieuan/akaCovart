@@ -88,6 +88,12 @@ function paramSig(s: StudioState): string {
     s.colorWarm,
     s.colorPick,
     s.engine,
+    // Stack focus: the overlay engine + how it composites (txtBg/txtInk already below).
+    s.focus,
+    s.stackTxt,
+    s.stackMode,
+    s.stackScrim,
+    s.stackAnim,
     s.gridCols,
     s.gridDensity,
     s.gridPerspective,

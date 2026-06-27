@@ -12,29 +12,47 @@ import { renderGroups } from "./renderControls";
 // controls + Presets. Atomic + memoised; subscribes only to `focus`.
 function LookSectionInner() {
   const focus = useStudio((s) => s.focus);
+  if (focus === "txt") {
+    return (
+      <>
+        <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
+        <ColorPicker paramKey="txtBg" label="Background" emptyLabel="From mood" />
+        <ColorPicker paramKey="txtInk" label="Text" emptyLabel="From mood" />
+        <Divider />
+        <GroupLabel variant="sub">Atmosphere</GroupLabel>
+        {renderGroups([ATMOSPHERE_GROUP])}
+      </>
+    );
+  }
+  if (focus === "stack") {
+    // Stack = art-palette colours for the background + a two-tone ink (and a
+    // behind-type fill used by the scrim / art-filled mode) for the type layer.
+    return (
+      <>
+        <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
+        <ColorPicker paramKey="colorPick" label="Color" />
+        {renderGroups([COLOR_GROUP])}
+        <Divider />
+        <GroupLabel variant="sub">Type colour</GroupLabel>
+        <ColorPicker paramKey="txtInk" label="Text" emptyLabel="From mood" />
+        <ColorPicker paramKey="txtBg" label="Behind type" emptyLabel="From mood" />
+        <Divider />
+        <GroupLabel variant="sub">Atmosphere</GroupLabel>
+        {renderGroups([ATMOSPHERE_GROUP])}
+      </>
+    );
+  }
   return (
     <>
       <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
-      {focus === "txt" ? (
-        <>
-          <ColorPicker paramKey="txtBg" label="Background" emptyLabel="From mood" />
-          <ColorPicker paramKey="txtInk" label="Text" emptyLabel="From mood" />
-          <Divider />
-          <GroupLabel variant="sub">Atmosphere</GroupLabel>
-          {renderGroups([ATMOSPHERE_GROUP])}
-        </>
-      ) : (
-        <>
-          <ColorPicker paramKey="colorPick" label="Color" />
-          {renderGroups([COLOR_GROUP])}
-          <Divider />
-          <GroupLabel variant="sub">Atmosphere</GroupLabel>
-          {renderGroups([ATMOSPHERE_GROUP])}
-          <Divider />
-          <GroupLabel variant="sub">Starting points</GroupLabel>
-          <Presets />
-        </>
-      )}
+      <ColorPicker paramKey="colorPick" label="Color" />
+      {renderGroups([COLOR_GROUP])}
+      <Divider />
+      <GroupLabel variant="sub">Atmosphere</GroupLabel>
+      {renderGroups([ATMOSPHERE_GROUP])}
+      <Divider />
+      <GroupLabel variant="sub">Starting points</GroupLabel>
+      <Presets />
     </>
   );
 }

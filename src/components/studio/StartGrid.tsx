@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   ART_START_LOOKS,
   TXT_START_LOOKS,
+  STACK_START_LOOKS,
   type Preset,
 } from "@/components/intro/scenes";
 
@@ -103,16 +104,30 @@ export default function StartGrid({
   className?: string;
 }) {
   const focus = useStudio((s) => s.focus);
-  const looks = focus === "txt" ? TXT_START_LOOKS : ART_START_LOOKS;
+  const looks =
+    focus === "stack"
+      ? STACK_START_LOOKS
+      : focus === "txt"
+        ? TXT_START_LOOKS
+        : ART_START_LOOKS;
 
   const onRandom = () => {
-    const engines = listEnginesByFocus(focus);
-    const eng = engines.length
-      ? engines[Math.floor(Math.random() * engines.length)].id
-      : focus === "txt"
-        ? "dither"
-        : "blob";
-    onPick({ label: "Random", params: { engine: eng, seed: randSeed() } });
+    const pickId = (f: "art" | "txt", fallback: string) => {
+      const es = listEnginesByFocus(f);
+      return es.length ? es[Math.floor(Math.random() * es.length)].id : fallback;
+    };
+    if (focus === "stack") {
+      // A random art background + a random type engine over it.
+      onPick({
+        label: "Random",
+        params: { focus: "stack", engine: pickId("art", "flux"), stackTxt: pickId("txt", "blur"), seed: randSeed() },
+      });
+      return;
+    }
+    onPick({
+      label: "Random",
+      params: { engine: pickId(focus, focus === "txt" ? "dither" : "blob"), seed: randSeed() },
+    });
   };
 
   return (

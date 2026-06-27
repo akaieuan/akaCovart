@@ -13,15 +13,22 @@ import {
 import { cn } from "@/lib/utils";
 import StartGrid from "./StartGrid";
 
-type Focus = "art" | "txt";
+type Focus = "art" | "txt" | "stack";
 
 const FOCUS_OPTIONS: { value: Focus; label: string; hint: string }[] = [
   { value: "art", label: "Art", hint: "Abstract generative fields" },
   { value: "txt", label: "TxT", hint: "Type as the subject" },
+  { value: "stack", label: "Stack", hint: "Art background + type on top" },
 ];
 
 // First registered engine for a focus (fallbacks keep this safe pre-registration).
+// Stack's `engine` is the ART background, so it defaults to a flowing art engine.
 function defaultEngine(focus: Focus): string {
+  if (focus === "stack") {
+    return listEnginesByFocus("art").some((e) => e.id === "flux")
+      ? "flux"
+      : (listEnginesByFocus("art")[0]?.id ?? "blob");
+  }
   return listEnginesByFocus(focus)[0]?.id ?? (focus === "txt" ? "dither" : "blob");
 }
 
@@ -37,7 +44,7 @@ function FocusMenu() {
   const setState = useStudio((s) => s.setState);
   const [open, setOpen] = useState(false);
   // Per-focus engine memory (component-scoped; seeded with the defaults).
-  const lastEngine = useRef<Record<Focus, string>>({ art: "blob", txt: "dither" });
+  const lastEngine = useRef<Record<Focus, string>>({ art: "blob", txt: "dither", stack: "flux" });
 
   const pick = (next: Focus) => {
     setOpen(false);
@@ -46,7 +53,9 @@ function FocusMenu() {
     // Stash the engine we're leaving, restore (or default) the one we're entering.
     lastEngine.current[cur.focus as Focus] = cur.engine;
     const remembered = lastEngine.current[next];
-    const known = listEnginesByFocus(next).some((e) => e.id === remembered);
+    // Stack's `engine` is an ART engine, so validate its memory against art.
+    const validFocus = next === "stack" ? "art" : next;
+    const known = listEnginesByFocus(validFocus).some((e) => e.id === remembered);
     setState({ focus: next, engine: known ? remembered : defaultEngine(next) });
   };
 

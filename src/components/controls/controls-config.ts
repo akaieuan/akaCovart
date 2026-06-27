@@ -273,6 +273,25 @@ export const TXT_VALIGN_OPTIONS: SegOption[] = [
   { value: "bottom", label: "Bottom" },
 ];
 
+// ── STACK focus ──────────────────────────────────────────────────────────────
+// The overlay TxT engine, how it composites over the art, and which layer animates.
+export const STACK_TXT_OPTIONS: SegOption[] = [
+  { value: "dither", label: "Dither" },
+  { value: "lines", label: "Lines" },
+  { value: "blur", label: "Blur" },
+];
+
+export const STACK_MODE_OPTIONS: SegOption[] = [
+  { value: "overlay", label: "On top" },
+  { value: "knockout", label: "Art-filled" },
+];
+
+export const STACK_ANIM_OPTIONS: SegOption[] = [
+  { value: "art", label: "Art" },
+  { value: "txt", label: "Text" },
+  { value: "both", label: "Both" },
+];
+
 // Curated cover faces. `value` is the real CSS family name (loaded via the
 // globals.css @import) that the engine writes into params.textFont and draws.
 export const TEXT_FONT_OPTIONS: SegOption[] = [

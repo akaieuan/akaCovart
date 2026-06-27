@@ -21,6 +21,8 @@ import {
   TextureSection,
   TypeSection,
   MotionSection,
+  StackTextSection,
+  StackMotionSection,
 } from "@/components/controls/sections";
 
 import EngineSelector from "./EngineSelector";
@@ -41,19 +43,6 @@ function EngineBody() {
 
 type Tab = { id: string; label: string; Body: ComponentType };
 
-const STILL_TABS: Tab[] = [
-  { id: "engine", label: "Engine", Body: EngineBody },
-  { id: "look", label: "Look", Body: LookSection },
-  { id: "composition", label: "Compose", Body: CompositionSection },
-  { id: "texture", label: "Texture", Body: TextureSection },
-  { id: "type", label: "Type", Body: TypeSection },
-];
-
-const ANIM_TABS: Tab[] = [
-  { id: "engine", label: "Engine", Body: EngineBody },
-  { id: "motion", label: "Motion", Body: MotionSection },
-];
-
 export default function MobileControls({ onExport }: { onExport: () => void }) {
   const mode = useStudio((s) => s.mode);
   const focus = useStudio((s) => s.focus);
@@ -61,10 +50,24 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
   const showPreview = useStudio((s) => s.showPreview);
   const overlayOpen = showFormats || showPreview;
 
-  // TxT renders smooth/high-res, so the Texture (grain) tab is dropped there.
-  const stillTabs =
-    focus === "txt" ? STILL_TABS.filter((t) => t.id !== "texture") : STILL_TABS;
-  const tabs = mode === "animate" ? ANIM_TABS : stillTabs;
+  // Focus-aware tabs (same shared section bodies as desktop). TxT renders smooth
+  // (no Texture tab); Stack composites a type layer over the art bg, so its type
+  // tab is the Stack Text layer and its motion tab is the Stack motion panel.
+  const stack = focus === "stack";
+  const stillTabs: Tab[] = [
+    { id: "engine", label: "Engine", Body: EngineBody },
+    { id: "look", label: "Look", Body: LookSection },
+    { id: "composition", label: stack ? "Background" : "Compose", Body: CompositionSection },
+    ...(focus !== "txt"
+      ? [{ id: "texture", label: "Texture", Body: TextureSection } as Tab]
+      : []),
+    { id: "type", label: stack ? "Text" : "Type", Body: stack ? StackTextSection : TypeSection },
+  ];
+  const animTabs: Tab[] = [
+    { id: "engine", label: "Engine", Body: EngineBody },
+    { id: "motion", label: "Motion", Body: stack ? StackMotionSection : MotionSection },
+  ];
+  const tabs = mode === "animate" ? animTabs : stillTabs;
   const [tab, setTab] = useState<string>("composition");
   const [collapsed, setCollapsed] = useState(false);
   // Tab state persists across STILL/ANIMATE swaps; clamp to a valid one.

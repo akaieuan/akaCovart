@@ -41,9 +41,11 @@ export interface StudioState {
   colorSat: number; // 0..100; 50 = neutral. Vibrance: <50 toward grey, >50 more vivid.
   colorWarm: number; // 0..100; 50 = neutral. Temperature: <50 cooler, >50 warmer.
 
-  // creative focus: "art" = abstract field engines, "txt" = type-driven engines.
+  // creative focus: "art" = abstract field engines, "txt" = type-driven engines,
+  // "stack" = a TxT type layer composited OVER an Art field background (`engine`
+  // is the art bg; `stackTxt` is the overlay type engine).
   // Drives the header Focus switch + which engines the selector shows.
-  focus: "art" | "txt";
+  focus: "art" | "txt" | "stack";
 
   // engine + engine-specific composition params
   engine: string;
@@ -129,6 +131,15 @@ export interface StudioState {
   // Shared TxT resolve-loop length: how many beats per reform. The word returns to
   // its readable still on the beat; lower = reforms more often. 0..100 -> ~1..8 beats.
   txtLoopBeats: number;
+
+  // ── Stack focus ──────────────────────────────────────────────────────────────
+  // Composites a TxT type layer over the Art field background. `engine` is the art
+  // bg engine (so the Composition/Texture/Motion panels work as-is); these add the
+  // overlay type engine + how it composites + which layer animates.
+  stackTxt: string; // the overlay TxT engine (dither | lines | blur)
+  stackAnim: "art" | "txt" | "both"; // which layer animates
+  stackMode: "overlay" | "knockout"; // type-over-art, or art-filled type (window)
+  stackScrim: number; // 0..100; overlay veil opacity behind the type (legibility)
 
 
   // seed
@@ -275,7 +286,7 @@ const defaults = {
   colorSat: 50,
   colorWarm: 50,
 
-  focus: "art" as "art" | "txt",
+  focus: "art" as "art" | "txt" | "stack",
 
   engine: "blob",
   gridCols: 9,
@@ -349,6 +360,11 @@ const defaults = {
 
   txtLoopBeats: 20,
 
+  // Stack focus — art bg + a blur type overlay, text animates by default.
+  stackTxt: "blur",
+  stackAnim: "txt" as "art" | "txt" | "both",
+  stackMode: "overlay" as "overlay" | "knockout",
+  stackScrim: 0,
 
   soften: 0,
   density: 60,

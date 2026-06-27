@@ -64,8 +64,11 @@ const lines: FieldEngine = {
     // Two-tone: direct bg/ink (txtBg/txtInk) or derived from the mood.
     const { bg, ink } = txtTones(p, cfg);
     ctx.save();
-    ctx.fillStyle = rgb(bg);
-    ctx.fillRect(0, 0, S, S);
+    // Stack overlay: skip the bg fill so the hatched type sits over the art.
+    if (!p._stackOverlay) {
+      ctx.fillStyle = rgb(bg);
+      ctx.fillRect(0, 0, S, S);
+    }
     ctx.strokeStyle = rgb(ink);
     ctx.lineWidth = weight;
     ctx.lineCap = "round";

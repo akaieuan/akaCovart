@@ -14,6 +14,8 @@ import {
   TextureSection,
   TypeSection,
   MotionSection,
+  StackTextSection,
+  StackMotionSection,
 } from "./sections";
 
 // ── Section shell (one accordion item) ───────────────────────────────────────
@@ -59,31 +61,36 @@ export default function Controls() {
   const focus = useStudio((s) => s.focus);
 
   if (mode === "animate") {
-    return <MotionSection />;
+    return focus === "stack" ? <StackMotionSection /> : <MotionSection />;
   }
+
+  const stack = focus === "stack";
 
   return (
     <Accordion multiple defaultValue={DEFAULT_OPEN} className="flex w-full flex-col">
-      {/* LOOK — colour + atmosphere (TxT = direct two-tone; Art = palette + presets) */}
+      {/* LOOK — colour + atmosphere (TxT/Stack = two-tone ink; Art = palette + presets) */}
       <PanelSection value="look" title="Look">
         <LookSection />
       </PanelSection>
 
-      {/* COMPOSITION (engine-specific + shared FINISH) */}
-      <PanelSection value="composition" title="Composition">
+      {/* COMPOSITION (engine-specific + shared FINISH) — the Art bg in Stack */}
+      <PanelSection value="composition" title={stack ? "Background" : "Composition"}>
         <CompositionSection />
       </PanelSection>
 
-      {/* TEXTURE — Art only; TxT renders smooth/high-res (no grain) */}
-      {focus === "art" && (
+      {/* TEXTURE — Art + Stack get grain; TxT renders smooth/high-res (no grain) */}
+      {focus !== "txt" && (
         <PanelSection value="texture" title="Texture">
           <TextureSection />
         </PanelSection>
       )}
 
-      {/* TYPE — Display text in TxT focus, corner-credit overlay in Art */}
-      <PanelSection value="type" title={focus === "txt" ? "Display text" : "Type overlay"}>
-        <TypeSection />
+      {/* TYPE — Display text (TxT), Text layer (Stack), corner-credit overlay (Art) */}
+      <PanelSection
+        value="type"
+        title={focus === "txt" ? "Display text" : stack ? "Text layer" : "Type overlay"}
+      >
+        {stack ? <StackTextSection /> : <TypeSection />}
       </PanelSection>
     </Accordion>
   );

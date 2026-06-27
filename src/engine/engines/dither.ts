@@ -57,8 +57,12 @@ const dither: FieldEngine = {
     // Two-tone: direct bg/ink (txtBg/txtInk) or derived from the mood.
     const { bg, ink } = txtTones(p, cfg);
     ctx.save();
-    ctx.fillStyle = rgb(bg);
-    ctx.fillRect(0, 0, S, S);
+    // Stack overlay mode draws the type OVER the art layer, so skip the bg fill
+    // (let the art show through). Default (no flag) = the normal two-tone fill.
+    if (!p._stackOverlay) {
+      ctx.fillStyle = rgb(bg);
+      ctx.fillRect(0, 0, S, S);
+    }
     ctx.fillStyle = rgb(ink);
     ctx.imageSmoothingEnabled = false;
 

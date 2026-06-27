@@ -17,6 +17,6 @@ export function listEngines(): FieldEngine[] {
 
 // Engines for a given creative focus, in registration order. Untagged engines
 // count as "art" so the default roster is unaffected.
-export function listEnginesByFocus(focus: "art" | "txt"): FieldEngine[] {
+export function listEnginesByFocus(focus: "art" | "txt" | "stack"): FieldEngine[] {
   return listEngines().filter((e) => (e.focus ?? "art") === focus);
 }

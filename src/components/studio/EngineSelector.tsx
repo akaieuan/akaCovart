@@ -67,7 +67,9 @@ export default function EngineSelector({ className }: { className?: string }) {
   const engine = useStudio((s) => s.engine);
   const focus = useStudio((s) => s.focus);
   const setState = useStudio((s) => s.setState);
-  const engines = engineList(focus);
+  // In Stack the top selector picks the ART background (its `engine`); the overlay
+  // type engine is chosen in the Text-layer panel.
+  const engines = engineList(focus === "stack" ? "art" : focus);
 
   return (
     <ToggleGroup

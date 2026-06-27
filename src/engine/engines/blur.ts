@@ -63,8 +63,11 @@ const blur: FieldEngine = {
     // Two-tone: direct bg/ink (txtBg/txtInk) or derived from the mood.
     const { bg, ink } = txtTones(p, cfg);
     ctx.save();
-    ctx.fillStyle = rgb(bg);
-    ctx.fillRect(0, 0, S, S);
+    // Stack overlay: skip the bg fill so the goo composites over the art layer.
+    if (!p._stackOverlay) {
+      ctx.fillStyle = rgb(bg);
+      ctx.fillRect(0, 0, S, S);
+    }
 
     if (!bbuf) bbuf = document.createElement("canvas");
     if (bbuf.width !== side || bbuf.height !== side) {

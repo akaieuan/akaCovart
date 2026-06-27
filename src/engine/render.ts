@@ -1,6 +1,6 @@
-import type { AnimState, Mood, RenderResult, TextBox } from "./types";
+import type { AnimState, Mood, Palette, RenderResult, TextBox } from "./types";
 import { getEngine } from "./registry";
-import { palettes, recolorPalette, resolveMood, transformPalette } from "./palettes";
+import { palettes, parseHex, recolorPalette, resolveMood, transformPalette } from "./palettes";
 import { prng } from "./prng";
 import { rgb } from "./color";
 import {
@@ -151,14 +151,26 @@ export function renderTo(
   );
   const anim = buildAnim(params);
 
+  // Stack focus composites a TxT type layer over the Art field background. Each
+  // layer can animate independently (`stackAnim`): the OFF layer gets a STILL anim
+  // so it freezes — the text returns to its readable still, the art holds.
+  const isStack = params.focus === "stack";
+  const stillAnim: AnimState = {
+    anim: false, t: 0, rt: 0, bake: anim.bake, beat: 0, loopPhase: 0,
+    kickEnv: 0, kickSpring: 0, pumpEnv: 0, drift: 0, swirl: 0, speed: 0,
+  };
+  const stackTarget = (params.stackAnim as string) || "txt";
+  const artAnim = isStack && stackTarget === "txt" ? stillAnim : anim;
+
   // Base fill.
   ctx.fillStyle = rgb(cfg.base);
   ctx.fillRect(0, 0, S, S);
 
-  // Field dispatch — the selected 2D engine draws into the canvas.
+  // Field dispatch — the selected 2D engine draws into the canvas (the Art bg in
+  // Stack focus). It animates per `artAnim` (still when only the text animates).
   const engine = getEngine(params.engine || "blob");
   if (engine) {
-    engine.field({ ctx, size: S, params, mood, cfg, seed, anim });
+    engine.field({ ctx, size: S, params, mood, cfg, seed, anim: artAnim });
   }
 
   // ----- finish chain -----
@@ -198,16 +210,80 @@ export function renderTo(
     );
   }
 
+  // Stack: composite the TxT type layer over the finished art (overlay or knockout).
+  // It is part of the SQUARE field (like a txt engine), so it cover-crops per format.
+  if (isStack) {
+    const txtAnim = stackTarget === "art" ? stillAnim : anim;
+    drawStackText(ctx, S, params, mood, cfg, seed, txtAnim);
+  }
+
   let textBox;
   // `_skipText` lets renderFormatTo draw the type AFTER cropping (in frame space)
   // so it is placed for the chosen format rather than baked into the square.
   // TxT engines render the type AS the field, so the corner-credit overlay is
-  // suppressed for them (no double-draw) regardless of the showText flag.
-  if (params.showText && !params._skipText && engine?.focus !== "txt") {
+  // suppressed for them (no double-draw); Stack draws its own type layer.
+  if (params.showText && !params._skipText && engine?.focus !== "txt" && !isStack) {
     textBox = drawText(ctx, S, S, params, mood, prng(seed ^ 0x3b9a73c1));
   }
 
   return { textBox };
+}
+
+// ── Stack compositing ─────────────────────────────────────────────────────────
+// Reused offscreen mask for the knockout (art-filled type) mode (no per-frame
+// alloc; render is synchronous + single-threaded so the singleton never races).
+let stackMaskCanvas: HTMLCanvasElement | null = null;
+function stackMask(S: number): HTMLCanvasElement {
+  if (!stackMaskCanvas) stackMaskCanvas = document.createElement("canvas");
+  if (stackMaskCanvas.width !== S || stackMaskCanvas.height !== S) {
+    stackMaskCanvas.width = S;
+    stackMaskCanvas.height = S;
+  }
+  return stackMaskCanvas;
+}
+
+// Composite the Stack TxT layer over the (already finished) art on `ctx`.
+//  • overlay  — draw the type/ink over the art, optionally behind a `stackScrim` veil.
+//  • knockout — the art shows THROUGH the letterforms on a solid bg (art-filled type).
+function drawStackText(
+  ctx: CanvasRenderingContext2D,
+  S: number,
+  params: Record<string, any>,
+  mood: Mood,
+  cfg: Palette,
+  seed: number,
+  anim: AnimState,
+): void {
+  const txtEngine = getEngine((params.stackTxt as string) || "blur");
+  if (!txtEngine) return;
+  const overlayParams = { ...params, _stackOverlay: true };
+  const bgHex = typeof params.txtBg === "string" ? parseHex(params.txtBg) : null;
+  const solid = rgb(bgHex ?? cfg.base);
+
+  if (params.stackMode === "knockout") {
+    const mask = stackMask(S);
+    const mctx = mask.getContext("2d");
+    if (!mctx) return;
+    mctx.clearRect(0, 0, S, S);
+    txtEngine.field({ ctx: mctx, size: S, params: overlayParams, mood, cfg, seed, anim });
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-in"; // keep art only inside the type
+    ctx.drawImage(mask, 0, 0);
+    ctx.globalCompositeOperation = "destination-over"; // solid bg behind the letters
+    ctx.fillStyle = solid;
+    ctx.fillRect(0, 0, S, S);
+    ctx.restore(); // back to source-over
+  } else {
+    const scrim = Math.min(1, ((params.stackScrim as number) || 0) / 100);
+    if (scrim > 0) {
+      ctx.save();
+      ctx.globalAlpha = scrim;
+      ctx.fillStyle = solid;
+      ctx.fillRect(0, 0, S, S);
+      ctx.restore();
+    }
+    txtEngine.field({ ctx, size: S, params: overlayParams, mood, cfg, seed, anim });
+  }
 }
 
 // ── Format render (square field cover-cropped into a non-square frame) ────────
@@ -257,7 +333,8 @@ export function renderFormatTo(
   // for TxT engines, which render the type as the field itself.
   let textBox: TextBox | undefined;
   const isTxtEngine = getEngine(params.engine || "blob")?.focus === "txt";
-  if (params.showText && !isTxtEngine) {
+  // Stack draws its type in the square field (cover-cropped), so no frame-space credit.
+  if (params.showText && !isTxtEngine && params.focus !== "stack") {
     const seed = (params.seed >>> 0) || 1;
     const mood: Mood = resolveMood(seed, (params.mood ?? "random") as Mood | "random");
     textBox = drawText(ctx, w, h, params, mood, prng(seed ^ 0x3b9a73c1));

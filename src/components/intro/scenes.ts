@@ -185,3 +185,69 @@ export const TXT_START_LOOKS: Preset[] = [
     params: { engine: "lines", txtBg: "#06101e", txtInk: "#7db4ff", seed: 8123, txtText: "SIGNAL", txtSub: "V/A", textFont: "Space Grotesk", textCase: "upper", lineAngle: 75, lineSize: 30 },
   },
 ];
+
+// Shared base for the Stack starting points — sets focus + a calm dark, grainy
+// art finish so every tile reads as "art behind, type on top".
+const STACK_BASE: Record<string, unknown> = {
+  focus: "stack",
+  mood: "dark",
+  colorPick: null,
+  contrast: 50,
+  saturation: 52,
+  vignette: 30,
+  bloom: 26,
+  soften: 32,
+  glow: 60,
+  grain: 50,
+  grainSize: 14,
+  dust: 0,
+  scratches: false,
+  showText: false,
+  textCase: "upper",
+  stackAnim: "txt",
+  txtLoopBeats: 20,
+  animBPM: 124,
+  animPump: 55,
+  animKick: 48,
+  animSpeed: 52,
+  animDrift: 60,
+  animSwirl: 24,
+};
+
+// 8 STACK starting points — an Art background + a TxT type layer (on-top overlay or
+// art-filled knockout) across the engine pairings. A 9th "Random" tile is added by
+// the picker (it mixes a random art bg + a random type engine).
+export const STACK_START_LOOKS: Preset[] = [
+  {
+    label: "Flux · Blur",
+    params: { ...STACK_BASE, engine: "flux", stackTxt: "blur", stackMode: "overlay", seed: 51871, txtText: "AKA", txtSub: "COVART", textFont: "Space Grotesk", txtInk: "#eaf1ff", blurAmount: 30, blurThreshold: 54, fluxFlow: 64, fluxWarp: 60 },
+  },
+  {
+    label: "Contours · Lines",
+    params: { ...STACK_BASE, engine: "contours", stackTxt: "lines", stackMode: "overlay", seed: 22045, txtText: "ECHO", txtSub: "", textFont: "Anton", txtInk: "#f3ead8", lineAngle: 24, lineSize: 38, contourFill: 60 },
+  },
+  {
+    label: "Signal · Dither",
+    params: { ...STACK_BASE, engine: "signal", stackTxt: "dither", stackMode: "overlay", seed: 88231, txtText: "NOISE", txtSub: "", textFont: "Space Grotesk", txtInk: "#cfe6ff", ditherSize: 30, ditherBreak: 82, signalDrift: 62 },
+  },
+  {
+    label: "Blob · Filled",
+    params: { ...STACK_BASE, engine: "blob", stackTxt: "blur", stackMode: "knockout", seed: 41216, txtText: "GLOW", txtSub: "", textFont: "Syne", txtBg: "#080a10", blurAmount: 40, blurThreshold: 48, blobSize: 60, glow: 72 },
+  },
+  {
+    label: "Flux · Dither",
+    params: { ...STACK_BASE, engine: "flux", stackTxt: "dither", stackMode: "overlay", seed: 30312, txtText: "TYPE", txtSub: "", textFont: "Syne", txtInk: "#ffd6ff", ditherInvert: false, ditherBreak: 86, fluxWarp: 64 },
+  },
+  {
+    label: "Grid · Lines",
+    params: { ...STACK_BASE, engine: "grid", stackTxt: "lines", stackMode: "overlay", stackScrim: 28, seed: 73410, txtText: "WAVE", txtSub: "FORM", textFont: "Instrument Serif", txtInk: "#f2f4ff", txtBg: "#0a0c16", lineAngle: 90, gridCols: 13 },
+  },
+  {
+    label: "Contours · Filled",
+    params: { ...STACK_BASE, engine: "contours", stackTxt: "blur", stackMode: "knockout", seed: 50552, txtText: "MELT", txtSub: "", textFont: "Anton", txtBg: "#0b0e14", blurAmount: 44, blurThreshold: 46, contourLines: 62, contourFill: 64 },
+  },
+  {
+    label: "Signal · Lines",
+    params: { ...STACK_BASE, engine: "signal", stackTxt: "lines", stackMode: "overlay", seed: 81230, txtText: "SIGNAL", txtSub: "V/A", textFont: "Space Grotesk", txtInk: "#bcdcff", lineAngle: 72, lineSize: 30, signalFreq: 54 },
+  },
+];
