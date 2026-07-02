@@ -64,12 +64,14 @@ export interface StudioState {
   contourFill: number; // 0..100; colour strata under each ridge (0 = bg occlusion only).
   contourSway: number; // 0..100; whole-frame camera parallax/sway (anim only).
   contourLift: number; // 0..100; beat-driven terrain + camera lift (anim only).
+  contourRoil: number; // 0..100; evolving surface turbulence — the ridges roil/live (anim).
 
   // signal (interference / moiré) params
   signalFreq: number;
   signalLayers: number;
   signalSpread: number;
   signalSharp: number;
+  signalWarp: number; // 0..100; flowing domain warp — bends the gratings into living, fluid moiré.
   signalDrift: number;
   signalSwirl: number;
   signalPulse: number;
@@ -294,11 +296,13 @@ const defaults = {
   contourFill: 60,
   contourSway: 50,
   contourLift: 55,
+  contourRoil: 45,
 
   signalFreq: 50,
   signalLayers: 50,
   signalSpread: 50,
   signalSharp: 50,
+  signalWarp: 30,
   signalDrift: 60,
   signalSwirl: 48,
   signalPulse: 58,

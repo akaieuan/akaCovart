@@ -109,6 +109,7 @@ function paramSig(s: StudioState): string {
     s.signalLayers,
     s.signalSpread,
     s.signalSharp,
+    s.signalWarp,
     // TxT engine composition params (motion params are excluded, like the others)
     s.ditherSize,
     s.ditherBreak,

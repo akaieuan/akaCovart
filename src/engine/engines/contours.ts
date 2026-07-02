@@ -98,6 +98,7 @@ const contours: FieldEngine = {
     const ANIM = anim.anim;
     const morph = (p.contourMorph == null ? 55 : p.contourMorph) / 100;
     const flow = (p.contourFlow == null ? 35 : p.contourFlow) / 100;
+    const roilP = (p.contourRoil == null ? 45 : p.contourRoil) / 100;
     const T = ANIM ? anim.t : 0;
     // Terrain morph — advance the noise z-axis so the surface continuously reshapes.
     const zT = oz + (ANIM ? T * (0.05 + morph * 0.55) : 0);
@@ -120,6 +121,10 @@ const contours: FieldEngine = {
     const beatLift = (kickEnv * 0.26 + kickSpring * 0.16) * (0.4 + liftP * 1.2); // beat lifts the terrain
     const midSwayA = ANIM ? anim.drift * 0.16 : 0; // mids warp it sideways
     const shimmerA = ANIM ? anim.swirl * 0.045 : 0; // highs add fine surface ripple
+    // SURFACE ROIL — evolving turbulence on the ridges (two incommensurate drifting
+    // waves) so the terrain looks alive + emergent, not static geometry. Gated by
+    // ANIM, and it swells a touch on the beat. 0 when still.
+    const roilA = ANIM ? roilP * 0.075 : 0;
 
     // Terrain height at normalised (nx across, ny depth) -> [0,1] above ground.
     const height = (nx: number, ny: number): number => {
@@ -194,6 +199,10 @@ const contours: FieldEngine = {
         let h = height(nx + sway, ny) * swell;
         h += kickEnv * 0.2 * Math.sin(depth * 9.0 - T * 4.0);
         h += shimmerA * Math.sin(nx * 38 + T * 7) * Math.cos(depth * 26 - T * 5);
+        // Surface roil — two incommensurate travelling waves + a little beat swell.
+        h += roilA * (1 + kickEnv * 0.6) *
+          (Math.sin(nx * 13 + depth * 6 + T * 1.7) * 0.6 +
+            Math.sin(nx * 27 - depth * 15 - T * 2.6 + 2.1) * 0.4);
         h += beatLift;
         xs[ci] = cx + (nx - 0.5) * spread * xScale;
         ys[ci] = rowY - h * hScale;
@@ -253,6 +262,7 @@ function contourParams(): ParamDef[] {
     { key: "contourFill", label: "FILL", type: "range", group: "composition", min: 0, max: 100, default: 60 },
     { key: "contourMorph", label: "MORPH SPEED", type: "range", group: "motion", min: 0, max: 100, default: 55 },
     { key: "contourFlow", label: "FLY FORWARD", type: "range", group: "motion", min: 0, max: 100, default: 35 },
+    { key: "contourRoil", label: "SURFACE ROIL", type: "range", group: "motion", min: 0, max: 100, default: 45 },
     { key: "contourSway", label: "CAMERA SWAY", type: "range", group: "motion", min: 0, max: 100, default: 50 },
     { key: "contourLift", label: "BEAT LIFT", type: "range", group: "motion", min: 0, max: 100, default: 55 },
   ];

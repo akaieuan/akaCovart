@@ -47,6 +47,10 @@ const signal: FieldEngine = {
     const layers = 2 + Math.round(((p.signalLayers == null ? 50 : p.signalLayers) / 100) * 4); // 2..6
     const spread = (p.signalSpread == null ? 50 : p.signalSpread) / 100;
     const sharp = (p.signalSharp == null ? 50 : p.signalSharp) / 100;
+    // Flow warp — bends the straight gratings into curved, fluid interference. It
+    // curves the STILL (a look) and, when animating, the warp field FLOWS so the
+    // moiré ripples + reorganises organically (emergent, natural motion).
+    const warpP = (p.signalWarp == null ? 30 : p.signalWarp) / 100;
 
     const ANIM = anim.anim;
     const drift = (p.signalDrift == null ? 60 : p.signalDrift) / 100;
@@ -122,12 +126,24 @@ const signal: FieldEngine = {
     const gdark = 0.26;
     const gr = cfg.base[0] * gdark, gg0 = cfg.base[1] * gdark, gb = cfg.base[2] * gdark;
 
+    // Flow-warp field — a small domain displacement (fraction of the frame) whose
+    // phase drifts in time so the bent gratings ripple + swirl (0 when still ⇒ the
+    // still is a fixed, deterministic curved pattern).
+    const warpAmt = warpP * 0.05;
+    const wPhase = ANIM ? T * (0.3 + drift * 0.5) : 0;
+
     for (let yy = 0; yy < SNX; yy++) {
       const ny0 = yy * inv - 0.5;
       for (let xx = 0; xx < SNX; xx++) {
         const nx0 = xx * inv - 0.5;
-        const nx = nx0 * cosR - ny0 * sinR;
-        const ny = nx0 * sinR + ny0 * cosR;
+        let nx = nx0 * cosR - ny0 * sinR;
+        let ny = nx0 * sinR + ny0 * cosR;
+        if (warpAmt > 0) {
+          const wu = Math.sin(ny * 5.7 + wPhase) + 0.5 * Math.sin(nx * 9.3 - wPhase * 1.3 + 1.7);
+          const wv = Math.cos(nx * 6.1 - wPhase * 0.9) + 0.5 * Math.cos(ny * 10.4 + wPhase * 1.1 + 4.2);
+          nx += warpAmt * wu;
+          ny += warpAmt * wv;
+        }
         let rr = 0, gg = 0, bb = 0, tot = 0;
         for (let k = 0; k < layers; k++) {
           const G = gratings[k];
@@ -170,6 +186,7 @@ function signalParams(): ParamDef[] {
     { key: "signalLayers", label: "LAYERS", type: "range", group: "composition", min: 0, max: 100, default: 50 },
     { key: "signalSpread", label: "ANGLE SPREAD", type: "range", group: "composition", min: 0, max: 100, default: 50 },
     { key: "signalSharp", label: "SHARPNESS", type: "range", group: "composition", min: 0, max: 100, default: 50 },
+    { key: "signalWarp", label: "FLOW WARP", type: "range", group: "composition", min: 0, max: 100, default: 30 },
     { key: "signalDrift", label: "DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 60 },
     { key: "signalSwirl", label: "SWIRL", type: "range", group: "motion", min: 0, max: 100, default: 48 },
     { key: "signalPulse", label: "PULSE", type: "range", group: "motion", min: 0, max: 100, default: 58 },

@@ -158,6 +158,7 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
         { kind: "slider", key: "signalLayers", label: "Layers", min: 0, max: 100 },
         { kind: "slider", key: "signalSpread", label: "Angle spread", min: 0, max: 100 },
         { kind: "slider", key: "signalSharp", label: "Sharpness", min: 0, max: 100 },
+        { kind: "slider", key: "signalWarp", label: "Flow warp", min: 0, max: 100 },
       ],
     },
   ],
@@ -328,6 +329,7 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
   contours: [
     { kind: "slider", key: "contourMorph", label: "Morph speed", min: 0, max: 100 },
     { kind: "slider", key: "contourFlow", label: "Fly forward", min: 0, max: 100 },
+    { kind: "slider", key: "contourRoil", label: "Surface roil", min: 0, max: 100 },
     { kind: "slider", key: "contourSway", label: "Camera sway", min: 0, max: 100 },
     { kind: "slider", key: "contourLift", label: "Beat lift", min: 0, max: 100 },
   ],
