@@ -16,6 +16,9 @@ interface Transport {
   readonly playing: boolean;
   readonly clipDuration: number;
   onEnded(cb: () => void): void;
+  // A MediaStream carrying the clip audio, for recording an audio-synced export
+  // (the video export's fallback path). null if Web Audio is unavailable.
+  captureStream(): MediaStream | null;
 }
 
 class ClipTransport implements Transport {
@@ -26,6 +29,8 @@ class ClipTransport implements Transport {
 
   private source: AudioBufferSourceNode | null = null;
   private gain: GainNode | null = null;
+  // Lazily-created recording tap. Once it exists, every source routes to it too.
+  private streamDest: MediaStreamAudioDestinationNode | null = null;
 
   private _playing = false;
   // Audio-clock anchor: ctx.currentTime at the moment offsetInClip was set.
@@ -96,6 +101,25 @@ class ClipTransport implements Transport {
     this.endedCbs.push(cb);
   }
 
+  captureStream(): MediaStream | null {
+    try {
+      const ctx = audioCtx();
+      if (ctx.state === "suspended") void ctx.resume();
+      if (!this.streamDest) this.streamDest = ctx.createMediaStreamDestination();
+      // If a source is already playing, tap it now too (else the next start does).
+      if (this.gain) {
+        try {
+          this.gain.connect(this.streamDest);
+        } catch {
+          /* already connected */
+        }
+      }
+      return this.streamDest.stream;
+    } catch {
+      return null;
+    }
+  }
+
   // ── internals ──────────────────────────────────────────────────────────
   private startSource(offsetInClip: number): void {
     if (!this.buffer) return;
@@ -109,6 +133,9 @@ class ClipTransport implements Transport {
     const gain = ctx.createGain();
     gain.gain.value = 1;
     src.connect(gain).connect(ctx.destination);
+    // Also feed the recording tap when one has been requested, so a video export
+    // fallback can record the clip audio in sync with the animating canvas.
+    if (this.streamDest) gain.connect(this.streamDest);
 
     // Start playing at clipStart + offset; the loop region keeps it cycling.
     src.start(0, this.clipStart + clamp(offsetInClip, 0, this._clipDuration));

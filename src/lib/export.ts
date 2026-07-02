@@ -3,7 +3,7 @@ import type { Mood } from "@/engine";
 import { renderParams, type StudioState } from "@/lib/store";
 import { ensureCoverFont } from "@/lib/fonts";
 import { getFormat, type Format } from "@/lib/formats";
-import { audioSession } from "@/audio";
+import { audioSession, transport } from "@/audio";
 import { createTrackMotion, stepTrackMotion } from "@/audio/trackMotion";
 
 // ── PNG export for a given format ────────────────────────────────────────────
@@ -81,14 +81,34 @@ export function exportVideo(
   const useTrack =
     state.animSource === "track" && !!tl && tl.duration > 0 && !!audioSession.buffer;
 
-  const run = useTrack ? encodeTrackMp4(state) : encodeLoopMp4(state);
-  run
+  if (useTrack) {
+    // Track export MUST carry audio. Prefer the fast WebCodecs MP4+AAC; if it can't
+    // include audio or fails for ANY reason, record the canvas + the clip audio in
+    // real time (universal, always has sound) — never a silent clip.
+    encodeTrackMp4(state)
+      .then((ok) => {
+        if (ok) {
+          console.info("[export] track → WebCodecs MP4 + AAC audio");
+          done();
+        } else {
+          console.info("[export] track → recording canvas + audio (no WebCodecs/AAC)");
+          recordTrackWithAudio(canvas, state, done);
+        }
+      })
+      .catch((err) => {
+        console.error("[export] track encode failed → recording canvas + audio", err);
+        recordTrackWithAudio(canvas, state, done);
+      });
+    return;
+  }
+
+  encodeLoopMp4(state)
     .then((ok) => {
       if (ok) done();
       else recordCanvasFallback(canvas, state, done);
     })
     .catch((err) => {
-      console.error("[export] mp4 encode failed; using recorder fallback", err);
+      console.error("[export] loop encode failed; recorder fallback", err);
       recordCanvasFallback(canvas, state, done);
     });
 }
@@ -277,6 +297,9 @@ async function encodeTrackMp4(state: StudioState): Promise<boolean> {
       withAudio = false;
     }
   }
+  // A track export without audio defeats the purpose — bail so the caller records
+  // the canvas + audio instead of shipping a silent MP4.
+  if (!withAudio) return false;
 
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
@@ -407,6 +430,84 @@ function triggerDownload(blob: Blob, name: string): void {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+// Track fallback that ALWAYS carries audio: play the clip and record the live
+// (track-driven) canvas + the transport's audio in real time for the clip length.
+// Universal (any browser with MediaRecorder). Prefers mp4, else webm w/ Opus.
+function recordTrackWithAudio(
+  canvas: HTMLCanvasElement,
+  state: StudioState,
+  done: () => void,
+): void {
+  const buf = audioSession.buffer;
+  const tl = audioSession.timeline;
+  if (!buf || !tl || typeof MediaRecorder === "undefined" || !canvas.captureStream) {
+    recordCanvasFallback(canvas, state, done);
+    return;
+  }
+  const clipDur = Math.max(
+    0.2,
+    Math.min(MAX_TRACK_SECONDS, Math.min(tl.duration, audioSession.clipEnd - audioSession.clipStart)),
+  );
+  // Tap the clip audio BEFORE (re)starting playback so the source routes into it.
+  const audioStream = transport.captureStream();
+  const vstream = canvas.captureStream(30);
+  const tracks: MediaStreamTrack[] = [...vstream.getVideoTracks()];
+  if (audioStream) tracks.push(...audioStream.getAudioTracks());
+  const stream = new MediaStream(tracks);
+
+  let mime = "";
+  // WebM first — a valid, audio-carrying container everywhere. mp4 only if WebM is
+  // unsupported (Safari), where its recorder mp4 is well-formed. (Chrome's recorder
+  // mp4 is the fragmented-that-QuickTime-rejects one, so we avoid it here.)
+  const want = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+  if (MediaRecorder.isTypeSupported) {
+    for (const m of want) {
+      if (MediaRecorder.isTypeSupported(m)) {
+        mime = m;
+        break;
+      }
+    }
+  }
+  let rec: MediaRecorder;
+  try {
+    rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+  } catch {
+    recordCanvasFallback(canvas, state, done);
+    return;
+  }
+  const outMime = rec.mimeType || mime || "video/webm";
+  const ext = outMime.indexOf("mp4") >= 0 ? "mp4" : "webm";
+  const chunks: Blob[] = [];
+  rec.ondataavailable = (e) => {
+    if (e.data && e.data.size) chunks.push(e.data);
+  };
+  rec.onstop = () => {
+    try {
+      transport.pause();
+    } catch {
+      /* ignore */
+    }
+    triggerDownload(new Blob(chunks, { type: outMime.split(";")[0] }), `akacovart_${state.seed >>> 0}.${ext}`);
+    done();
+  };
+  // Play the clip from its start; the live track-driven canvas animates in sync,
+  // and captureStream records both video + audio.
+  try {
+    transport.seek(0);
+    transport.play();
+  } catch {
+    /* ignore */
+  }
+  rec.start();
+  setTimeout(() => {
+    try {
+      rec.stop();
+    } catch {
+      /* ignore */
+    }
+  }, Math.round(clipDur * 1000) + 200);
 }
 
 // MediaRecorder fallback over the live canvas (only when WebCodecs/H.264 is
