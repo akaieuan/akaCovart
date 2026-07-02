@@ -2,18 +2,15 @@ import type { AudioFeatures } from "./features";
 import { zeroFeatures } from "./features";
 import type { AnimState } from "@/engine";
 
-// ── Deterministic track-driven motion stepper ────────────────────────────────
-// Mirrors the LIVE track driver in CanvasStage (the same critically-damped
-// springs + envelope followers + onset impulse), packaged as a reusable, stateful
-// stepper so the OFFLINE video encoder can advance the motion frame-by-frame and
-// the exported video matches what plays in the editor.
+// ── Track-driven motion stepper (the SINGLE implementation) ──────────────────
+// Critically-damped springs + envelope followers + onset impulse that turn the
+// sampled audio features into the eased AnimState the engines consume. Used by
+// BOTH the live preview loop (CanvasStage) and the offline video encoder
+// (lib/export.ts), so what you see is exactly what exports.
 //
 // Determinism: the only inputs are the (deterministic) offline feature timeline
-// and a fixed per-frame dt, so a given (timeline, clip, fps) always yields the
-// same frames. Motion is space-only (the AnimState never carries hue/brightness).
-//
-// NOTE: keep in sync with the track-driver block in
-// src/components/canvas/CanvasStage.tsx — same constants + mapping.
+// and the per-frame dt, so a given (timeline, clip, fps) always yields the same
+// frames. Motion is space-only (the AnimState never carries hue/brightness).
 
 const SPRING_DT = 1 / 120; // fixed physics sub-step (fps-independent)
 

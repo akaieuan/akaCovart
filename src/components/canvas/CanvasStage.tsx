@@ -8,6 +8,7 @@ import { getFormat } from "@/lib/formats";
 import { ensureCoverFont } from "@/lib/fonts";
 import { audioSession, transport, zeroFeatures } from "@/audio";
 import type { AudioFeatures } from "@/audio";
+import { createTrackMotion, stepTrackMotion, type TrackMotion } from "@/audio/trackMotion";
 import { applyAuto } from "./autoModulate";
 
 const DISPLAY = 880;
@@ -38,45 +39,10 @@ function nextAnimRes(cur: number, emaMs: number): number {
   return cur;
 }
 
-// ── Audio reactivity tuning ────────────────────────────────────────────────
-// Fixed-timestep physics step. We accumulate real delta-time and step springs
-// at this rate so motion is identical at 30 / 60 / 120 fps and never blows up.
-const SPRING_DT = 1 / 120; // seconds per physics sub-step
-const MAX_FRAME_DT = 0.25; // clamp huge dt (tab backgrounded) so springs stay sane
-
-// Critically-damped spring: x'' = -k x - 2*sqrt(k) x' + k*target.
-// Stepping with a small fixed dt keeps it stable and free of overshoot.
-// Different stiffnesses give different "feel" per feature.
-interface Spring {
-  x: number; // position
-  v: number; // velocity
-}
-
-function stepSpring(s: Spring, target: number, k: number, dt: number): void {
-  // Critically damped: damping c = 2*sqrt(k).
-  const c = 2 * Math.sqrt(k);
-  const a = k * (target - s.x) - c * s.v;
-  s.v += a * dt;
-  s.x += s.v * dt;
-}
-
-// Envelope follower (attack / release in seconds). Smooths a raw feature into
-// a buttery signal. Stepped by fixed dt so it is fps-independent.
-function follow(cur: number, target: number, atk: number, rel: number, dt: number): number {
-  const tau = target > cur ? atk : rel;
-  if (tau <= 0) return target;
-  // Exponential approach: 1 - e^(-dt/tau).
-  const k = 1 - Math.exp(-dt / tau);
-  return cur + (target - cur) * k;
-}
-
-function clamp01(v: number): number {
-  return v < 0 ? 0 : v > 1 ? 1 : v;
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
-}
+// Clamp huge frame dt (tab backgrounded) so the physics + EMA stay sane. The
+// track-driver spring physics itself lives in src/audio/trackMotion.ts — the
+// SAME stepper the video export uses, so live preview and export always match.
+const MAX_FRAME_DT = 0.25;
 
 // Signature of everything that affects the main image (mirrors the prototype).
 function paramSig(s: StudioState): string {
@@ -217,19 +183,8 @@ export default function CanvasStage({
   const drawRafRef = useRef<number | null>(null);
   const lastChangeRef = useRef(0);
 
-  // ── Track-driver (audio) physics state — shared by the unified anim loop ───
-  const audioAccumRef = useRef(0); // fixed-timestep accumulator (seconds)
-  // Smoothed (envelope-followed) features — buttery input to the springs.
-  const featRef = useRef<AudioFeatures>(zeroFeatures());
-  // Spring state (position+velocity) per motion channel. Persist across frames.
-  const kickSpringRef = useRef<Spring>({ x: 0, v: 0 });
-  const pumpSpringRef = useRef<Spring>({ x: 0, v: 0 });
-  const bassSpringRef = useRef<Spring>({ x: 0, v: 0 });
-  const driftSpringRef = useRef<Spring>({ x: 0, v: 0 });
-  const swirlSpringRef = useRef<Spring>({ x: 0, v: 0 });
-  // Decaying onset impulse (kickEnv) — sharp attack on a beat, eased release.
-  const kickImpulseRef = useRef(0);
-  const prevBeatRef = useRef(0);
+  // ── Track-driver (audio) physics state — the shared trackMotion stepper ────
+  const motionRef = useRef<TrackMotion>(createTrackMotion());
 
   // ── Still render (signature-diffed, rAF-coalesced, draft-while-interacting) ─
   // Render at an explicit backing-store size. Smaller = cheaper "draft" frame;
@@ -286,15 +241,7 @@ export default function CanvasStage({
   // Reset the audio spring/accumulator transients so the track path starts calm
   // (when entering animate, or when the source flips to "track" mid-run).
   const resetAudioTransients = useCallback(() => {
-    audioAccumRef.current = 0;
-    featRef.current = zeroFeatures();
-    kickSpringRef.current = { x: 0, v: 0 };
-    pumpSpringRef.current = { x: 0, v: 0 };
-    bassSpringRef.current = { x: 0, v: 0 };
-    driftSpringRef.current = { x: 0, v: 0 };
-    swirlSpringRef.current = { x: 0, v: 0 };
-    kickImpulseRef.current = 0;
-    prevBeatRef.current = 0;
+    motionRef.current = createTrackMotion();
   }, []);
 
   // ── Unified animation loop (runs while mode === "animate") ─────────────────
@@ -396,108 +343,37 @@ export default function CanvasStage({
         // gives the user one global intensity knob.
         const intensity = (s.audioReactive ? s.audioIntensity : 0) / 50;
 
-        // ── Fixed-timestep accumulator: step springs + envelopes at SPRING_DT
-        // so behavior is identical at 30 / 60 / 120 fps and never overshoots.
-        audioAccumRef.current += frameDt;
-        let steps = 0;
-        const maxSteps = 240;
-        while (audioAccumRef.current >= SPRING_DT && steps < maxSteps) {
-          const dt = SPRING_DT;
-          audioAccumRef.current -= dt;
-          steps++;
-
-          const f = featRef.current;
-          // Envelope-follow the raw features (buttery, normalized 0..1).
-          f.energy = follow(f.energy, clamp01(raw.energy), 0.04, 0.18, dt);
-          f.bass = follow(f.bass, clamp01(raw.bass), 0.03, 0.16, dt);
-          f.mid = follow(f.mid, clamp01(raw.mid), 0.05, 0.14, dt);
-          f.high = follow(f.high, clamp01(raw.high), 0.02, 0.10, dt);
-          // Beat is already a decaying onset peak in the timeline.
-          f.beat = follow(f.beat, clamp01(raw.beat), 0.005, 0.12, dt);
-
-          // Onset detection: rising edge of the beat impulse -> kick the impulse
-          // envelope (sharp attack), then it decays. Drives kickEnv (calm pulse).
-          const rising = f.beat - prevBeatRef.current;
-          prevBeatRef.current = f.beat;
-          if (rising > 0.04 && f.beat > 0.25) {
-            kickImpulseRef.current = Math.max(kickImpulseRef.current, f.beat);
-          }
-          // Decay the impulse (attack-decay envelope, no flicker).
-          kickImpulseRef.current *= Math.exp(-dt / 0.22);
-
-          // Step critically-damped springs toward the followed targets.
-          // Stiffness sets the "feel": bouncy kick, breathing pump, slow drift.
-          stepSpring(kickSpringRef.current, f.beat, 180, dt); // bouncy
-          stepSpring(pumpSpringRef.current, f.energy, 60, dt); // breathing
-          stepSpring(bassSpringRef.current, f.bass, 90, dt); // chest thump
-          stepSpring(driftSpringRef.current, f.mid, 28, dt); // lazy drift
-          stepSpring(swirlSpringRef.current, f.high, 40, dt); // shimmer swirl
-        }
-
-        // ── Map spring outputs -> eased AnimState, scaled by intensity ───────
-        const kickSpringX = kickSpringRef.current.x;
-        const pumpX = pumpSpringRef.current.x;
-        const bassX = bassSpringRef.current.x;
-        const driftX = driftSpringRef.current.x;
-        const swirlX = swirlSpringRef.current.x;
-        const impulse = kickImpulseRef.current;
-
-        // kickSpring is a SIGNED bounce (spring can overshoot above its target);
-        // re-center around the followed value so it overshoots/settles like the
-        // BPM path's damped cosine. Clamp everything so it never blows up.
-        const kickSpringSigned = clamp(
-          (kickSpringX - featRef.current.beat) * 1.6 * intensity,
-          -1.2,
-          1.2,
-        );
-        const kickEnv = clamp(impulse * intensity, 0, 1.4);
-        // pump (breathing) blends overall energy + a little bass for weight.
-        const pumpEnv = clamp((pumpX * 0.7 + bassX * 0.5) * intensity, 0, 1.4);
-        const drift = clamp(driftX * intensity, 0, 1.2);
-        const swirl = clamp(swirlX * intensity, 0, 1.2);
-
         // Keep engine time-based motion advancing from the AUDIO clock so flow /
-        // spin / turbulence stay locked to the music. _rt is the real audio time;
-        // _t scales it gently by energy so quiet passages feel calmer.
+        // spin / turbulence stay locked to the music. _rt is the real audio time.
         const rt = haveAudio ? audioT : (now - t0Ref.current) / 1000;
-        const speed = clamp(
-          0.35 + pumpX * 0.9 * Math.max(0.0001, intensity),
-          0,
-          1.4,
-        );
-        const t = rt * (0.45 + speed);
 
-        // Beat-synced resolve-loop phase (matches the BPM driver — integer beats).
+        // Step the shared spring physics (src/audio/trackMotion.ts — the exact
+        // stepper the video export uses) toward the sampled features → the eased
+        // AnimState the engines consume.
         const bps = (s.animBPM || 128) / 60;
         const loopBeats = Math.max(1, Math.round(0.5 + ((s.txtLoopBeats ?? 20) / 100) * 7.5));
-        const loopPhase = ((rt * bps) / loopBeats) % 1;
-
-        const builtState = {
-          anim: true,
-          t,
+        const builtState = stepTrackMotion(
+          motionRef.current,
+          raw,
+          frameDt,
+          intensity,
           rt,
+          bps,
+          loopBeats,
           bake,
-          beat: featRef.current.beat,
-          kickEnv,
-          kickSpring: kickSpringSigned,
-          pumpEnv,
-          drift,
-          swirl,
-          speed,
-          loopPhase,
-        };
+        );
 
         // AUTO: wander curated params around their manual base, swing additionally
         // scaled by the SMOOTHED audio features. Render-loop only — never stored.
         autoBase = s.auto
-          ? applyAuto(renderParams(s), rt, s.autoIntensity, featRef.current)
+          ? applyAuto(renderParams(s), rt, s.autoIntensity, motionRef.current.feat)
           : renderParams(s);
 
         p = {
           ...autoBase,
           _anim: true,
           _audioAnim: builtState,
-          _t: t,
+          _t: builtState.t,
           _rt: rt,
           _bake: bake,
         };
