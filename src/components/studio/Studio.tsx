@@ -48,9 +48,26 @@ export default function Studio() {
       if (s.recording) return;
       const c = canvasRef.current;
       if (!c) return;
-      s.setState({ recording: true });
-      exportVideo(c, s, () =>
-        useStudio.getState().setState({ recording: false }),
+      s.setState({ recording: true, exportProgress: 0, exportLabel: null, exportResult: null });
+      exportVideo(
+        c,
+        s,
+        (o) => {
+          useStudio.getState().setState({
+            recording: false,
+            exportProgress: null,
+            exportLabel: null,
+            exportResult: o.ok
+              ? `Saved ${Math.round(o.seconds)}s ${o.kind.toUpperCase()}${o.hasAudio ? " with audio" : " (no audio)"}`
+              : (o.error ?? "Export failed"),
+          });
+          // auto-clear the result line after a few seconds
+          setTimeout(() => {
+            const cur = useStudio.getState();
+            if (!cur.recording) cur.setState({ exportResult: null });
+          }, 6000);
+        },
+        (frac, label) => useStudio.getState().setState({ exportProgress: frac, exportLabel: label }),
       );
     } else {
       if (s.rendering) return;

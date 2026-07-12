@@ -222,6 +222,10 @@ export interface StudioState {
   gallerySeeds: number[];
   rendering: boolean;
   recording: boolean;
+  // export progress/feedback (written by the export pipeline via setState; serializable)
+  exportProgress: number | null; // 0..1 while exporting, null when idle
+  exportLabel: string | null; // e.g. "Encoding 34s + audio · 43%"
+  exportResult: string | null; // one-line outcome shown briefly after export
 
   // delivery format (output aspect ratio). The engine renders square; this is a
   // cover-crop applied to the live edit frame + export. See src/lib/formats.ts.
@@ -421,6 +425,9 @@ const defaults = {
 
   rendering: false,
   recording: false,
+  exportProgress: null as number | null,
+  exportLabel: null as string | null,
+  exportResult: null as string | null,
 };
 
 // Deterministic initial values so the static-prerendered HTML matches the first
@@ -489,15 +496,44 @@ export const useStudio = create<StudioState>((set) => ({
     set(() => {
       // Reset all generation/animation params to their defaults, but keep the
       // current seed, mode, open sections, gallerySeeds, and process flags.
+      // Reset restores the LOOK only; the imported track/session and its driver
+      // stay (animSource + the audio mirror), so Reset+export keeps the synced
+      // track export instead of silently reverting to a short silent BPM loop.
       const {
         mode: _mode,
         rendering: _rendering,
         recording: _recording,
+        animSource: _animSource,
+        audioName: _audioName,
+        audioStatus: _audioStatus,
+        audioDuration: _audioDuration,
+        clipStart: _clipStart,
+        clipEnd: _clipEnd,
+        clipLength: _clipLength,
+        audioReactive: _audioReactive,
+        audioIntensity: _audioIntensity,
+        audioPlaying: _audioPlaying,
+        exportProgress: _exportProgress,
+        exportLabel: _exportLabel,
+        exportResult: _exportResult,
         ...paramDefaults
       } = defaults;
       void _mode;
       void _rendering;
       void _recording;
+      void _animSource;
+      void _audioName;
+      void _audioStatus;
+      void _audioDuration;
+      void _clipStart;
+      void _clipEnd;
+      void _clipLength;
+      void _audioReactive;
+      void _audioIntensity;
+      void _audioPlaying;
+      void _exportProgress;
+      void _exportLabel;
+      void _exportResult;
       return paramDefaults;
     }),
 }));

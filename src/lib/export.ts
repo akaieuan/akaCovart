@@ -68,12 +68,37 @@ const FPS = 30;
 // unreasonable time + memory to encode). Logged when it engages.
 const MAX_TRACK_SECONDS = 120;
 
+// Truthful outcome of a video export, surfaced to the UI so the user is never
+// left guessing (or handed a silent/wrong file without notice).
+export interface ExportOutcome {
+  ok: boolean;
+  kind: "mp4" | "webm" | "none";
+  seconds: number;
+  hasAudio: boolean;
+  error?: string;
+}
+
 export function exportVideo(
   canvas: HTMLCanvasElement,
   state: StudioState,
-  done: () => void,
+  done: (outcome: ExportOutcome) => void,
+  onProgress?: (frac: number, label: string) => void,
 ): void {
   const tl = audioSession.timeline;
+
+  // Hard guard: a Track export with no valid analyzed session must NOT silently
+  // fall through to the silent BPM loop — report and bail so the UI can explain.
+  if (state.animSource === "track" && (!tl || tl.duration <= 0 || !audioSession.buffer)) {
+    done({
+      ok: false,
+      kind: "none",
+      seconds: 0,
+      hasAudio: false,
+      error: "No analyzed track — import a track (Source · Track) or switch Source to BPM",
+    });
+    return;
+  }
+
   const useTrack =
     state.animSource === "track" && !!tl && tl.duration > 0 && !!audioSession.buffer;
 
@@ -81,31 +106,31 @@ export function exportVideo(
     // Track export MUST carry audio. Prefer the fast WebCodecs MP4+AAC; if it can't
     // include audio or fails for ANY reason, record the canvas + the clip audio in
     // real time (universal, always has sound) — never a silent clip.
-    encodeTrackMp4(state)
-      .then((ok) => {
-        if (ok) {
+    encodeTrackMp4(state, onProgress)
+      .then((res) => {
+        if (res) {
           console.info("[export] track → WebCodecs MP4 + AAC audio");
-          done();
+          done({ ok: true, kind: "mp4", seconds: res.seconds, hasAudio: res.hasAudio });
         } else {
           console.info("[export] track → recording canvas + audio (no WebCodecs/AAC)");
-          recordTrackWithAudio(canvas, state, done);
+          recordTrackWithAudio(canvas, state, done, onProgress);
         }
       })
       .catch((err) => {
         console.error("[export] track encode failed → recording canvas + audio", err);
-        recordTrackWithAudio(canvas, state, done);
+        recordTrackWithAudio(canvas, state, done, onProgress);
       });
     return;
   }
 
-  encodeLoopMp4(state)
-    .then((ok) => {
-      if (ok) done();
-      else recordCanvasFallback(canvas, state, done);
+  encodeLoopMp4(state, onProgress)
+    .then((res) => {
+      if (res) done({ ok: true, kind: "mp4", seconds: res.seconds, hasAudio: res.hasAudio });
+      else recordCanvasFallback(canvas, state, done, onProgress);
     })
     .catch((err) => {
       console.error("[export] loop encode failed; recorder fallback", err);
-      recordCanvasFallback(canvas, state, done);
+      recordCanvasFallback(canvas, state, done, onProgress);
     });
 }
 
@@ -185,7 +210,8 @@ async function encodeMp4(
   totalFrames: number,
   frameParams: (base: Record<string, unknown>, rt: number) => Record<string, unknown>,
   audio?: { buf: AudioBuffer; startSec: number; endSec: number },
-): Promise<boolean> {
+  onProgress?: (frac: number, label: string) => void,
+): Promise<false | { seconds: number; hasAudio: boolean }> {
   if (typeof VideoEncoder === "undefined" || typeof VideoFrame === "undefined") return false;
   const { w, h } = exportDims(state);
   const codec = await pickAvcCodec(w, h);
@@ -225,6 +251,8 @@ async function encodeMp4(
   const scratch = document.createElement("canvas");
   const base = renderParams(state);
 
+  const secs = Math.round(totalFrames / FPS);
+
   try {
     for (let i = 0; i < totalFrames; i++) {
       if (encErr) throw encErr;
@@ -235,6 +263,13 @@ async function encodeMp4(
       });
       encoder.encode(frame, { keyFrame: i % FPS === 0 });
       frame.close();
+      // Report progress + yield so the UI actually repaints (the loop is otherwise
+      // synchronous). This yield is separate from the backpressure yield below.
+      if (onProgress && i % 15 === 0) {
+        const pct = Math.round((i / totalFrames) * 100);
+        onProgress(i / totalFrames, `Encoding ${secs}s${audio ? " + audio" : " loop"} · ${pct}%`);
+        await new Promise<void>((r) => setTimeout(r, 0));
+      }
       // Relieve encoder backpressure and let the UI breathe (busy state stays live).
       if (encoder.encodeQueueSize > 8) await new Promise<void>((r) => setTimeout(r, 0));
     }
@@ -258,24 +293,36 @@ async function encodeMp4(
     new Blob([muxer.target.buffer], { type: "video/mp4" }),
     `akacovart_${state.seed >>> 0}.mp4`,
   );
-  return true;
+  return { seconds: totalFrames / FPS, hasAudio: !!audio };
 }
 
 // BPM loop: an integer number of resolve-cycles, silent, seamless.
-function encodeLoopMp4(state: StudioState): Promise<boolean> {
+function encodeLoopMp4(
+  state: StudioState,
+  onProgress?: (frac: number, label: string) => void,
+): Promise<false | { seconds: number; hasAudio: boolean }> {
   const sp = 0.3 + (state.animSpeed / 100) * 1.7; // BPM-driver speed mapping (CanvasStage)
-  return encodeMp4(state, loopFrames(state), (base, rt) => ({
-    ...base,
-    _anim: true,
-    _bake: true,
-    _rt: rt,
-    _t: rt * sp,
-  }));
+  return encodeMp4(
+    state,
+    loopFrames(state),
+    (base, rt) => ({
+      ...base,
+      _anim: true,
+      _bake: true,
+      _rt: rt,
+      _t: rt * sp,
+    }),
+    undefined,
+    onProgress,
+  );
 }
 
 // Track: the FULL analyzed clip window, motion stepped from the feature timeline
 // (the same springs the live preview uses, via trackMotion), audio muxed as AAC.
-function encodeTrackMp4(state: StudioState): Promise<boolean> {
+function encodeTrackMp4(
+  state: StudioState,
+  onProgress?: (frac: number, label: string) => void,
+): Promise<false | { seconds: number; hasAudio: boolean }> {
   const tl = audioSession.timeline;
   const buf = audioSession.buffer;
   if (!tl || !buf) return Promise.resolve(false);
@@ -303,6 +350,7 @@ function encodeTrackMp4(state: StudioState): Promise<boolean> {
       return { ...base, _anim: true, _bake: true, _audioAnim: anim, _t: anim.t, _rt: rt };
     },
     { buf, startSec: clipStart, endSec: clipStart + clipDur },
+    onProgress,
   );
 }
 
@@ -382,8 +430,9 @@ function recordStream(
   stream: MediaStream,
   durationMs: number,
   state: StudioState,
-  done: () => void,
+  done: (outcome: ExportOutcome) => void,
   opts: { mimes: string[]; onStart?: () => void; onStop?: () => void },
+  onProgress?: (frac: number, label: string) => void,
 ): boolean {
   if (typeof MediaRecorder === "undefined") return false;
   let mime = "";
@@ -407,14 +456,28 @@ function recordStream(
   }
   const outMime = rec.mimeType || mime || "video/webm";
   const ext = outMime.indexOf("mp4") >= 0 ? "mp4" : "webm";
+  const hasAudio = stream.getAudioTracks().length > 0;
+  const secs = Math.round(durationMs / 1000);
   const chunks: Blob[] = [];
+
+  // Time-based progress (a recorder has no frame counter): tick over durationMs.
+  const started = Date.now();
+  const tick = onProgress
+    ? setInterval(() => {
+        const frac = Math.min(1, (Date.now() - started) / durationMs);
+        const pct = Math.round(frac * 100);
+        onProgress(frac, `Recording ${secs}s${hasAudio ? " + audio" : ""} · ${pct}%`);
+      }, 250)
+    : null;
+
   rec.ondataavailable = (e) => {
     if (e.data && e.data.size) chunks.push(e.data);
   };
   rec.onstop = () => {
+    if (tick) clearInterval(tick);
     opts.onStop?.();
     triggerDownload(new Blob(chunks, { type: outMime.split(";")[0] }), `akacovart_${state.seed >>> 0}.${ext}`);
-    done();
+    done({ ok: true, kind: ext === "mp4" ? "mp4" : "webm", seconds: durationMs / 1000, hasAudio });
   };
   opts.onStart?.();
   rec.start();
@@ -433,17 +496,25 @@ function recordStream(
 function recordCanvasFallback(
   canvas: HTMLCanvasElement,
   state: StudioState,
-  done: () => void,
+  done: (outcome: ExportOutcome) => void,
+  onProgress?: (frac: number, label: string) => void,
 ): void {
+  const fail = (error: string) =>
+    done({ ok: false, kind: "none", seconds: 0, hasAudio: false, error });
   if (!canvas.captureStream) {
-    done();
+    fail("This browser can't capture the canvas for video export");
     return;
   }
   const durationMs = Math.round((loopFrames(state) / FPS) * 1000);
-  const ok = recordStream(canvas.captureStream(FPS), durationMs, state, done, {
-    mimes: ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"],
-  });
-  if (!ok) done();
+  const ok = recordStream(
+    canvas.captureStream(FPS),
+    durationMs,
+    state,
+    done,
+    { mimes: ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"] },
+    onProgress,
+  );
+  if (!ok) fail("This browser can't record video");
 }
 
 // Track fallback that ALWAYS carries audio: play the clip and record the live
@@ -451,12 +522,13 @@ function recordCanvasFallback(
 function recordTrackWithAudio(
   canvas: HTMLCanvasElement,
   state: StudioState,
-  done: () => void,
+  done: (outcome: ExportOutcome) => void,
+  onProgress?: (frac: number, label: string) => void,
 ): void {
   const buf = audioSession.buffer;
   const tl = audioSession.timeline;
   if (!buf || !tl || !canvas.captureStream) {
-    recordCanvasFallback(canvas, state, done);
+    recordCanvasFallback(canvas, state, done, onProgress);
     return;
   }
   const clipDur = Math.max(
@@ -468,24 +540,31 @@ function recordTrackWithAudio(
   const tracks: MediaStreamTrack[] = [...canvas.captureStream(FPS).getVideoTracks()];
   if (audioStream) tracks.push(...audioStream.getAudioTracks());
 
-  const ok = recordStream(new MediaStream(tracks), Math.round(clipDur * 1000) + 200, state, done, {
-    mimes: ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"],
-    // Play the clip from its start; the live track-driven canvas animates in sync.
-    onStart: () => {
-      try {
-        transport.seek(0);
-        transport.play();
-      } catch {
-        /* ignore */
-      }
+  const ok = recordStream(
+    new MediaStream(tracks),
+    Math.round(clipDur * 1000) + 200,
+    state,
+    done,
+    {
+      mimes: ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"],
+      // Play the clip from its start; the live track-driven canvas animates in sync.
+      onStart: () => {
+        try {
+          transport.seek(0);
+          transport.play();
+        } catch {
+          /* ignore */
+        }
+      },
+      onStop: () => {
+        try {
+          transport.pause();
+        } catch {
+          /* ignore */
+        }
+      },
     },
-    onStop: () => {
-      try {
-        transport.pause();
-      } catch {
-        /* ignore */
-      }
-    },
-  });
-  if (!ok) recordCanvasFallback(canvas, state, done);
+    onProgress,
+  );
+  if (!ok) recordCanvasFallback(canvas, state, done, onProgress);
 }

@@ -19,6 +19,9 @@ export function ExportButton({
   const rendering = useStudio((s) => s.rendering);
   const recording = useStudio((s) => s.recording);
   const format = useStudio((s) => s.format);
+  const exportProgress = useStudio((s) => s.exportProgress);
+  const exportLabel = useStudio((s) => s.exportLabel);
+  const exportResult = useStudio((s) => s.exportResult);
   const busy = rendering || recording;
 
   // Animate exports video for BOTH drivers: a looping clip (BPM) or a synced clip
@@ -32,7 +35,9 @@ export function ExportButton({
 
   const label = isVideo
     ? recording
-      ? "Recording…"
+      ? // While recording, prefer the live progress label from the export
+        // pipeline (already includes the percent); fall back to the static text.
+        exportLabel ?? "Recording…"
       : trackSynced
         ? "Export synced video"
         : "Export video loop"
@@ -40,24 +45,34 @@ export function ExportButton({
       ? "Rendering…"
       : stillLabel;
 
+  // Reflect determinate progress for assistive tech (the label carries the
+  // human-readable percent, so we don't duplicate it in the text).
+  const valueNow =
+    exportProgress != null ? Math.round(exportProgress * 100) : undefined;
+
   return (
-    <button
-      type="button"
-      onClick={onExport}
-      disabled={busy}
-      className={cn(
-        "flex h-11 w-full items-center justify-center gap-[9px] rounded-[4px] bg-grey-100 text-[12px] font-medium text-bg transition-colors hover:bg-white disabled:opacity-70",
-        className,
+    <div className={cn("flex w-full flex-col", className)}>
+      <button
+        type="button"
+        onClick={onExport}
+        disabled={busy}
+        aria-valuenow={valueNow}
+        className="flex h-11 w-full items-center justify-center gap-[9px] rounded-[4px] bg-grey-100 text-[12px] font-medium text-bg transition-colors hover:bg-white disabled:opacity-70"
+      >
+        {busy ? (
+          <Loader2 className="size-[14px] animate-spin" />
+        ) : isVideo ? (
+          <Film className="size-[14px]" />
+        ) : (
+          <Download className="size-[14px]" />
+        )}
+        {label}
+      </button>
+      {exportResult != null && (
+        <div className="mt-1.5 text-center font-sans text-[11px] text-grey-400">
+          {exportResult}
+        </div>
       )}
-    >
-      {busy ? (
-        <Loader2 className="size-[14px] animate-spin" />
-      ) : isVideo ? (
-        <Film className="size-[14px]" />
-      ) : (
-        <Download className="size-[14px]" />
-      )}
-      {label}
-    </button>
+    </div>
   );
 }
