@@ -1,6 +1,6 @@
 import type { RNG } from "../types";
 
-// STATIC film grain + dust — ported from the prototype (index.html `grain`).
+// STATIC film grain — ported from the prototype (index.html `grain`).
 // The prototype had an optional per-frame `boil` reseed using Math.random();
 // that is intentionally DROPPED here. Grain is fully deterministic from `rng`.
 export function grain(
@@ -8,7 +8,6 @@ export function grain(
   size: number,
   amount: number,
   gsize: number,
-  dust: number,
   rng: RNG,
 ): void {
   if (amount > 0) {
@@ -33,22 +32,5 @@ export function grain(
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(nz, 0, 0, size, size);
     ctx.restore();
-  }
-  if (dust > 0) {
-    const n = Math.round((dust / 100) * size * 0.9);
-    ctx.save();
-    for (let z = 0; z < n; z++) {
-      const x = rng() * size,
-        y = rng() * size,
-        rr = size * (0.0005 + rng() * 0.0022),
-        br = rng() < 0.5;
-      ctx.globalAlpha = 0.1 + rng() * 0.4;
-      ctx.fillStyle = br ? "#f4f2ee" : "#0a0a0a";
-      ctx.beginPath();
-      ctx.arc(x, y, rr, 0, 6.2832);
-      ctx.fill();
-    }
-    ctx.restore();
-    ctx.globalAlpha = 1;
   }
 }

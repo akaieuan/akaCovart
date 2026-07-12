@@ -5,6 +5,7 @@ import { ensureCoverFont } from "@/lib/fonts";
 import { getFormat, type Format } from "@/lib/formats";
 import { audioSession, transport } from "@/audio";
 import { createTrackMotion, stepTrackMotion } from "@/audio/trackMotion";
+import { applyAuto } from "@/components/canvas/autoModulate";
 
 // ── PNG export for a given format ────────────────────────────────────────────
 // renderFormatTo handles the square render -> cover-crop -> frame-space type, so
@@ -305,13 +306,18 @@ function encodeLoopMp4(
   return encodeMp4(
     state,
     loopFrames(state),
-    (base, rt) => ({
-      ...base,
-      _anim: true,
-      _bake: true,
-      _rt: rt,
-      _t: rt * sp,
-    }),
+    (base, rt) => {
+      // AUTO: mirror the live BPM-driver's per-frame wander (CanvasStage) so a
+      // selected Auto look is actually baked into the export, not just previewed.
+      const p = state.auto ? applyAuto(base, rt, state.autoIntensity) : base;
+      return {
+        ...p,
+        _anim: true,
+        _bake: true,
+        _rt: rt,
+        _t: rt * sp,
+      };
+    },
     undefined,
     onProgress,
   );
@@ -347,7 +353,10 @@ function encodeTrackMp4(
     Math.max(1, Math.round(clipDur * FPS)),
     (base, rt) => {
       const anim = stepTrackMotion(motion, tl.sampleByTime(rt), 1 / FPS, intensity, rt, bps, loopBeats, true);
-      return { ...base, _anim: true, _bake: true, _audioAnim: anim, _t: anim.t, _rt: rt };
+      // AUTO: mirror the live track-driver's wander, scaled by the SAME smoothed
+      // audio features stepTrackMotion just updated (CanvasStage does the same).
+      const p = state.auto ? applyAuto(base, rt, state.autoIntensity, motion.feat) : base;
+      return { ...p, _anim: true, _bake: true, _audioAnim: anim, _t: anim.t, _rt: rt };
     },
     { buf, startSec: clipStart, endSec: clipStart + clipDur },
     onProgress,

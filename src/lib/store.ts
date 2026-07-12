@@ -149,7 +149,6 @@ export interface StudioState {
   vignette: number;
   bloom: number;
   grainSize: number;
-  dust: number;
 
   // accent
   accent: number;
@@ -366,7 +365,6 @@ const defaults = {
   vignette: 28,
   bloom: 22,
   grainSize: 50,
-  dust: 18,
 
   accent: 60,
   accentCount: 2,

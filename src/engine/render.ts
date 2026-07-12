@@ -199,13 +199,12 @@ export function renderTo(
     vignette(ctx, S, params.vignette || 0);
   }
 
-  if (!smoothTxt && ((params.grain || 0) > 0 || (params.dust || 0) > 0)) {
+  if (!smoothTxt && (params.grain || 0) > 0) {
     grain(
       ctx,
       S,
       params.grain || 0,
       params.grainSize == null ? 50 : params.grainSize,
-      params.dust || 0,
       prng(seed ^ 0x6d1f2a8b),
     );
   }

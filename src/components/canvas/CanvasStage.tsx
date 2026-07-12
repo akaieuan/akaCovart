@@ -102,7 +102,6 @@ function paramSig(s: StudioState): string {
     s.vignette,
     s.bloom,
     s.grainSize,
-    s.dust,
     s.accent,
     s.accentCount,
     s.diamonds,

@@ -58,10 +58,9 @@ const CHANNELS: AutoChannel[] = [
   { key: "diamondShape", min: 0, max: 100, freq: 0.017, phase: 4.4, rangeFrac: 0.20, band: "mid" },
   { key: "diamondSize", min: 0, max: 100, freq: 0.013, phase: 2.7, rangeFrac: 0.20, band: "bass" },
 
-  // TEXTURE — the grit / feel now evolves too (grain density, size, dust, blur)
+  // TEXTURE — the grit / feel now evolves too (grain density, size, blur)
   { key: "grain", min: 0, max: 100, freq: 0.035, phase: 5.2, rangeFrac: 0.24, band: "mid" },
   { key: "grainSize", min: 0, max: 100, freq: 0.043, phase: 0.4, rangeFrac: 0.20, band: "high" },
-  { key: "dust", min: 0, max: 100, freq: 0.027, phase: 3.9, rangeFrac: 0.26, band: "energy" },
   { key: "soften", min: 0, max: 100, freq: 0.011, phase: 1.6, rangeFrac: 0.16, band: "bass" },
 
   // finish

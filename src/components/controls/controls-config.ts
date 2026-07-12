@@ -224,7 +224,6 @@ export const TEXTURE_GROUPS: ControlGroup[] = [
     controls: [
       { kind: "slider", key: "grain", label: "Film grain", min: 0, max: 100 },
       { kind: "slider", key: "grainSize", label: "Grain size", min: 0, max: 100 },
-      { kind: "slider", key: "dust", label: "Dust / specks", min: 0, max: 100 },
     ],
   },
   {

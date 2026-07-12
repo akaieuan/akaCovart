@@ -28,7 +28,6 @@ export const sharedParams: ParamDef[] = [
   // ----- texture -----
   { key: "grain", label: "FILM GRAIN", type: "range", group: "texture", min: 0, max: 100, default: 60 },
   { key: "grainSize", label: "GRAIN SIZE", type: "range", group: "texture", min: 0, max: 100, default: 50 },
-  { key: "dust", label: "DUST / SPECKS", type: "range", group: "texture", min: 0, max: 100, default: 18 },
   { key: "scratches", label: "SCRATCH LINES", type: "toggle", group: "texture", default: true },
   { key: "scratchCount", label: "COUNT", type: "int", group: "texture", min: 0, max: 16, default: 6 },
 
