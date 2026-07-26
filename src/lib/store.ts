@@ -99,6 +99,7 @@ export interface StudioState {
   ditherInvert: boolean; // draw pixels in the NON-glyph region
   ditherShuffle: number; // reshuffle speed of the broken dropout (anim)
   ditherJitter: number; // positional jitter over time (anim)
+  ditherSpread: number; // explode radius — broken pixels fly apart, then collapse home (anim)
   ditherPulse: number; // beat pop (anim)
   ditherSwell: number; // breathing scale (anim)
 
@@ -109,6 +110,7 @@ export interface StudioState {
   lineInvert: boolean; // hatch the NON-glyph region
   lineRotate: number; // angle spin speed (anim)
   lineScroll: number; // hatching travels ⟂ (anim)
+  lineSpread: number; // explode radius — broken segments fly apart, then collapse home (anim)
   linePulse: number; // beat thickness (anim)
   lineWave: number; // sinusoidal sway (anim)
 
@@ -327,6 +329,7 @@ const defaults = {
   ditherInvert: false,
   ditherShuffle: 70,
   ditherJitter: 55,
+  ditherSpread: 40,
   ditherPulse: 65,
   ditherSwell: 48,
 
@@ -336,6 +339,7 @@ const defaults = {
   lineInvert: false,
   lineRotate: 55,
   lineScroll: 58,
+  lineSpread: 35,
   linePulse: 60,
   lineWave: 48,
 

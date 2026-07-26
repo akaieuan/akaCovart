@@ -1,7 +1,7 @@
 import type { FieldArgs, FieldEngine, ParamDef } from "../types";
 import { registerEngine } from "../registry";
 import { rgb } from "../color";
-import { getTextMask, txtTones, resolveEnv } from "./txtMask";
+import { getTextMask, txtTones, resolveEnv, hash3 } from "./txtMask";
 
 // LINES — the display text hatched with PARALLEL ROUND-CAPPED STROKES that BREAK
 // wherever they leave the glyph, so each line becomes a string of oval segments of
@@ -12,6 +12,8 @@ import { getTextMask, txtTones, resolveEnv } from "./txtMask";
 // REAL-TIME TRANSFORMATION:
 //  • Angle  — hatch direction. Rotate — the angle spins over time (the ref motion).
 //  • Scroll — the hatching travels ⟂ to its direction. Wave — sinusoidal sway.
+//  • Spread — each broken segment ("atom") flies apart along its own fixed
+//    direction, then collapses back onto the hatch at the resolve.
 //  • Pulse  — stroke thickness pops on the beat.
 //
 // Deterministic + flicker-free: everything is a pure function of anim.t; the ink
@@ -38,6 +40,7 @@ const lines: FieldEngine = {
     const scroll = (p.lineScroll == null ? 40 : p.lineScroll) / 100;
     const pulse = (p.linePulse == null ? 45 : p.linePulse) / 100;
     const waveP = (p.lineWave == null ? 30 : p.lineWave) / 100;
+    const spreadP = (p.lineSpread == null ? 35 : p.lineSpread) / 100;
 
     // RESOLVE LOOP: at D=0 the hatch is the readable base-angle still; as D rises the
     // angle SWEEPS away, the lines travel + wave, then it all returns to the base on
@@ -60,6 +63,10 @@ const lines: FieldEngine = {
     const waveAmp = ANIM ? D * waveP * spacing * 1.7 : 0;
     const waveK = (2 * Math.PI) / (S * (0.18 + 0.5 * (1 - sizeP)));
     const scrollOff = ANIM ? Math.sin(lp) * D * (0.4 + scroll * 1.4) * spacing : 0;
+    // Spread — each broken segment ("atom") gets its OWN fixed random direction and
+    // flies outward along it as D rises, collapsing back onto the hatch at the
+    // resolve. Independent of Scroll/Wave (which move the whole hatch, not segments).
+    const spreadAmt = ANIM ? D * spreadP * S * 0.11 : 0;
 
     // Two-tone: direct bg/ink (txtBg/txtInk) or derived from the mood.
     const { bg, ink } = txtTones(p, cfg);
@@ -80,11 +87,14 @@ const lines: FieldEngine = {
     // start offset wraps within one spacing so the hatch travels smoothly
     const startShift = ((scrollOff % spacing) + spacing) % spacing;
 
+    let runIdx = 0; // unique per broken segment, across every hatch line
     for (let d = -diag + startShift; d <= diag; d += spacing) {
       let inRun = false;
       let count = 0;
       let sx = 0;
       let sy = 0;
+      let ox = 0;
+      let oy = 0;
       for (let m = -diag; m <= diag; m += stepPx) {
         const wave = waveAmp ? waveAmp * Math.sin(m * waveK + lp + d * 0.01) : 0;
         const dp = d + wave;
@@ -97,14 +107,26 @@ const lines: FieldEngine = {
         }
         if (draw) {
           if (!inRun) {
+            // A fresh segment — give it its OWN fixed fly-apart direction (fixed
+            // for the segment's lifetime, sampled at the glyph's true position so
+            // continuity/breakage is unaffected by the offset).
+            runIdx++;
+            if (spreadAmt > 0) {
+              const ang = hash3(runIdx, Math.round(d), 5) * 6.2831853;
+              ox = Math.cos(ang) * spreadAmt;
+              oy = Math.sin(ang) * spreadAmt;
+            } else {
+              ox = 0;
+              oy = 0;
+            }
             ctx.beginPath();
-            ctx.moveTo(x, y);
+            ctx.moveTo(x + ox, y + oy);
             inRun = true;
             count = 1;
-            sx = x;
-            sy = y;
+            sx = x + ox;
+            sy = y + oy;
           } else {
-            ctx.lineTo(x, y);
+            ctx.lineTo(x + ox, y + oy);
             count++;
           }
         } else if (inRun) {
@@ -130,6 +152,7 @@ function lineParams(): ParamDef[] {
     { key: "lineInvert", label: "INVERT", type: "toggle", group: "composition", default: false },
     { key: "lineRotate", label: "ROTATE", type: "range", group: "motion", min: 0, max: 100, default: 45 },
     { key: "lineScroll", label: "SCROLL", type: "range", group: "motion", min: 0, max: 100, default: 40 },
+    { key: "lineSpread", label: "SPREAD", type: "range", group: "motion", min: 0, max: 100, default: 35 },
     { key: "linePulse", label: "PULSE", type: "range", group: "motion", min: 0, max: 100, default: 45 },
     { key: "lineWave", label: "WAVE", type: "range", group: "motion", min: 0, max: 100, default: 30 },
   ];

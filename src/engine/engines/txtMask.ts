@@ -1,6 +1,14 @@
 import { prng } from "../prng";
 import { parseHex } from "../palettes";
 
+// Small deterministic 0..1 hash of three integers. Shared by the TxT engines for
+// any per-cell/per-atom deterministic randomness (dropout, scatter direction, …).
+export function hash3(a: number, b: number, c: number): number {
+  let h = (Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(c, 2246822519)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared TEXT COVERAGE MASK for the TxT engines.
 //

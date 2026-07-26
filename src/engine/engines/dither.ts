@@ -1,7 +1,7 @@
 import type { FieldArgs, FieldEngine, ParamDef } from "../types";
 import { registerEngine } from "../registry";
 import { rgb } from "../color";
-import { getTextMask, txtTones, resolveEnv } from "./txtMask";
+import { getTextMask, txtTones, resolveEnv, hash3 } from "./txtMask";
 
 // DITHER — the display text PIXELATED into a coarse grid of square (or round)
 // pixels, then BROKEN: each pixel is only drawn if a per-cell dropout passes.
@@ -12,19 +12,15 @@ import { getTextMask, txtTones, resolveEnv } from "./txtMask";
 // REAL-TIME TRANSFORMATION:
 //  • Break  — dropout density (100 = solid, lower = sparser / more broken).
 //  • Shuffle — the broken dropout reshuffles over time → the pixels sparkle.
-//  • Jitter / Pulse / Breathe — positional shimmer, beat pop, breathing scale.
+//  • Jitter / Spread — positional shimmer (subtle wobble) vs a large-radius
+//    explode-apart (each broken pixel flies outward along its own fixed
+//    direction, then collapses home at the resolve). Pulse / Breathe — beat
+//    pop, breathing scale.
 //
 // Determinism: the dropout is HASHED from (seed, cellIndex, timeStep), so the
 // reshuffle is reproducible for a given (seed, t) and identical at any fps / on
 // export. The broken-pixel sparkle is the intended aesthetic (a deliberate,
 // scoped exception to no-per-pixel-flicker); the ink colour never strobes.
-
-// Small deterministic 0..1 hash of three integers.
-function hash3(a: number, b: number, c: number): number {
-  let h = (Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(c, 2246822519)) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-}
 
 const dither: FieldEngine = {
   id: "dither",
@@ -45,6 +41,7 @@ const dither: FieldEngine = {
     const ANIM = anim.anim;
     const shuffle = (p.ditherShuffle == null ? 55 : p.ditherShuffle) / 100;
     const jitterP = (p.ditherJitter == null ? 35 : p.ditherJitter) / 100;
+    const spreadP = (p.ditherSpread == null ? 40 : p.ditherSpread) / 100;
     const pulse = (p.ditherPulse == null ? 55 : p.ditherPulse) / 100;
     const swell = (p.ditherSwell == null ? 40 : p.ditherSwell) / 100;
     const D = ANIM ? resolveEnv(anim.loopPhase) : 0;
@@ -74,6 +71,10 @@ const dither: FieldEngine = {
     const breath = ANIM ? 1 + D * (0.05 + swell * 0.12) : 1;
     const pixScale = ANIM ? 1 + D * (0.12 + anim.kickSpring * 0.28) * pulse : 1;
     const jitterAmp = ANIM ? D * (jitterP * 1.0 + punch * 0.7) * cell : 0;
+    // Spread — a much larger-radius explode: each broken pixel flies outward along
+    // its OWN fixed direction (independent of jitter's wobble), scaling with D, so
+    // the "atoms" separate visibly further apart mid-cycle then collapse home.
+    const spreadAmt = ANIM ? D * spreadP * S * 0.16 : 0;
     const breakEff = breakP * (1 - D * (0.18 + shuffle * 0.5)); // sparser/broken mid-cycle
     const timeStep = ANIM && D > 0.001 ? Math.floor(anim.loopPhase * (1 + shuffle * 16)) : 0;
 
@@ -102,6 +103,11 @@ const dither: FieldEngine = {
           px += Math.sin(lp + idx * 12.9898) * jitterAmp;
           py += Math.cos(lp + idx * 78.233) * jitterAmp;
         }
+        if (spreadAmt > 0) {
+          const ang = hash3(gx, gy, 909) * 6.2831853; // fixed per-cell direction
+          px += Math.cos(ang) * spreadAmt;
+          py += Math.sin(ang) * spreadAmt;
+        }
         const d = cell * pixScale;
         if (round) {
           ctx.beginPath();
@@ -125,6 +131,7 @@ function ditherParams(): ParamDef[] {
     { key: "ditherInvert", label: "INVERT", type: "toggle", group: "composition", default: false },
     { key: "ditherShuffle", label: "SHUFFLE", type: "range", group: "motion", min: 0, max: 100, default: 55 },
     { key: "ditherJitter", label: "JITTER", type: "range", group: "motion", min: 0, max: 100, default: 35 },
+    { key: "ditherSpread", label: "SPREAD", type: "range", group: "motion", min: 0, max: 100, default: 40 },
     { key: "ditherPulse", label: "PULSE", type: "range", group: "motion", min: 0, max: 100, default: 55 },
     { key: "ditherSwell", label: "BREATHE", type: "range", group: "motion", min: 0, max: 100, default: 40 },
   ];
