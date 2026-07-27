@@ -53,6 +53,7 @@ export default function Studio() {
         c,
         s,
         (o) => {
+          const good = o.ok && (o.hasAudio || s.animSource !== "track");
           useStudio.getState().setState({
             recording: false,
             exportProgress: null,
@@ -61,11 +62,15 @@ export default function Studio() {
               ? `Saved ${Math.round(o.seconds)}s ${o.kind.toUpperCase()}${o.hasAudio ? " with audio" : " (no audio)"}`
               : (o.error ?? "Export failed"),
           });
-          // auto-clear the result line after a few seconds
-          setTimeout(() => {
-            const cur = useStudio.getState();
-            if (!cur.recording) cur.setState({ exportResult: null });
-          }, 6000);
+          // Only auto-clear a CLEAN result. A failure, or a track export that came
+          // out silent, stays on screen until the next export — those are exactly
+          // the messages you must not miss.
+          if (good) {
+            setTimeout(() => {
+              const cur = useStudio.getState();
+              if (!cur.recording) cur.setState({ exportResult: null });
+            }, 6000);
+          }
         },
         (frac, label) => useStudio.getState().setState({ exportProgress: frac, exportLabel: label }),
       );

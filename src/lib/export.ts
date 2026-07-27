@@ -69,6 +69,34 @@ const FPS = 30;
 // unreasonable time + memory to encode). Logged when it engages.
 const MAX_TRACK_SECONDS = 120;
 
+// Yield to the event loop WITHOUT setTimeout. Background tabs clamp timers to
+// ~1s, which turned every encoder-backpressure wait into a full second and made
+// a backgrounded export take minutes instead of seconds. MessageChannel delivers
+// a real macrotask (so WebCodecs output callbacks and paints still run) and is
+// not subject to that clamp — the same trick React's scheduler uses.
+function macroYield(): Promise<void> {
+  if (typeof MessageChannel === "undefined") {
+    return new Promise<void>((r) => setTimeout(r, 0));
+  }
+  return new Promise<void>((r) => {
+    const ch = new MessageChannel();
+    ch.port1.onmessage = () => {
+      ch.port1.close();
+      r();
+    };
+    ch.port2.postMessage(0);
+  });
+}
+
+// Repaint yield — same macrotask, but skipped entirely when the tab is hidden
+// (nothing to repaint, so don't pay for it).
+function uiYield(): Promise<void> {
+  if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+    return Promise.resolve();
+  }
+  return macroYield();
+}
+
 // Truthful outcome of a video export, surfaced to the UI so the user is never
 // left guessing (or handed a silent/wrong file without notice).
 export interface ExportOutcome {
@@ -264,23 +292,35 @@ async function encodeMp4(
       });
       encoder.encode(frame, { keyFrame: i % FPS === 0 });
       frame.close();
-      // Report progress + yield so the UI actually repaints (the loop is otherwise
-      // synchronous). This yield is separate from the backpressure yield below.
+      // Video is 0..90% of the reported progress; the audio mux is the last 10%.
       if (onProgress && i % 15 === 0) {
-        const pct = Math.round((i / totalFrames) * 100);
-        onProgress(i / totalFrames, `Encoding ${secs}s${audio ? " + audio" : " loop"} · ${pct}%`);
-        await new Promise<void>((r) => setTimeout(r, 0));
+        const pct = Math.round((i / totalFrames) * 90);
+        onProgress((i / totalFrames) * 0.9, `Encoding ${secs}s${audio ? " + audio" : " loop"} · ${pct}%`);
+        // Yield so the UI can repaint — but ONLY when the tab is actually visible.
+        // Background tabs clamp setTimeout to ~1s, which turned this into minutes
+        // of dead waiting on a long clip (and nothing needs repainting when hidden).
+        await uiYield();
       }
-      // Relieve encoder backpressure and let the UI breathe (busy state stays live).
-      if (encoder.encodeQueueSize > 8) await new Promise<void>((r) => setTimeout(r, 0));
+      // Relieve encoder backpressure (always — this one is about the encoder, not the UI).
+      if (encoder.encodeQueueSize > 8) await macroYield();
     }
     await encoder.flush();
     if (encErr) throw encErr;
     if (audio) {
-      await encodeClipAudio(audio.buf, audio.startSec, audio.endSec, sr, ch, (c, m) =>
-        muxer.addAudioChunk(c, m),
+      // Report through the audio phase too — muxing a long clip takes real time and
+      // a bar frozen at the end reads as a hang (users kill the export and lose it).
+      await encodeClipAudio(
+        audio.buf,
+        audio.startSec,
+        audio.endSec,
+        sr,
+        ch,
+        (c, m) => muxer.addAudioChunk(c, m),
+        (frac) =>
+          onProgress?.(0.9 + frac * 0.1, `Adding audio · ${Math.round(90 + frac * 10)}%`),
       );
     }
+    onProgress?.(1, "Finishing file…");
     muxer.finalize();
   } finally {
     try {
@@ -371,6 +411,7 @@ async function encodeClipAudio(
   sr: number,
   ch: number,
   add: (chunk: EncodedAudioChunk, meta?: EncodedAudioChunkMetadata) => void,
+  onProgress?: (frac: number) => void,
 ): Promise<void> {
   const start = Math.max(0, Math.floor(startSec * sr));
   const end = Math.min(buf.length, Math.floor(endSec * sr));
@@ -389,8 +430,15 @@ async function encodeClipAudio(
   aenc.configure({ codec: "mp4a.40.2", sampleRate: sr, numberOfChannels: ch, bitrate: 160_000 });
 
   const BLOCK = 1024;
+  let sinceReport = 0;
   for (let o = 0; o < n; o += BLOCK) {
     if (aErr) throw aErr;
+    // Report every ~200 blocks so a long clip's audio phase visibly advances.
+    if (onProgress && ++sinceReport >= 200) {
+      sinceReport = 0;
+      onProgress(o / n);
+      await uiYield();
+    }
     const frames = Math.min(BLOCK, n - o);
     // f32-planar layout: all of channel 0, then all of channel 1, …
     const planar = new Float32Array(frames * ch);
@@ -409,7 +457,7 @@ async function encodeClipAudio(
     });
     aenc.encode(ad);
     ad.close();
-    if (aenc.encodeQueueSize > 16) await new Promise<void>((r) => setTimeout(r, 0));
+    if (aenc.encodeQueueSize > 16) await macroYield();
   }
   await aenc.flush();
   if (aErr) throw aErr;
