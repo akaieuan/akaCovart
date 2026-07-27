@@ -209,6 +209,16 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
 };
 
 // Shared FINISH group, appended to every engine's COMPOSITION section.
+// How much the SEED reshapes the still composition around your sliders. 0 = the
+// sliders exactly (fully manual); higher = each Generate is a more distinct look.
+// Rendered above the engine's own composition controls.
+export const SEED_GROUP: ControlGroup = {
+  heading: "Seed",
+  controls: [
+    { kind: "slider", key: "seedVariation", label: "Variation", min: 0, max: 100 },
+  ],
+};
+
 export const FINISH_GROUP: ControlGroup = {
   heading: "Finish",
   controls: [

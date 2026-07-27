@@ -1,6 +1,7 @@
 import type { AnimState, Mood, Palette, RenderResult, TextBox } from "./types";
 import { getEngine } from "./registry";
 import { palettes, parseHex, recolorPalette, resolveMood, transformPalette } from "./palettes";
+import { applySeedVariation } from "./seedVary";
 import { prng } from "./prng";
 import { rgb } from "./color";
 import {
@@ -108,7 +109,7 @@ function buildAnim(params: Record<string, any>): AnimState {
 export function renderTo(
   canvas: HTMLCanvasElement,
   size: number,
-  params: Record<string, any>,
+  rawParams: Record<string, any>,
 ): RenderResult {
   const ctx = canvas.getContext("2d");
   if (!ctx) return {};
@@ -116,7 +117,13 @@ export function renderTo(
   const S = size;
   ctx.clearRect(0, 0, S, S);
 
-  const seed = (params.seed >>> 0) || 1;
+  const seed = (rawParams.seed >>> 0) || 1;
+  // Give the SEED a bounded say over the still composition (see seedVary.ts), so
+  // different seeds read as different looks and not just reshuffled layouts. The
+  // sliders stay the base; this only offsets around them, deterministically. It
+  // runs here so EVERY surface — live canvas, format tiles, PNG, and every frame
+  // of an exported video — renders the identical values.
+  const params: Record<string, any> = applySeedVariation(rawParams, seed);
   const mood: Mood = resolveMood(seed, (params.mood ?? "random") as Mood | "random");
   // Apply the Color controls to the resolved palette so they affect EVERY engine
   // (base fill, field, and cfg-driven effects below). Order: base mood palette ->

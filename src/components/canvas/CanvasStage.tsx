@@ -54,6 +54,8 @@ function paramSig(s: StudioState): string {
     s.colorWarm,
     s.colorPick,
     s.engine,
+    // How much the seed reshapes the composition (seed itself is in sig()).
+    s.seedVariation,
     // Stack focus: the overlay engine + how it composites (txtBg/txtInk already below).
     s.focus,
     s.stackTxt,

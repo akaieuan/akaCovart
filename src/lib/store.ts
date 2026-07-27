@@ -138,6 +138,9 @@ export interface StudioState {
 
   // seed
   seed: number;
+  // 0..100; how much the seed varies the still composition around your sliders
+  // (0 = exactly your sliders; higher = each seed is a more distinct look).
+  seedVariation: number;
 
   // shared texture / finish
   soften: number;
@@ -357,6 +360,8 @@ const defaults = {
   stackAnim: "txt" as "art" | "txt" | "both",
   stackMode: "overlay" as "overlay" | "knockout",
   stackScrim: 0,
+
+  seedVariation: 50,
 
   soften: 0,
   density: 60,
