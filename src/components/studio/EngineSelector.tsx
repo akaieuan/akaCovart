@@ -9,6 +9,7 @@ import {
   Grip,
   AlignJustify,
   Sparkles,
+  Mountain,
 } from "lucide-react";
 import { listEnginesByFocus } from "@/engine";
 import { useStudio } from "@/lib/store";
@@ -30,6 +31,7 @@ const ENGINE_DEFS: EngineDef[] = [
   { value: "grid", label: "Grid", Icon: Grid3x3 },
   { value: "contours", label: "Contours", Icon: Spline },
   { value: "signal", label: "Signal", Icon: Activity },
+  { value: "oil", label: "Oil", Icon: Mountain },
   { value: "dither", label: "Dither", Icon: Grip },
   { value: "lines", label: "Lines", Icon: AlignJustify },
   { value: "blur", label: "Blur", Icon: Sparkles },
@@ -37,7 +39,7 @@ const ENGINE_DEFS: EngineDef[] = [
 
 const DEF_BY_ID = new Map(ENGINE_DEFS.map((d) => [d.value, d]));
 
-// Tailwind needs static column classes; map the visible count (Art=4, TxT=3).
+// Tailwind needs static column classes; map the visible count (Art=5, TxT=3).
 const GRID_COLS: Record<number, string> = {
   1: "grid-cols-1",
   2: "grid-cols-2",
@@ -50,7 +52,7 @@ const GRID_COLS: Record<number, string> = {
 // Engines for the active focus, in registration order, decorated with icon/label.
 function engineList(focus: "art" | "txt"): EngineDef[] {
   const reg = listEnginesByFocus(focus);
-  if (!reg.length) return ENGINE_DEFS.slice(0, 4);
+  if (!reg.length) return ENGINE_DEFS.slice(0, 5);
   return reg.map(
     (e) =>
       DEF_BY_ID.get(e.id) ?? {

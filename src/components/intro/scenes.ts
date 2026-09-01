@@ -106,12 +106,46 @@ export const PRESETS: Preset[] = [
       signalFlow: 58,
     },
   },
+  // Dusk landscape: dark sky over lit ridges, the bit-crush sweeping the top.
+  // Oil paints its own canvas tooth, so the shared film grain is dialled way
+  // down (BASE's 60 turns the painting to fizz) and soften stays off (the
+  // engine's haze blur owns the atmosphere).
+  {
+    label: "Oil",
+    params: {
+      ...BASE,
+      engine: "oil",
+      seed: 412556,
+      oilScene: "ridgeline",
+      oilHorizon: 58,
+      oilRidges: 85,
+      oilPeaks: 48,
+      oilRough: 30,
+      oilSky: 45,
+      oilBrush: "impasto",
+      oilPaint: 52,
+      oilStroke: 30,
+      oilOpacity: 40,
+      oilTooth: 40,
+      oilBit: 48,
+      oilCell: 30,
+      oilSteps: 22,
+      oilSplit: 48,
+      oilAccent: 6,
+      oilSweep: 60,
+      oilSway: 55,
+      oilFlow: 42,
+      oilDissolve: 60,
+      grain: 20,
+      grainSize: 40,
+    },
+  },
 ];
 
-// 8 ART starting points for the studio's blank-canvas picker. A 9th "Random" tile
+// 10 ART starting points for the studio's blank-canvas picker. An 11th "Random" tile
 // is added by the picker itself.
 //
-// Each is the 4 engines × two GENUINELY different treatments — not seed variants.
+// Each is the 5 engines × two GENUINELY different treatments — not seed variants.
 // A reseed alone barely changes Grid/Contours (their character comes from the
 // params, not the seed), so the second pass of each engine varies mood, palette
 // and composition: light vs dark, soft vs hard, filled vs line-only, coarse vs fine.
@@ -120,6 +154,7 @@ export const ART_START_LOOKS: Preset[] = [
   PRESETS[0], // Grid — dark, dense scattered cells
   PRESETS[2], // Contours — dark, colour-filled terrain
   PRESETS[3], // Signal — dark, coarse moiré webbing
+  PRESETS[4], // Oil — dusk landscape, bit-crush sweeping the sky
   // Cream, airy: few huge soft blobs on a light ground (vs the dark cloud field).
   {
     label: "Blob · Cream",
@@ -194,6 +229,25 @@ export const ART_START_LOOKS: Preset[] = [
       soften: 0,
       glow: 40,
       vignette: 40,
+    },
+  },
+  // Paper daylight: the prototype's cream-on-olive painting — sparser, BIGGER
+  // bit cells so more of the brushwork shows through (vs the dusk base, whose
+  // dense fine crush eats the sky).
+  {
+    label: "Oil · Paper",
+    params: {
+      ...PRESETS[4].params,
+      mood: "cream",
+      seed: 88712,
+      oilSky: 55,
+      oilPeaks: 40,
+      oilBit: 34,
+      oilCell: 42,
+      oilSteps: 14,
+      oilOpacity: 34,
+      grain: 14,
+      vignette: 22,
     },
   },
 ];

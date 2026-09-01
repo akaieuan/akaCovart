@@ -77,6 +77,28 @@ export interface StudioState {
   signalPulse: number;
   signalFlow: number;
 
+  // oil (painted landform, bit-crushed) params
+  oilScene: string; // "ridgeline" | "dunes" | "coast" | "basin" | "mesa" | "storm"
+  oilHorizon: number; // 0..100; where the horizon line sits in the frame.
+  oilRidges: number; // 0..100; how many landform layers stack back to front.
+  oilPeaks: number; // 0..100; peak height — flat plain -> dramatic silhouette.
+  oilRough: number; // 0..100; ridge roughness — smooth swells -> jagged crags.
+  oilSky: number; // 0..100; atmosphere — haze/depth in the sky behind the land.
+  oilBrush: string; // "impasto" | "knife" | "scumble" | "stipple" | "dry"
+  oilPaint: number; // 0..100; brush load — how much paint each stroke carries.
+  oilStroke: number; // 0..100; stroke length.
+  oilOpacity: number; // 0..100; paint opacity — thin glaze -> opaque body colour.
+  oilTooth: number; // 0..100; canvas tooth the brush skips across.
+  oilBit: number; // 0..100; bit-crush cell density.
+  oilCell: number; // 0..100; bit-crush cell size.
+  oilSteps: number; // 0..100; colour steps the crushed cells quantize to.
+  oilSplit: number; // 0..100; how far cells subdivide into smaller cells.
+  oilAccent: number; // 0..100; how many cells take an accent colour.
+  oilSweep: number; // 0..100; how far the dissolve sweep runs across the frame.
+  oilSway: number; // 0..100; whole-frame camera sway (anim only).
+  oilFlow: number; // 0..100; paint flow — the strokes keep re-laying (anim only).
+  oilDissolve: number; // 0..100; beat-driven cell dissolve (anim only).
+
   // ── TxT focus ──────────────────────────────────────────────────────────────
   // Shared display text — the subject every txt engine stylizes (font/case reuse
   // the Type overlay's textFont/textCase). Separate from title/artist (the Art
@@ -315,6 +337,27 @@ const defaults = {
   signalSwirl: 48,
   signalPulse: 58,
   signalFlow: 55,
+
+  oilScene: "ridgeline",
+  oilHorizon: 63,
+  oilRidges: 83,
+  oilPeaks: 35,
+  oilRough: 23,
+  oilSky: 40,
+  oilBrush: "impasto",
+  oilPaint: 45,
+  oilStroke: 26,
+  oilOpacity: 35,
+  oilTooth: 50,
+  oilBit: 43,
+  oilCell: 27,
+  oilSteps: 18,
+  oilSplit: 42,
+  oilAccent: 4,
+  oilSweep: 53,
+  oilSway: 50,
+  oilFlow: 35,
+  oilDissolve: 45,
 
   // ── TxT focus defaults — lively, on-brand showcase ──
   txtText: "AKA",

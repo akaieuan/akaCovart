@@ -64,6 +64,7 @@ export const ENGINE_TAB_LABELS: Record<string, string> = {
   grid: "Grid",
   contours: "Contours",
   signal: "Signal",
+  oil: "Oil",
   // TxT focus
   dither: "Dither",
   lines: "Lines",
@@ -75,6 +76,7 @@ export const FALLBACK_ENGINES: SegOption[] = [
   { value: "grid", label: "Grid" },
   { value: "contours", label: "Contours" },
   { value: "signal", label: "Signal" },
+  { value: "oil", label: "Oil" },
   { value: "dither", label: "Dither" },
   { value: "lines", label: "Lines" },
   { value: "blur", label: "Blur" },
@@ -159,6 +161,61 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
         { kind: "slider", key: "signalSpread", label: "Angle spread", min: 0, max: 100 },
         { kind: "slider", key: "signalSharp", label: "Sharpness", min: 0, max: 100 },
         { kind: "slider", key: "signalWarp", label: "Flow warp", min: 0, max: 100 },
+      ],
+    },
+  ],
+  oil: [
+    {
+      heading: "Landform",
+      controls: [
+        {
+          kind: "segmented",
+          key: "oilScene",
+          options: [
+            { value: "ridgeline", label: "Ridgeline" },
+            { value: "dunes", label: "Dunes" },
+            { value: "coast", label: "Coast" },
+            { value: "basin", label: "Basin" },
+            { value: "mesa", label: "Mesa" },
+            { value: "storm", label: "Storm" },
+          ],
+        },
+        { kind: "slider", key: "oilHorizon", label: "Horizon", min: 0, max: 100 },
+        { kind: "slider", key: "oilRidges", label: "Ridge layers", min: 0, max: 100 },
+        { kind: "slider", key: "oilPeaks", label: "Peak height", min: 0, max: 100 },
+        { kind: "slider", key: "oilRough", label: "Roughness", min: 0, max: 100 },
+        { kind: "slider", key: "oilSky", label: "Atmosphere", min: 0, max: 100 },
+      ],
+    },
+    {
+      heading: "Oil paint",
+      controls: [
+        {
+          kind: "segmented",
+          key: "oilBrush",
+          options: [
+            { value: "impasto", label: "Impasto" },
+            { value: "knife", label: "Knife" },
+            { value: "scumble", label: "Scumble" },
+            { value: "stipple", label: "Stipple" },
+            { value: "dry", label: "Dry" },
+          ],
+        },
+        { kind: "slider", key: "oilPaint", label: "Brush load", min: 0, max: 100 },
+        { kind: "slider", key: "oilStroke", label: "Stroke length", min: 0, max: 100 },
+        { kind: "slider", key: "oilOpacity", label: "Paint opacity", min: 0, max: 100 },
+        { kind: "slider", key: "oilTooth", label: "Canvas tooth", min: 0, max: 100 },
+      ],
+    },
+    {
+      heading: "Bit crush",
+      controls: [
+        { kind: "slider", key: "oilBit", label: "Cell density", min: 0, max: 100 },
+        { kind: "slider", key: "oilCell", label: "Cell size", min: 0, max: 100 },
+        { kind: "slider", key: "oilSteps", label: "Colour steps", min: 0, max: 100 },
+        { kind: "slider", key: "oilSplit", label: "Subdivide", min: 0, max: 100 },
+        { kind: "slider", key: "oilAccent", label: "Accent cells", min: 0, max: 100 },
+        { kind: "slider", key: "oilSweep", label: "Dissolve sweep", min: 0, max: 100 },
       ],
     },
   ],
@@ -347,6 +404,11 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "signalSwirl", label: "Swirl", min: 0, max: 100 },
     { kind: "slider", key: "signalPulse", label: "Pulse", min: 0, max: 100 },
     { kind: "slider", key: "signalFlow", label: "Shimmer", min: 0, max: 100 },
+  ],
+  oil: [
+    { kind: "slider", key: "oilSway", label: "Camera sway", min: 0, max: 100 },
+    { kind: "slider", key: "oilFlow", label: "Paint flow", min: 0, max: 100 },
+    { kind: "slider", key: "oilDissolve", label: "Beat dissolve", min: 0, max: 100 },
   ],
   grid: [
     { kind: "slider", key: "gridRipple", label: "Ripple", min: 0, max: 100 },

@@ -84,6 +84,14 @@ const CHANNELS: VaryChannel[] = [
   { key: "lineAngle", min: 0, max: 100, frac: 0.18 },
   { key: "blurAmount", min: 0, max: 100, frac: 0.1 },
   { key: "blurThreshold", min: 0, max: 100, frac: 0.1 },
+
+  // oil — appended LAST on purpose: the order above is what existing seeds see.
+  { key: "oilRidges", min: 0, max: 100, frac: 0.24 },
+  { key: "oilPeaks", min: 0, max: 100, frac: 0.26 },
+  { key: "oilSky", min: 0, max: 100, frac: 0.22 },
+  { key: "oilPaint", min: 0, max: 100, frac: 0.2 },
+  { key: "oilCell", min: 0, max: 100, frac: 0.24 },
+  { key: "oilBit", min: 0, max: 100, frac: 0.2 },
 ];
 
 function clamp(v: number, lo: number, hi: number): number {
