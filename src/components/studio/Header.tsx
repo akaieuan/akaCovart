@@ -61,10 +61,15 @@ function FocusMenu() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {/* Glassy pill (same language as the view nav) so the style switcher reads
+          as a CONTROL — as plain text nobody discovered TxT/Stack. The muted
+          "Style" prefix names what the dropdown changes; hidden on phones where
+          the header runs tight. */}
       <PopoverTrigger
-        className="inline-flex cursor-pointer items-center gap-0.5 rounded-md px-1.5 py-1 text-[12px] font-medium text-grey-300 transition-colors hover:text-grey-100"
-        aria-label={`Focus: ${active.label}`}
+        className="inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-full border border-white/10 bg-panel/70 px-2.5 text-[11px] font-medium text-grey-100 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-colors hover:border-white/20 hover:text-white"
+        aria-label={`Style: ${active.label}`}
       >
+        <span className="hidden text-grey-400 sm:inline">Style</span>
         <span>{active.label}</span>
         <ChevronDown className="size-3 text-grey-500" />
       </PopoverTrigger>
@@ -116,8 +121,9 @@ function StartMenu() {
   if (showStart) return null;
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {/* Same pill treatment as the Style switcher (muted text = secondary). */}
       <PopoverTrigger
-        className="inline-flex cursor-pointer items-center gap-0.5 rounded-md px-1.5 py-1 text-[12px] font-medium text-grey-300 transition-colors hover:text-grey-100"
+        className="inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-full border border-white/10 bg-panel/70 px-2.5 text-[11px] font-medium text-grey-300 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-colors hover:border-white/20 hover:text-white"
         aria-label="Starting points"
       >
         <span>Starts</span>
