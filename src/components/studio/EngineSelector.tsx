@@ -39,7 +39,8 @@ const ENGINE_DEFS: EngineDef[] = [
 
 const DEF_BY_ID = new Map(ENGINE_DEFS.map((d) => [d.value, d]));
 
-// Tailwind needs static column classes; map the visible count (Art=5, TxT=3).
+// Tailwind needs static column classes; map the visible count (Art=4, TxT=3,
+// Stack=5 — the art roster plus Oil).
 const GRID_COLS: Record<number, string> = {
   1: "grid-cols-1",
   2: "grid-cols-2",
@@ -50,9 +51,14 @@ const GRID_COLS: Record<number, string> = {
 };
 
 // Engines for the active focus, in registration order, decorated with icon/label.
-function engineList(focus: "art" | "txt"): EngineDef[] {
-  const reg = listEnginesByFocus(focus);
-  if (!reg.length) return ENGINE_DEFS.slice(0, 5);
+function engineList(focus: "art" | "txt" | "stack" | "oil"): EngineDef[] {
+  // Stack's selector picks the ART BACKGROUND (its `engine`) — any field engine,
+  // so Oil's lane engine is offered here too (type over a landscape).
+  const reg =
+    focus === "stack"
+      ? [...listEnginesByFocus("art"), ...listEnginesByFocus("oil")]
+      : listEnginesByFocus(focus);
+  if (!reg.length) return ENGINE_DEFS.slice(0, 4);
   return reg.map(
     (e) =>
       DEF_BY_ID.get(e.id) ?? {
@@ -67,9 +73,11 @@ export default function EngineSelector({ className }: { className?: string }) {
   const engine = useStudio((s) => s.engine);
   const focus = useStudio((s) => s.focus);
   const setState = useStudio((s) => s.setState);
-  // In Stack the top selector picks the ART background (its `engine`); the overlay
+  // In Stack the top selector picks the background (its `engine`); the overlay
   // type engine is chosen in the Text-layer panel.
-  const engines = engineList(focus === "stack" ? "art" : focus);
+  const engines = engineList(focus);
+  // A lane with a single engine (Oil) has nothing to switch — no stripe.
+  if (engines.length < 2) return null;
 
   return (
     <ToggleGroup

@@ -54,8 +54,11 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
   // (no Texture tab); Stack composites a type layer over the art bg, so its type
   // tab is the Stack Text layer and its motion tab is the Stack motion panel.
   const stack = focus === "stack";
+  // Oil is a one-engine lane: its selector hides itself, so the tab that's left
+  // holding the seed row is labelled for what it actually shows.
+  const engineTab = focus === "oil" ? "Seed" : "Engine";
   const stillTabs: Tab[] = [
-    { id: "engine", label: "Engine", Body: EngineBody },
+    { id: "engine", label: engineTab, Body: EngineBody },
     { id: "look", label: "Look", Body: LookSection },
     { id: "composition", label: stack ? "Background" : "Compose", Body: CompositionSection },
     ...(focus !== "txt"
@@ -64,7 +67,7 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
     { id: "type", label: stack ? "Text" : "Type", Body: stack ? StackTextSection : TypeSection },
   ];
   const animTabs: Tab[] = [
-    { id: "engine", label: "Engine", Body: EngineBody },
+    { id: "engine", label: engineTab, Body: EngineBody },
     { id: "motion", label: "Motion", Body: stack ? StackMotionSection : MotionSection },
   ];
   const tabs = mode === "animate" ? animTabs : stillTabs;

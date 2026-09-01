@@ -45,7 +45,7 @@ export interface StudioState {
   // "stack" = a TxT type layer composited OVER an Art field background (`engine`
   // is the art bg; `stackTxt` is the overlay type engine).
   // Drives the header Focus switch + which engines the selector shows.
-  focus: "art" | "txt" | "stack";
+  focus: "art" | "txt" | "stack" | "oil";
 
   // engine + engine-specific composition params
   engine: string;
@@ -308,7 +308,7 @@ const defaults = {
   colorSat: 50,
   colorWarm: 50,
 
-  focus: "art" as "art" | "txt" | "stack",
+  focus: "art" as "art" | "txt" | "stack" | "oil",
 
   engine: "blob",
   gridCols: 9,
@@ -486,6 +486,15 @@ const defaults = {
 const INITIAL_SEED = 1;
 const INITIAL_GALLERY = [101, 202, 303, 404, 505, 606, 707, 808, 909];
 
+// Reset restores the LOOK, not the lane: `focus` is kept and `engine` snaps to
+// that lane's default (Stack's `engine` is its art background).
+const LANE_DEFAULT_ENGINE: Record<StudioState["focus"], string> = {
+  art: "blob",
+  oil: "oil",
+  txt: "dither",
+  stack: "blob",
+};
+
 export const useStudio = create<StudioState>((set) => ({
   ...defaults,
   seed: INITIAL_SEED,
@@ -543,9 +552,10 @@ export const useStudio = create<StudioState>((set) => ({
       return { clipLength: len, clipStart: cs, clipEnd: ce };
     }),
   resetParams: () =>
-    set(() => {
+    set((s) => {
       // Reset all generation/animation params to their defaults, but keep the
-      // current seed, mode, open sections, gallerySeeds, and process flags.
+      // current seed, mode, focus (the lane), open sections, gallerySeeds, and
+      // process flags.
       // Reset restores the LOOK only; the imported track/session and its driver
       // stay (animSource + the audio mirror), so Reset+export keeps the synced
       // track export instead of silently reverting to a short silent BPM loop.
@@ -566,6 +576,8 @@ export const useStudio = create<StudioState>((set) => ({
         exportProgress: _exportProgress,
         exportLabel: _exportLabel,
         exportResult: _exportResult,
+        focus: _focus,
+        engine: _engine,
         ...paramDefaults
       } = defaults;
       void _mode;
@@ -584,7 +596,9 @@ export const useStudio = create<StudioState>((set) => ({
       void _exportProgress;
       void _exportLabel;
       void _exportResult;
-      return paramDefaults;
+      void _focus;
+      void _engine;
+      return { ...paramDefaults, engine: LANE_DEFAULT_ENGINE[s.focus] };
     }),
 }));
 

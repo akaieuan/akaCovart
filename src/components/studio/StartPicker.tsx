@@ -23,7 +23,9 @@ export default function StartPicker({ onPick }: { onPick: (look: Preset) => void
             ? "Pick an art + type combo — or go random."
             : focus === "txt"
               ? "Pick a type treatment — or go random."
-              : "Pick a look to shape — or go random."}
+              : focus === "oil"
+                ? "Pick a scene to paint — or go random."
+                : "Pick a look to shape — or go random."}
         </div>
       </div>
       <StartGrid onPick={onPick} className="w-[min(86vw,420px)] gap-2.5" />

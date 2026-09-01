@@ -142,10 +142,10 @@ export const PRESETS: Preset[] = [
   },
 ];
 
-// 10 ART starting points for the studio's blank-canvas picker. An 11th "Random" tile
+// 8 ART starting points for the studio's blank-canvas picker. A 9th "Random" tile
 // is added by the picker itself.
 //
-// Each is the 5 engines × two GENUINELY different treatments — not seed variants.
+// Each is the 4 engines × two GENUINELY different treatments — not seed variants.
 // A reseed alone barely changes Grid/Contours (their character comes from the
 // params, not the seed), so the second pass of each engine varies mood, palette
 // and composition: light vs dark, soft vs hard, filled vs line-only, coarse vs fine.
@@ -154,7 +154,6 @@ export const ART_START_LOOKS: Preset[] = [
   PRESETS[0], // Grid — dark, dense scattered cells
   PRESETS[2], // Contours — dark, colour-filled terrain
   PRESETS[3], // Signal — dark, coarse moiré webbing
-  PRESETS[4], // Oil — dusk landscape, bit-crush sweeping the sky
   // Cream, airy: few huge soft blobs on a light ground (vs the dark cloud field).
   {
     label: "Blob · Cream",
@@ -231,25 +230,29 @@ export const ART_START_LOOKS: Preset[] = [
       vignette: 40,
     },
   },
+];
+
+// 8 OIL starting points — the lane has ONE engine, so these vary the SCENE, the
+// brush and the crush density (alternating dusk / paper / ash moods) rather than
+// the engine. A 9th "Random" tile rolls a scene + brush.
+const OIL = PRESETS[4].params;
+export const OIL_START_LOOKS: Preset[] = [
+  PRESETS[4], // Ridgeline — dusk, fine crush sweeping the sky
   // Paper daylight: the prototype's cream-on-olive painting — sparser, BIGGER
-  // bit cells so more of the brushwork shows through (vs the dusk base, whose
-  // dense fine crush eats the sky).
-  {
-    label: "Oil · Paper",
-    params: {
-      ...PRESETS[4].params,
-      mood: "cream",
-      seed: 88712,
-      oilSky: 55,
-      oilPeaks: 40,
-      oilBit: 34,
-      oilCell: 42,
-      oilSteps: 14,
-      oilOpacity: 34,
-      grain: 14,
-      vignette: 22,
-    },
-  },
+  // bit cells so more of the brushwork shows through.
+  { label: "Paper", params: { ...OIL, mood: "cream", seed: 88712, oilSky: 55, oilPeaks: 40, oilBit: 34, oilCell: 42, oilSteps: 14, oilOpacity: 34, grain: 14, vignette: 22 } },
+  // Dunes: low rolling forms, palette-knife drags, barely crushed.
+  { label: "Dunes", params: { ...OIL, mood: "grey", seed: 204817, oilScene: "dunes", oilBrush: "knife", oilHorizon: 66, oilPeaks: 30, oilRough: 18, oilSky: 35, oilStroke: 55, oilBit: 26, oilCell: 40, grain: 14 } },
+  // Coast: high sky, water glints, scumbled haze, cells drifting in from one side.
+  { label: "Coast", params: { ...OIL, seed: 551902, oilScene: "coast", oilBrush: "scumble", oilHorizon: 48, oilSky: 62, oilRidges: 40, oilBit: 40, oilCell: 34, oilSweep: 70, grain: 16 } },
+  // Basin: facing slopes into a valley, tall peaks, dense crush.
+  { label: "Basin", params: { ...OIL, mood: "cream", seed: 917330, oilScene: "basin", oilPeaks: 62, oilRough: 40, oilSky: 40, oilBit: 55, oilCell: 26, oilSteps: 18, grain: 14, vignette: 26 } },
+  // Mesa: flat-topped plateaus, dry brush, tiny hard cells — the most "bit".
+  { label: "Mesa", params: { ...OIL, seed: 118842, oilScene: "mesa", oilBrush: "dry", oilSky: 22, oilPeaks: 50, oilBit: 58, oilCell: 18, oilSteps: 9, oilSplit: 30, grain: 18 } },
+  // Storm: heavy sky, rain slivers, stippled paint, the crush nearly total.
+  { label: "Storm", params: { ...OIL, mood: "grey", seed: 730551, oilScene: "storm", oilBrush: "stipple", oilSky: 72, oilRidges: 60, oilBit: 66, oilCell: 30, oilSweep: 85, oilAccent: 8, grain: 20 } },
+  // Knife: mostly PAINT — long loaded drags, the crush pulled way back.
+  { label: "Knife", params: { ...OIL, mood: "cream", seed: 402219, oilBrush: "knife", oilPaint: 68, oilStroke: 72, oilOpacity: 46, oilBit: 16, oilCell: 48, grain: 12, vignette: 20 } },
 ];
 
 // 8 TxT starting points — distinct type treatments across Dither / Lines / Blur

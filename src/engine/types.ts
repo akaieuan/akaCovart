@@ -74,7 +74,7 @@ export interface FieldEngine {
   // engines (the default); "txt" = the type-driven engines where the letterforms
   // are the subject. The header Focus switch + EngineSelector filter on this.
   // Optional so existing engines (untagged) default to "art".
-  focus?: "art" | "txt";
+  focus?: "art" | "txt" | "oil";
   params: ParamDef[];
   field(args: FieldArgs): void;
 }

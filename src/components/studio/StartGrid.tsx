@@ -6,6 +6,7 @@ import { useStudio, randSeed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
   ART_START_LOOKS,
+  OIL_START_LOOKS,
   TXT_START_LOOKS,
   STACK_START_LOOKS,
   type Preset,
@@ -109,13 +110,29 @@ export default function StartGrid({
       ? STACK_START_LOOKS
       : focus === "txt"
         ? TXT_START_LOOKS
-        : ART_START_LOOKS;
+        : focus === "oil"
+          ? OIL_START_LOOKS
+          : ART_START_LOOKS;
 
   const onRandom = () => {
-    const pickId = (f: "art" | "txt", fallback: string) => {
+    const pickId = (f: "art" | "txt" | "oil", fallback: string) => {
       const es = listEnginesByFocus(f);
       return es.length ? es[Math.floor(Math.random() * es.length)].id : fallback;
     };
+    if (focus === "oil") {
+      // One engine in this lane, so "random" rolls the SCENE + brush, not the engine.
+      const roll = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
+      onPick({
+        label: "Random",
+        params: {
+          engine: "oil",
+          oilScene: roll(["ridgeline", "dunes", "coast", "basin", "mesa", "storm"]),
+          oilBrush: roll(["impasto", "knife", "scumble", "stipple", "dry"]),
+          seed: randSeed(),
+        },
+      });
+      return;
+    }
     if (focus === "stack") {
       // A random art background + a random type engine over it.
       onPick({

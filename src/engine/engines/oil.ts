@@ -881,7 +881,7 @@ const oil: FieldEngine = {
   id: "oil",
   label: "Oil",
   kind: "2d",
-  focus: "art",
+  focus: "oil",
   params: oilParams(),
   field(args: FieldArgs): void {
     const { ctx, size: S, params: p, cfg, seed, anim } = args;

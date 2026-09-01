@@ -50,9 +50,15 @@ function LookSectionInner() {
       <Divider />
       <GroupLabel variant="sub">Atmosphere</GroupLabel>
       {renderGroups([ATMOSPHERE_GROUP])}
-      <Divider />
-      <GroupLabel variant="sub">Starting points</GroupLabel>
-      <Presets />
+      {/* The curated presets are Art-engine looks; Oil shares this palette panel
+          but its starting points are the lane's own grid. */}
+      {focus === "art" && (
+        <>
+          <Divider />
+          <GroupLabel variant="sub">Starting points</GroupLabel>
+          <Presets />
+        </>
+      )}
     </>
   );
 }
