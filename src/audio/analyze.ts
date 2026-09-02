@@ -54,28 +54,40 @@ export async function analyzeClip(
 
   const worker = makeWorker();
   if (worker) {
-    const arrays = await new Promise<FeatureArrays>((resolve, reject) => {
-      worker.onmessage = (
-        e: MessageEvent<
-          { type: "progress"; p: number } | { type: "done"; result: FeatureArrays }
-        >,
-      ) => {
-        const msg = e.data;
-        if (msg.type === "progress") {
-          onProgress?.(msg.p);
-        } else if (msg.type === "done") {
-          resolve(msg.result);
-        }
-      };
-      worker.onerror = (err) => reject(err);
-      // Transfer the mono buffer to avoid a copy.
-      worker.postMessage({ mono, sampleRate, clipDuration }, [mono.buffer]);
-    }).finally(() => worker.terminate());
-    return makeTimeline(arrays);
+    // The worker's script loads ASYNCHRONOUSLY: a chunk that 404s (a stale
+    // bundle after a deploy, a dev-server hot reload mid-load, a host that
+    // strips worker chunks) fires `onerror` long after construction succeeded.
+    // That must degrade to the main-thread analyzer — never surface as
+    // "Analysis failed" for a track that decoded fine. The mono buffer is
+    // COPIED into the worker (not transferred) so it is still intact here for
+    // the fallback if the worker dies.
+    try {
+      const arrays = await new Promise<FeatureArrays>((resolve, reject) => {
+        worker.onmessage = (
+          e: MessageEvent<
+            { type: "progress"; p: number } | { type: "done"; result: FeatureArrays }
+          >,
+        ) => {
+          const msg = e.data;
+          if (msg.type === "progress") {
+            onProgress?.(msg.p);
+          } else if (msg.type === "done") {
+            resolve(msg.result);
+          }
+        };
+        worker.onerror = (err) => reject(err instanceof ErrorEvent ? err.error ?? err.message : err);
+        worker.onmessageerror = () => reject(new Error("analysis worker: message error"));
+        worker.postMessage({ mono, sampleRate, clipDuration });
+      }).finally(() => worker.terminate());
+      return makeTimeline(arrays);
+    } catch (err) {
+      console.warn("[audio] analysis worker failed — analyzing on the main thread instead", err);
+    }
   }
 
-  // Fallback: run on main thread but yield once before the heavy loop so the
-  // UI can paint the "analyzing" state; analyzeMono reports progress internally.
+  // Fallback (no Worker support, or the worker failed): run on the main thread
+  // but yield once before the heavy loop so the UI can paint the "analyzing"
+  // state; analyzeMono reports progress internally.
   await new Promise((r) => setTimeout(r, 0));
   const arrays = analyzeMono({ mono, sampleRate, clipDuration }, onProgress);
   return makeTimeline(arrays);

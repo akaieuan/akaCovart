@@ -40,6 +40,7 @@ function buildAnim(params: Record<string, any>): AnimState {
       speed: audioAnim.speed ?? 0,
       loopPhase: audioAnim.loopPhase ?? 0,
       clipPhase: audioAnim.clipPhase, // may be undefined: engines then derive it from rt
+      track: audioAnim.track,
     };
   }
 

@@ -48,3 +48,6 @@ Thumbs.db
 
 # Design/prototype reference material (not part of the app)
 Abstract Oil-Bit Landscape Banner/
+
+# Local test fixtures (synthetic tracks for the preview)
+public/_test/

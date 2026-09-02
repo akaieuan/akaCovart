@@ -106,6 +106,14 @@ export interface StudioState {
   oilSway: number; // 0..100; whole-frame camera sway (anim only).
   oilFlow: number; // 0..100; paint flow — the strokes keep re-laying (anim only).
   oilDissolve: number; // 0..100; beat-driven cell dissolve (anim only).
+  // Depth + life (anim only). The painting is three depth planes (sky / far
+  // ridges / near land); these scale the plane separation, the cloud drift,
+  // the paint heave, the far-plane heat shimmer and the crush's audio pulse.
+  oilParallax: number; // 0..100; plane separation under the camera move.
+  oilClouds: number; // 0..100; cloud drift across the sky over the clip.
+  oilSwell: number; // 0..100; the near paint heaves as a travelling swell (Wander / mids).
+  oilShimmer: number; // 0..100; far-plane heat shimmer (Swirl / highs).
+  oilCrush: number; // 0..100; cells breathe on the kick / bass, accents pop on highs.
 
   // ── TxT focus ──────────────────────────────────────────────────────────────
   // Shared display text — the subject every txt engine stylizes (font/case reuse
@@ -372,6 +380,11 @@ const defaults = {
   oilSway: 50,
   oilFlow: 35,
   oilDissolve: 45,
+  oilParallax: 55,
+  oilClouds: 45,
+  oilSwell: 40,
+  oilShimmer: 30,
+  oilCrush: 50,
 
   // ── TxT focus defaults — lively, on-brand showcase ──
   txtText: "AKA",

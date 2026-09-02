@@ -128,5 +128,6 @@ export function stepTrackMotion(
     speed,
     loopPhase,
     clipPhase,
+    track: true,
   };
 }

@@ -26,11 +26,17 @@ import { clipPhaseOf as sharedClipPhase, loopBeatsOf } from "../loop";
 //    periodic clocks below.
 //  • Flicker-free — the PAINTING IS LOCKED OFF: the strokes are baked into the
 //    raster and nothing swims. Everything time-driven is gated on `anim.anim`
-//    and moves SPACE only: a single-plane camera (a closed noise-circle wander
-//    plus a slow push-in about the horizon) and the BIT TIDE — the crush front
-//    advances from the crushed edge toward the painted edge and every extra cell
-//    GROWS in by scale from nothing, sliding onto its rest position as it fills.
-//    Colour, brightness and alpha are constants per element, so nothing strobes.
+//    and moves SPACE only. The painting is THREE DEPTH PLANES (sky + clouds /
+//    far ridges / near land), each a raster the camera moves with its own
+//    parallax factor, so a wander or push-in separates the ridgelines like a
+//    dolly through the scene; the clouds drift across the sky plane; the near
+//    paint heaves sideways as a travelling SWELL (drawn in horizontal strips);
+//    the far plane wobbles like heat (SHIMMER); and the BIT TIDE — the crush
+//    front advances from the crushed edge toward the painted edge and every
+//    extra cell GROWS in by scale from nothing, sliding onto its rest position
+//    as it fills — with a CRUSH PULSE: cells breathe on the kick / bass and the
+//    accent cells pop on the highs. Colour, brightness and alpha are constants
+//    per element, so nothing strobes.
 //
 // THE THREE CLOCKS — all periodic and all EXACTLY 0 at frame 0, so the still,
 // the first frame and the last frame of an export loop are the same image:
@@ -43,11 +49,14 @@ import { clipPhaseOf as sharedClipPhase, loopBeatsOf } from "../loop";
 //                         derived from `anim.rt` on the SHARED clip clock
 //                         (../loop.ts — the same arithmetic export.ts's
 //                         loopFrames uses) — see `clipPhaseOf`.
-//   Track mode: `beat` there is a smoothed feature, not a phase, so `att` merely
-//   suppresses the pushes while the music is quiet; ψ/φ are clocks on clip time
-//   and the loop carries no seamless guarantee (as with every engine in track).
-//   `anim.t / drift / swirl / speed` are deliberately NOT read: Speed / Wander /
-//   Swirl are inert for Oil.
+//   Track mode (`anim.track`): `beat` there is an onset FEATURE (strength), not
+//   a phase, so the phase-shaped attack / release is skipped — the kick, pump
+//   and spring ride the audio springs directly; ψ/φ are clocks on clip time and
+//   the loop carries no seamless guarantee (as with every engine in track).
+//   `anim.drift / swirl / speed` (the Drift sliders in BPM mode; the live mid /
+//   high / energy features in Track mode) scale the swell, the shimmer + accent
+//   pops, and the cloud drift — AMPLITUDE only, never a rate, so the clip still
+//   loops whatever the music does. `anim.t` is not read.
 //
 // THE REF SAMPLING CONTRACT (why this looks the same at 156px and 3000px):
 //   `REF = 396` is the tuning reference — the short side of the original study —
@@ -127,12 +136,32 @@ const CH_SURV = 0x5203;
 const CH_ALPHA = 0x5307;
 const CH_ACC = 0x540d;
 const CH_PICK = 0x5513;
-const CH_PHASE = 0x5617; // pack slot 9 — no longer read, kept so the pack stays byte-stable
 
 // ── value-noise lanes the camera / tide own (no fbm caller ever lands on them) ─
 const LANE_PANX = 11;
 const LANE_PANY = 17;
 const LANE_PATCH = 83;
+
+// ── depth planes ─────────────────────────────────────────────────────────────
+// The painting is built as three planes so the camera can move THROUGH it: the
+// sky (gradient + clouds), the far ridges (the back half of the stack) and the
+// near land (front ridges, bands, water, rain). Every stroke and cell is tagged
+// with the plane whose paint it sits on (read off the planes' alpha at REF), so
+// it rides that plane. A still-only raster at MERGE_ABOVE and up (the PNG
+// export) is ONE merged plane: it never moves, and three 3264² canvases would
+// be ~130 MB.
+const P_SKY = 1;
+const P_FAR = 2;
+const P_NEAR = 4;
+const P_ALL = P_SKY | P_FAR | P_NEAR;
+// The fraction of the camera each plane lags behind the near plane at Parallax 100.
+const PX_FAR = 0.45;
+const PX_SKY = 0.75;
+// Horizontal strips the near / far planes are blitted in while a swell / shimmer
+// is live, so each strip can be pushed sideways on its own.
+const SWELL_STRIPS = 20;
+const SHIM_STRIPS = 10;
+const MERGE_ABOVE = 2048;
 
 // ── the bit tide ─────────────────────────────────────────────────────────────
 // Largest participation the tide can ever add (G ≤ BOOST_MAX). Used to cull cells
@@ -461,6 +490,8 @@ interface OilRef {
   cellSweep: Float32Array;
   cellPatch: Float32Array; // smooth 0..1 fbm field — shapes the tide's shoreline
   cellStyle: string[]; // prebuilt rgba() strings — the hot loop never formats
+  cellPlaneEnd: Int32Array; // cells are SORTED by plane: [endSky, endFar, endNear]
+  cellAccent: Uint8Array; // 1 = an accent-tinted cell (pops on the kick)
   cellCount: number;
 }
 const refSlots: OilRef[] = [];
@@ -470,7 +501,8 @@ interface RasterSlot {
   keyVec: Float64Array;
   B: number; // bucket edge (0 = never valid)
   Mb: number; // overscan margin at B, in px
-  canvas: HTMLCanvasElement; // (B + 2·Mb)²
+  planes: HTMLCanvasElement[]; // [sky, far, near], each (B + 2·Mb)² — or ONE merged plane
+  merged: boolean;
   lastUse: number;
 }
 const rasterSlots: RasterSlot[] = [];
@@ -480,12 +512,14 @@ const STRIDE = 10; // x, y, ang, len, thick, alpha, r, g, b, phaseHash
 function ctxOf(c: HTMLCanvasElement, willRead: boolean): CanvasRenderingContext2D | null {
   return c.getContext("2d", willRead ? { willReadFrequently: true } : undefined);
 }
-function ensureCanvas(which: 0 | 1, side: number): HTMLCanvasElement {
-  let c = which === 0 ? rCanvas : xCanvas;
+let pCanvas: HTMLCanvasElement | null = null; // the plane-alpha passes at REF (build only)
+function ensureCanvas(which: 0 | 1 | 2, side: number): HTMLCanvasElement {
+  let c = which === 0 ? rCanvas : which === 1 ? xCanvas : pCanvas;
   if (!c) {
     c = document.createElement("canvas");
     if (which === 0) rCanvas = c;
-    else xCanvas = c;
+    else if (which === 1) xCanvas = c;
+    else pCanvas = c;
   }
   if (c.width !== side || c.height !== side) {
     c.width = side;
@@ -506,6 +540,7 @@ function paintUnderlayVector(
   spec: BuildSpec,
   noise: Noise,
   seed: number,
+  mask: number,
 ): void {
   const N = edge + 2 * margin;
   const M = margin;
@@ -541,20 +576,26 @@ function paintUnderlayVector(
   ctx.clearRect(0, 0, N, N);
 
   // ──────────────────────────────────────────────────────────────────── sky
-  frame();
-  const grad = ctx.createLinearGradient(0, 0, 0, edge * (horizon + 0.06));
-  grad.addColorStop(0, rgba(sky[0], 1));
-  grad.addColorStop(0.55, rgba(sky[1], 1));
-  grad.addColorStop(1, rgba(sky[2], 1));
-  ctx.fillStyle = grad;
-  ctx.fillRect(-M, -M, N, N);
-  ident();
+  // (`mask` picks the plane being painted: P_ALL paints everything into one
+  // buffer — the REF decisions and a merged still; a single plane bit paints
+  // just that plane onto a transparent buffer. Each pass owns its own PRNG
+  // stream, so skipping a pass can never shift another.)
+  if (mask & P_SKY) {
+    frame();
+    const grad = ctx.createLinearGradient(0, 0, 0, edge * (horizon + 0.06));
+    grad.addColorStop(0, rgba(sky[0], 1));
+    grad.addColorStop(0.55, rgba(sky[1], 1));
+    grad.addColorStop(1, rgba(sky[2], 1));
+    ctx.fillStyle = grad;
+    ctx.fillRect(-M, -M, N, N);
+    ident();
+  }
 
   // ───────────────────────────────────────────────────────────────── clouds
   // ALL cloud masses go into ONE scratch layer and get ONE blur composite (the
   // prototype blurred each ellipse separately, which is the same look for a
   // fraction of the cost).
-  if (spec.clouds > 0) {
+  if (mask & P_SKY && spec.clouds > 0) {
     const rc: RNG = prng(seed ^ C_CLOUD);
     const sc = beginLayer();
     if (sc) {
@@ -591,6 +632,8 @@ function paintUnderlayVector(
   const pal = spec.pal;
   for (let i = 0; i < spec.nRidges; i++) {
     const depth = spec.nRidges === 1 ? 0 : i / (spec.nRidges - 1); // 0 far .. 1 near
+    // The back half of the stack is the FAR plane, the front half the NEAR plane.
+    if (!(mask & (depth < 0.5 ? P_FAR : P_NEAR))) continue;
     // painter.ts: g(ridge[round(depth·5)], (0.5 - depth)·0.1·(contrast - 1)·2) — the
     // Depth slider lifts the far ridges and sinks the near ones (a tiny HSL lift,
     // graded from the source swatch in ONE shot so the clamps match the study).
@@ -619,7 +662,7 @@ function paintUnderlayVector(
   }
 
   // ──────────────────────────────────────────────────────── foreground bands
-  for (let i = 0; i < spec.nBands; i++) {
+  for (let i = 0; mask & P_NEAR && i < spec.nBands; i++) {
     const t = spec.nBands === 1 ? 0 : i / (spec.nBands - 1);
     // painter.ts: g(field[min(4, i)], (t - 0.5)·0.06·(contrast - 1)) — band i takes
     // field swatch i (the last one repeats past five), with the Depth lift.
@@ -656,7 +699,7 @@ function paintUnderlayVector(
   }
 
   // ──────────────────────────────────────────────────────────── scene extras
-  if (scene === "coast" || scene === "storm") {
+  if (mask & P_NEAR && (scene === "coast" || scene === "storm")) {
     const re: RNG = prng(seed ^ C_EXTRA);
     frame();
     if (scene === "coast") {
@@ -739,6 +782,8 @@ function buildStrokePack(
   spec: BuildSpec,
   noise: Noise,
   under: ImageData,
+  nearA: ImageData,
+  farA: ImageData,
   refMargin: number,
   seed: number,
 ): Float32Array {
@@ -749,6 +794,8 @@ function buildStrokePack(
   const d = under.data;
   const W = under.width;
   const H = under.height;
+  const nd = nearA.data;
+  const fd = farA.data;
   const horizon = spec.horizon;
   const brush = spec.brush;
 
@@ -759,6 +806,10 @@ function buildStrokePack(
     // REF pixel of this stroke, and the jittered pixel its colour is lifted from
     const px = refMargin + nx * REF;
     const py = refMargin + ny * REF;
+    // The plane this stroke's paint sits on (the near / far planes' alpha at its
+    // own pixel) — it rides that plane. Read-only: no stream draw.
+    const kp = (clamp(py | 0, 0, H - 1) * W + clamp(px | 0, 0, W - 1)) * 4 + 3;
+    const plane = nd[kp] >= 128 ? P_NEAR : fd[kp] >= 128 ? P_FAR : P_SKY;
     const sxp = clamp((px + (r() - 0.5) * 16) | 0, 0, W - 1);
     const syp = clamp((py + (r() - 0.5) * 11) | 0, 0, H - 1);
     const k = (syp * W + sxp) * 4;
@@ -829,7 +880,7 @@ function buildStrokePack(
     pack[o + 6] = Math.round(cr);
     pack[o + 7] = Math.round(cg);
     pack[o + 8] = Math.round(cb);
-    pack[o + 9] = noise.hash3(i, 7, CH_PHASE); // legacy per-stroke phase (unused; keeps the pack stable)
+    pack[o + 9] = plane; // the depth plane it is baked onto (P_SKY / P_FAR / P_NEAR)
   }
   return pack;
 }
@@ -843,12 +894,14 @@ function drawStrokes(
   margin: number,
   pack: Float32Array,
   count: number,
+  plane: number, // P_ALL, or the one plane whose strokes to bake
 ): void {
   const u = edge / REF;
   for (let i = 0; i < count; i++) {
     const o = i * STRIDE;
     const len = pack[o + 3];
     if (len <= 0) continue; // dry-brush skip
+    if (plane !== P_ALL && pack[o + 9] !== plane) continue;
     tmpCol[0] = pack[o + 6];
     tmpCol[1] = pack[o + 7];
     tmpCol[2] = pack[o + 8];
@@ -872,10 +925,17 @@ function drawStrokes(
 /** Woven canvas tooth — painter.ts's per-pixel weave, in place. Deliberately a
  *  SCREEN-space texture (like film grain): it is the surface the paint sits on,
  *  not part of the composition, so it does not scale with the frame. */
-function toothInPlace(data: Uint8ClampedArray, W: number, H: number, amt: number): void {
+function toothInPlace(
+  data: Uint8ClampedArray,
+  W: number,
+  H: number,
+  amt: number,
+  skipSoft = false, // transparent planes: leave the soft (alpha < 250) edges alone
+): void {
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const k = (y * W + x) * 4;
+      if (skipSoft && data[k + 3] < 250) continue;
       const n = (((x * 7 + y * 13 + ((x * y) % 31)) % 17) - 8) * 0.42;
       const weave = (x % 3 === 0 ? 3 : 0) + (y % 4 === 0 ? -3 : 0);
       const dv = (n + weave * 0.5) * amt;
@@ -896,10 +956,19 @@ interface CellPack {
   sweep: Float32Array;
   patch: Float32Array;
   style: string[];
+  planeEnd: Int32Array; // cells sorted by plane: [endSky, endFar, endNear]
+  accent: Uint8Array;
   count: number;
 }
 
-function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin: number): CellPack {
+function buildCellPack(
+  spec: BuildSpec,
+  noise: Noise,
+  img: ImageData,
+  nearA: ImageData,
+  farA: ImageData,
+  refMargin: number,
+): CellPack {
   const rect: number[] = [];
   const rgbv: number[] = [];
   const alpha: number[] = [];
@@ -907,6 +976,8 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
   const prob: number[] = [];
   const sweep: number[] = [];
   const patch: number[] = [];
+  const plane: number[] = []; // 0 sky, 1 far, 2 near
+  const accent: number[] = [];
   if (spec.bit <= 0) {
     return {
       rect: new Float32Array(0),
@@ -917,6 +988,8 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
       sweep: new Float32Array(0),
       patch: new Float32Array(0),
       style: [],
+      planeEnd: Int32Array.from([0, 0, 0]),
+      accent: new Uint8Array(0),
       count: 0,
     };
   }
@@ -924,6 +997,8 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
   const d = img.data;
   const W = img.width;
   const H = img.height;
+  const nd = nearA.data;
+  const fd = farA.data;
   const cellPx = Math.max(2, Math.round(spec.cellU));
   const minChild = Math.max(cellPx / 4, 2);
   const quantStep = 255 / spec.steps;
@@ -986,7 +1061,9 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
     let cr = clamp(avg[0] * kk, 0, 255);
     let cg = clamp(avg[1] * kk, 0, 255);
     let cb = clamp(avg[2] * kk, 0, 255);
+    let acc = 0;
     if (accents.length && noise.hash3(ax, ay, CH_ACC + level) < accP) {
+      acc = 1;
       // Punctuation, not confetti: tint the hue, keep the cell's own brightness.
       const a = accents[(noise.hash3(ax, ay, CH_PICK + level) * accents.length) | 0];
       const tr = cr + (a[0] - cr) * 0.4;
@@ -1008,18 +1085,53 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
     // A smooth 0..1 field with ~⅓-frame features (2 octaves, max 0.75): the tide's
     // shoreline advances in coherent patches instead of hash-noise.
     patch.push(clamp(noise.fbm(cx * 3, cy * 3, LANE_PATCH, 2) / 0.75, 0, 1));
+    // The plane this cell rides — the near / far planes' alpha at its centre.
+    const kp = (clamp(Math.round(ay + sz / 2), 0, H - 1) * W + clamp(Math.round(ax + sz / 2), 0, W - 1)) * 4 + 3;
+    plane.push(nd[kp] >= 128 ? 2 : fd[kp] >= 128 ? 1 : 0);
+    accent.push(acc);
   };
 
   for (let y = 0; y < H; y += cellPx) {
     for (let x = 0; x < W; x += cellPx) walk(x, y, cellPx, 0);
   }
 
-  const alphaArr = Float32Array.from(alpha);
-  const rgbArr = Uint8Array.from(rgbv);
-  // Prebuilt fill styles from the PACKED values (float32 alpha), so the hot loop
-  // emits exactly the strings the per-cell rgba() call used to.
-  const style: string[] = new Array(alphaArr.length);
-  for (let i = 0; i < alphaArr.length; i++) {
+  // Sort the cells by plane (stable — the walk order is kept inside a plane) so
+  // the per-frame draw is three index ranges, one per plane transform.
+  const count = alpha.length;
+  const order: number[] = new Array(count);
+  for (let i = 0; i < count; i++) order[i] = i;
+  order.sort((a, b) => plane[a] - plane[b] || a - b);
+  const planeEnd = Int32Array.from([0, 0, 0]);
+  for (let i = 0; i < count; i++) planeEnd[plane[order[i]]]++;
+  planeEnd[1] += planeEnd[0];
+  planeEnd[2] += planeEnd[1];
+
+  const rectArr = new Float32Array(count * 4);
+  const rgbArr = new Uint8Array(count * 3);
+  const alphaArr = new Float32Array(count);
+  const survArr = new Float32Array(count);
+  const probArr = new Float32Array(count);
+  const sweepArr = new Float32Array(count);
+  const patchArr = new Float32Array(count);
+  const accentArr = new Uint8Array(count);
+  const style: string[] = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const j = order[i];
+    rectArr[i * 4] = rect[j * 4];
+    rectArr[i * 4 + 1] = rect[j * 4 + 1];
+    rectArr[i * 4 + 2] = rect[j * 4 + 2];
+    rectArr[i * 4 + 3] = rect[j * 4 + 3];
+    rgbArr[i * 3] = rgbv[j * 3];
+    rgbArr[i * 3 + 1] = rgbv[j * 3 + 1];
+    rgbArr[i * 3 + 2] = rgbv[j * 3 + 2];
+    alphaArr[i] = alpha[j];
+    survArr[i] = surv[j];
+    probArr[i] = prob[j];
+    sweepArr[i] = sweep[j];
+    patchArr[i] = patch[j];
+    accentArr[i] = accent[j];
+    // Prebuilt fill styles from the PACKED values (float32 alpha), so the hot loop
+    // emits exactly the strings the per-cell rgba() call used to.
     tmpCol[0] = rgbArr[i * 3];
     tmpCol[1] = rgbArr[i * 3 + 1];
     tmpCol[2] = rgbArr[i * 3 + 2];
@@ -1027,15 +1139,17 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
   }
 
   return {
-    rect: Float32Array.from(rect),
+    rect: rectArr,
     rgbv: rgbArr,
     alpha: alphaArr,
-    surv: Float32Array.from(surv),
-    prob: Float32Array.from(prob),
-    sweep: Float32Array.from(sweep),
-    patch: Float32Array.from(patch),
+    surv: survArr,
+    prob: probArr,
+    sweep: sweepArr,
+    patch: patchArr,
     style,
-    count: alphaArr.length,
+    planeEnd,
+    accent: accentArr,
+    count,
   };
 }
 
@@ -1054,18 +1168,29 @@ function buildRef(spec: BuildSpec, noise: Noise, seed: number): OilRef | null {
   if (!rctx) return null;
 
   // 1. REF underlay -> the raster the strokes lift their colour from.
-  paintUnderlayVector(rctx, REF, refMargin, spec, noise, seed);
+  paintUnderlayVector(rctx, REF, refMargin, spec, noise, seed, P_ALL);
   const underlayImg = rctx.getImageData(0, 0, RS, RS);
 
+  // 1b. the near and far planes ALONE — their alpha is the map that tags every
+  //     stroke and cell with the plane it rides. Painted into a third canvas so
+  //     the REF buffer keeps the full underlay (the blur scratch is canvas 1).
+  const pc = ensureCanvas(2, RS);
+  const pctx = ctxOf(pc, true);
+  if (!pctx) return null;
+  paintUnderlayVector(pctx, REF, refMargin, spec, noise, seed, P_NEAR);
+  const nearA = pctx.getImageData(0, 0, RS, RS);
+  paintUnderlayVector(pctx, REF, refMargin, spec, noise, seed, P_FAR);
+  const farA = pctx.getImageData(0, 0, RS, RS);
+
   // 2. strokes, then the REF composite the cells read (underlay + paint + tooth).
-  const strokePack = buildStrokePack(spec, noise, underlayImg, refMargin, seed);
-  drawStrokes(rctx, REF, refMargin, strokePack, spec.nStrokes);
+  const strokePack = buildStrokePack(spec, noise, underlayImg, nearA, farA, refMargin, seed);
+  drawStrokes(rctx, REF, refMargin, strokePack, spec.nStrokes, P_ALL);
   const compositeImg = rctx.getImageData(0, 0, RS, RS);
   if (spec.tooth > 0) toothInPlace(compositeImg.data, RS, RS, spec.tooth);
   // (no putImageData — the REF buffer is only ever sampled, never displayed)
 
-  // 4. the bit cells, read off the REF composite.
-  const cells = buildCellPack(spec, noise, compositeImg, refMargin);
+  // 4. the bit cells, read off the REF composite, tagged + sorted by plane.
+  const cells = buildCellPack(spec, noise, compositeImg, nearA, farA, refMargin);
 
   const ref: OilRef = {
     keyVec: Float64Array.from(keyTmp),
@@ -1083,6 +1208,8 @@ function buildRef(spec: BuildSpec, noise: Noise, seed: number): OilRef | null {
     cellSweep: cells.sweep,
     cellPatch: cells.patch,
     cellStyle: cells.style,
+    cellPlaneEnd: cells.planeEnd,
+    cellAccent: cells.accent,
     cellCount: cells.count,
   };
   oilStats.refBuilds++;
@@ -1111,32 +1238,47 @@ function slotRef(ref: OilRef): void {
   else refSlots[refVictim] = ref;
 }
 
-/** Step 3: the underlay + baked strokes + tooth at bucket `B`, into `slot`. */
+/** Step 3: the underlay + baked strokes + tooth at bucket `B`, into `slot` — as
+ *  the three depth planes, or ONE merged plane for a still-only raster at
+ *  MERGE_ABOVE and up (memory). Source-over compositing is associative, so the
+ *  three planes drawn at rest are the merged paint, pixel for pixel. */
 function buildRaster(slot: RasterSlot, B: number, ref: OilRef, noise: Noise, seed: number): boolean {
   slot.B = 0; // never valid until the build completes
   const Mb = Math.round(OVERSCAN * B);
   const Bo = B + 2 * Mb;
-  const c = slot.canvas;
-  if (c.width !== Bo || c.height !== Bo) {
-    c.width = Bo;
-    c.height = Bo;
-  }
-  const sctx = ctxOf(c, false);
-  if (!sctx) return false;
-
-  paintUnderlayVector(sctx, B, Mb, ref.spec, noise, seed);
-  drawStrokes(sctx, B, Mb, ref.strokePack, ref.strokeCount);
-  if (ref.spec.tooth > 0) {
-    const img = sctx.getImageData(0, 0, Bo, Bo);
-    toothInPlace(img.data, Bo, Bo, ref.spec.tooth);
-    sctx.putImageData(img, 0, 0);
+  const merged = B >= MERGE_ABOVE;
+  const masks = merged ? [P_ALL] : [P_SKY, P_FAR, P_NEAR];
+  while (slot.planes.length > masks.length) slot.planes.pop(); // release the extra planes
+  for (let i = 0; i < masks.length; i++) {
+    let c = slot.planes[i];
+    if (!c) {
+      c = document.createElement("canvas");
+      slot.planes[i] = c;
+    }
+    if (c.width !== Bo || c.height !== Bo) {
+      c.width = Bo;
+      c.height = Bo;
+    }
+    const sctx = ctxOf(c, false);
+    if (!sctx) return false;
+    const mask = masks[i];
+    paintUnderlayVector(sctx, B, Mb, ref.spec, noise, seed, mask);
+    drawStrokes(sctx, B, Mb, ref.strokePack, ref.strokeCount, mask);
+    if (ref.spec.tooth > 0) {
+      const img = sctx.getImageData(0, 0, Bo, Bo);
+      // The far / near planes are transparent outside their paint: leave their
+      // soft edges alone (a tooth through premultiplied 8-bit alpha speckles).
+      toothInPlace(img.data, Bo, Bo, ref.spec.tooth, mask === P_FAR || mask === P_NEAR);
+      sctx.putImageData(img, 0, 0);
+    }
   }
   // A PNG-export raster leaves a ~42 MB scratch behind — release it.
-  if (B >= 2048) ensureCanvas(1, 1);
+  if (B >= MERGE_ABOVE) ensureCanvas(1, 1);
 
   slot.keyVec.set(keyTmp);
   slot.B = B;
   slot.Mb = Mb;
+  slot.merged = merged;
   slot.lastUse = frameNo;
   oilStats.rasterBuilds++;
   return true;
@@ -1159,7 +1301,8 @@ function ensureRaster(B: number, ref: OilRef, noise: Noise, seed: number): Raste
       keyVec: new Float64Array(KEY_LEN),
       B: 0,
       Mb: 0,
-      canvas: document.createElement("canvas"),
+      planes: [],
+      merged: false,
       lastUse: 0,
     };
     rasterSlots.push(slot);
@@ -1202,24 +1345,27 @@ function drawCells(
   ctx: CanvasRenderingContext2D,
   S: number,
   ref: OilRef,
+  from: number, // index range — one plane's cells (the pack is sorted by plane)
+  to: number,
   F: number,
   G: number,
   breath: number,
+  accentScl: number,
   flowP: number,
   sx: number,
   sy: number,
 ): void {
-  const n = ref.cellCount;
-  if (n === 0) return;
+  if (to <= from) return;
   const rect = ref.cellRect;
   const surv = ref.cellSurv;
   const prob = ref.cellProb;
   const sweep = ref.cellSweep;
   const patch = ref.cellPatch;
   const style = ref.cellStyle;
+  const accent = ref.cellAccent;
   const tideOn = F > 0;
   const invB = 1 / BANDW;
-  for (let i = 0; i < n; i++) {
+  for (let i = from; i < to; i++) {
     const slack = prob[i] - surv[i];
     let pop = 1;
     if (slack <= 0) {
@@ -1238,7 +1384,7 @@ function drawCells(
     const y0 = rect[o + 1] * S;
     const w = rect[o + 2] * S;
     const h = rect[o + 3] * S;
-    const scl = pop * breath;
+    const scl = pop * breath * (accent[i] ? accentScl : 1);
     ctx.fillStyle = style[i];
     if (scl === 1) {
       ctx.fillRect(x0, y0, w, h);
@@ -1315,6 +1461,11 @@ const oil: FieldEngine = {
     const swayA = sl(p.oilSway, 50) / 100; // Camera
     const flowP = sl(p.oilFlow, 35) / 100; // Tide drift
     const dissolveP = sl(p.oilDissolve, 45) / 100; // Tide reach
+    const parallaxP = sl(p.oilParallax, 55) / 100; // plane separation
+    const cloudP = sl(p.oilClouds, 45) / 100; // cloud drift
+    const swellP = sl(p.oilSwell, 40) / 100; // paint swell
+    const shimP = sl(p.oilShimmer, 30) / 100; // heat shimmer
+    const crushP = sl(p.oilCrush, 50) / 100; // crush pulse
 
     // ── (4) Cache key — names every input the builds read, nothing more ────────
     keyTmp[0] = fin(seed);
@@ -1401,20 +1552,49 @@ const oil: FieldEngine = {
     let F = 0; // tide front, from the crushed edge (t=1) toward the painted edge (t=0)
     let G = 0; // participation gate
     let breath = 1;
+    let accentScl = 1; // accent cells pop on the kick
+    let cloudDx = 0; // sky plane slide (cloud drift), px
+    let swellA = 0; // near-plane swell amplitude, px (clip-gated)
+    let swellK = 0; // near-plane kick push, px
+    let shimA = 0; // far-plane shimmer amplitude, px (clip-gated)
+    let psi = 0;
     if (ANIM) {
       const phi = anim.loopPhase;
-      const psi = clipPhaseOf(anim, p);
+      psi = clipPhaseOf(anim, p);
       const b = anim.beat;
-      const kickS = Math.min(anim.kickEnv, 1.4) * att(b, 0.1);
-      const pumpS = Math.min(anim.pumpEnv, 1.4) * att(b, 0.2);
+      // Track mode: `beat` is an onset FEATURE (strength), not a phase — the
+      // phase-shaped attack / release below would zero the kick exactly on the
+      // hits, so the audio springs are taken as they come.
+      const isTrack = anim.track === true;
+      const kickS = Math.min(anim.kickEnv, 1.4) * (isTrack ? 1 : att(b, 0.1));
+      const pumpS = Math.min(anim.pumpEnv, 1.4) * (isTrack ? 1 : att(b, 0.2));
       // The spring is released over the last quarter of the beat so the shove is
       // 0 at BOTH b = 0 and b -> 1: the damped cosine is not 0 as the beat wraps,
       // and without the release the camera stepped at every beat seam.
-      const springS = clamp(anim.kickSpring, -1.2, 1.2) * att(b, 0.1) * Math.min(1, 4 * (1 - b));
+      const springS =
+        clamp(anim.kickSpring, -1.2, 1.2) * (isTrack ? 1 : att(b, 0.1) * Math.min(1, 4 * (1 - b)));
+      // The Drift group — Wander / Swirl / Speed sliders in BPM mode, the live
+      // mid / high / energy features in Track mode. AMPLITUDE only, never a
+      // rate: a rate would break the clip seam.
+      const driftA = clamp(anim.drift, 0, 1.2);
+      const swirlA = clamp(anim.swirl, 0, 1.2);
+      const speedA = clamp(anim.speed, 0, 1.4);
       const envT = 0.5 * (1 - Math.cos(TAU * psi)); // the tide / the clip
       const envC = 0.5 * (1 - Math.cos(TAU * phi)); // the cycle breath
       const cs = Math.cos(TAU * psi);
       const sn = Math.sin(TAU * psi);
+      const surge = Math.min(1, 6 * envT); // gates every beat-driven term to 0 at ψ = 0
+
+      // CLOUDS drift across the sky plane over the clip (sin 2πψ is 0 at the seam
+      // and C¹ through it); energy widens the drift a little.
+      cloudDx = S * 0.035 * cloudP * (0.6 + 0.4 * speedA) * sn;
+      // SWELL — a travelling wave pushes the near paint sideways, strip by strip.
+      // Its amplitude rides the clip envelope (so frame 0 is the still) with a
+      // kick push on top; Wander (mids) scales it.
+      swellA = S * 0.009 * swellP * (0.5 + 0.5 * driftA) * envT;
+      swellK = S * 0.005 * swellP * kickS * surge;
+      // SHIMMER — the far plane wobbles like heat; Swirl (highs) scales it.
+      shimA = S * 0.0035 * shimP * (0.4 + 0.6 * swirlA) * envT;
 
       // CAMERA — one plane, no roll (a lens roll on a painting reads as shake).
       // Wander on a closed noise circle over the clip, a lean WITH the tide toward
@@ -1433,43 +1613,107 @@ const oil: FieldEngine = {
       // breath both scale with Camera, so at 0 the frame is static between beats).
       sc = 1 + 0.026 * swayA * envT + 0.01 * swayA * envC + 0.012 * pumpS + 0.008 * kickS;
 
-      // TIDE — the front rides envT out to REACH and back; the kick surge is gated
-      // by envT so F is EXACTLY 0 at ψ = 0 for any kick. The crush thumps ≤ 3 %.
+      // TIDE + CRUSH PULSE — the front rides envT out to REACH and back; the kick
+      // surge (and the bass surge the Crush slider adds) is gated by `surge` so F
+      // is EXACTLY 0 at ψ = 0 for any kick. Cells breathe on the kick / bass and
+      // the accent cells pop on the kick, more when the highs are hot.
       G = BOOST_MAX * Math.pow(dissolveP, 1.5);
       const reach = 0.9 + 0.9 * dissolveP;
-      F = reach * envT + KSURGE * kickS * Math.min(1, 6 * envT);
-      breath = 1 + Math.min(BREATH_MAX, dissolveP * (KBREATH * kickS + PBREATH * pumpS));
+      F = reach * envT + (KSURGE * kickS + 0.25 * crushP * pumpS) * surge;
+      breath =
+        1 +
+        Math.min(
+          BREATH_MAX + 0.04 * crushP,
+          dissolveP * (KBREATH * kickS + PBREATH * pumpS) + crushP * (0.05 * kickS + 0.03 * pumpS),
+        );
+      accentScl = 1 + 0.12 * crushP * kickS * (0.4 + 0.6 * swirlA) * surge;
     }
 
     ctx.save();
-
-    // ── (6) CAMERA transform about the horizon pivot (a push-in grows land
-    // downward and sky upward). |tx| ≤ 0.047·S, |ty| ≤ 0.040·S, sc ≥ 1 about an
-    // interior pivot ⇒ never samples outside the 6 % overscan. Skipped entirely
-    // when it would be the identity, so the still and frame 0 share one path.
-    if (tx !== 0 || ty !== 0 || sc !== 1) {
-      const px = 0.5 * S;
-      const py = horizon * S;
-      ctx.translate(px + tx, py + ty);
-      ctx.scale(sc, sc);
-      ctx.translate(-px, -py);
-    }
-
-    // ── (7) the painted raster — 1:1 at an integer offset when S is its bucket
-    // (the still), else one smoothed scaled blit (the raster is the only thing
-    // resampled; strokes are baked into it and the cells are vectors at S).
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    const k = S / B;
-    if (k === 1) {
-      ctx.drawImage(slot.canvas, -slot.Mb, -slot.Mb);
-    } else {
-      const Bo = B + 2 * slot.Mb;
-      ctx.drawImage(slot.canvas, -slot.Mb * k, -slot.Mb * k, Bo * k, Bo * k);
-    }
 
-    // ── (8) the bit cells — glued to the paint (inside the same transform) ─────
-    drawCells(ctx, S, ref, F, G, breath, flowP, sx, sy);
+    // ── (6) CAMERA, per plane, about the horizon pivot (a push-in grows land
+    // downward and sky upward). The near plane takes the whole camera; the far
+    // and sky planes lag it by Parallax — a dolly through the painting. |tx| ≤
+    // 0.047·S, |ty| ≤ 0.040·S, sc ≥ 1 about an interior pivot ⇒ never samples
+    // outside the 6 % overscan. Skipped when it is the identity, so the still
+    // and frame 0 share one path.
+    const px = 0.5 * S;
+    const py = horizon * S;
+    const planeXf = (z: number): void => {
+      const t = 1 - (1 - z) * parallaxP; // this plane's share of the camera
+      const ptx = tx * t;
+      const pty = ty * t;
+      const psc = 1 + (sc - 1) * t;
+      if (ptx !== 0 || pty !== 0 || psc !== 1) {
+        ctx.translate(px + ptx, py + pty);
+        ctx.scale(psc, psc);
+        ctx.translate(-px, -py);
+      }
+    };
+
+    // ── (7) the painted planes — 1:1 at an integer offset when S is their
+    // bucket (the still), else one smoothed scaled blit each (the planes are the
+    // only thing resampled; strokes are baked into them, the cells are vectors).
+    const k = S / B;
+    const Mb = slot.Mb;
+    const Bo = B + 2 * Mb;
+    const blit = (c: HTMLCanvasElement, dx: number): void => {
+      if (k === 1) ctx.drawImage(c, -Mb + dx, -Mb);
+      else ctx.drawImage(c, -Mb * k + dx, -Mb * k, Bo * k, Bo * k);
+    };
+    // A plane in `n` horizontal strips, each pushed sideways by `off(i, yMid)`
+    // (yMid in frame fractions) — the swell and the shimmer. Rows map 1:1 to the
+    // plane's pixels through k, so at rest this is the plain blit.
+    const strips = (c: HTMLCanvasElement, n: number, off: (i: number, ym: number) => number): void => {
+      const rowsPer = Bo / n;
+      for (let i = 0; i < n; i++) {
+        const sy0 = Math.floor(i * rowsPer);
+        const sy1 = i === n - 1 ? Bo : Math.floor((i + 1) * rowsPer);
+        const dx = off(i, ((sy0 + sy1) * 0.5 - Mb) / B);
+        ctx.drawImage(c, 0, sy0, Bo, sy1 - sy0, -Mb * k + dx, (sy0 - Mb) * k, Bo * k, (sy1 - sy0) * k);
+      }
+    };
+
+    const pe = ref.cellPlaneEnd;
+    if (slot.merged) {
+      // Still-only raster: one plane, the full camera (it never animates).
+      planeXf(1);
+      blit(slot.planes[0], 0);
+      drawCells(ctx, S, ref, 0, ref.cellCount, F, G, breath, accentScl, flowP, sx, sy);
+    } else {
+      // sky + clouds — drifting
+      ctx.save();
+      planeXf(1 - PX_SKY);
+      blit(slot.planes[0], cloudDx);
+      drawCells(ctx, S, ref, 0, pe[0], F, G, breath, accentScl, flowP, sx, sy);
+      ctx.restore();
+      // far ridges — shimmering
+      ctx.save();
+      planeXf(1 - PX_FAR);
+      if (shimA !== 0) {
+        strips(slot.planes[1], SHIM_STRIPS, (i) => shimA * Math.sin(TAU * 3 * psi + i * 1.7 + cam.camx));
+      } else {
+        blit(slot.planes[1], 0);
+      }
+      drawCells(ctx, S, ref, pe[0], pe[1], F, G, breath, accentScl, flowP, sx, sy);
+      ctx.restore();
+      // near land — the swell
+      ctx.save();
+      planeXf(1);
+      if (swellA !== 0 || swellK !== 0) {
+        strips(
+          slot.planes[2],
+          SWELL_STRIPS,
+          (_, ym) => swellA * Math.sin(TAU * (2 * psi - 1.6 * ym)) + swellK * Math.sin(TAU * (0.25 - 1.6 * ym)),
+        );
+      } else {
+        blit(slot.planes[2], 0);
+      }
+      drawCells(ctx, S, ref, pe[1], pe[2], F, G, breath, accentScl, flowP, sx, sy);
+      ctx.restore();
+    }
 
     ctx.restore();
   },
@@ -1539,8 +1783,13 @@ function oilParams(): ParamDef[] {
     { key: "oilAccent", label: "ACCENT CELLS", type: "range", group: "composition", min: 0, max: 100, default: 4 },
     { key: "oilSweep", label: "DISSOLVE SWEEP", type: "range", group: "composition", min: 0, max: 100, default: 53 },
     { key: "oilSway", label: "CAMERA", type: "range", group: "motion", min: 0, max: 100, default: 50 },
-    { key: "oilFlow", label: "TIDE DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 35 },
+    { key: "oilParallax", label: "PARALLAX", type: "range", group: "motion", min: 0, max: 100, default: 55 },
+    { key: "oilClouds", label: "CLOUD DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 45 },
+    { key: "oilSwell", label: "PAINT SWELL", type: "range", group: "motion", min: 0, max: 100, default: 40 },
+    { key: "oilShimmer", label: "HEAT SHIMMER", type: "range", group: "motion", min: 0, max: 100, default: 30 },
     { key: "oilDissolve", label: "TIDE REACH", type: "range", group: "motion", min: 0, max: 100, default: 45 },
+    { key: "oilFlow", label: "TIDE DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 35 },
+    { key: "oilCrush", label: "CRUSH PULSE", type: "range", group: "motion", min: 0, max: 100, default: 50 },
   ];
 }
 

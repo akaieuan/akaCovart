@@ -409,8 +409,13 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     // ≈ 6 s), so the loop length sets the pace of the whole motion.
     { kind: "slider", key: "txtLoopBeats", label: "Loop length", min: 0, max: 100 },
     { kind: "slider", key: "oilSway", label: "Camera", min: 0, max: 100 },
-    { kind: "slider", key: "oilFlow", label: "Tide drift", min: 0, max: 100 },
+    { kind: "slider", key: "oilParallax", label: "Parallax", min: 0, max: 100 },
+    { kind: "slider", key: "oilClouds", label: "Cloud drift", min: 0, max: 100 },
+    { kind: "slider", key: "oilSwell", label: "Paint swell", min: 0, max: 100 },
+    { kind: "slider", key: "oilShimmer", label: "Heat shimmer", min: 0, max: 100 },
     { kind: "slider", key: "oilDissolve", label: "Tide reach", min: 0, max: 100 },
+    { kind: "slider", key: "oilFlow", label: "Tide drift", min: 0, max: 100 },
+    { kind: "slider", key: "oilCrush", label: "Crush pulse", min: 0, max: 100 },
   ],
   grid: [
     { kind: "slider", key: "gridRipple", label: "Ripple", min: 0, max: 100 },
@@ -471,7 +476,8 @@ export const OIL_TEXTURE_GROUP: ControlGroup = {
   ],
 };
 
-// Engines whose motion never reads Speed / Wander / Swirl (Oil's tide and camera
-// run on the beat + the clip clock only), so the Drift group is hidden for them
-// rather than shown inert.
-export const HIDE_DRIFT_FOR: ReadonlySet<string> = new Set(["oil"]);
+// Engines whose motion never reads Speed / Wander / Swirl, so the Drift group is
+// hidden for them rather than shown inert. (Oil reads all three as amplitude —
+// in Track mode they are the live mid / high / energy features — so it is not
+// listed; the set stays for the next engine that needs it.)
+export const HIDE_DRIFT_FOR: ReadonlySet<string> = new Set<string>([]);

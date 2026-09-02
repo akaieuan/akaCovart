@@ -54,6 +54,11 @@ export interface AnimState {
   // rides the clip (Oil's tide) falls back to loop.ts's formula on `rt` when a
   // driver leaves it undefined.
   clipPhase?: number;
+  // TRUE when the Track driver produced this state. There `beat` is a smoothed
+  // onset FEATURE (0..1 strength), not a phase, and `drift` / `swirl` / `speed`
+  // are live audio features (mid / high / energy) rather than slider constants —
+  // an engine that shapes its beat terms by phase must not do so in track mode.
+  track?: boolean;
   kickEnv: number; // smooth attack-decay impulse (kick * (1-beat)^3.4) — calm pulse
   kickSpring: number; // damped bounce, SIGNED (overshoots then settles)
   pumpEnv: number; // breathing (pump * (1-beat)^2.0)
