@@ -382,8 +382,8 @@ const defaults = {
   oilDissolve: 45,
   oilParallax: 55,
   oilClouds: 45,
-  oilSwell: 40,
-  oilShimmer: 30,
+  oilSwell: 55,
+  oilShimmer: 45,
   oilCrush: 50,
 
   // ── TxT focus defaults — lively, on-brand showcase ──

@@ -159,8 +159,8 @@ const PX_FAR = 0.45;
 const PX_SKY = 0.75;
 // Horizontal strips the near / far planes are blitted in while a swell / shimmer
 // is live, so each strip can be pushed sideways on its own.
-const SWELL_STRIPS = 20;
-const SHIM_STRIPS = 10;
+const SWELL_STRIPS = 48;
+const SHIM_STRIPS = 28;
 const MERGE_ABOVE = 2048;
 
 // ── the bit tide ─────────────────────────────────────────────────────────────
@@ -1463,8 +1463,8 @@ const oil: FieldEngine = {
     const dissolveP = sl(p.oilDissolve, 45) / 100; // Tide reach
     const parallaxP = sl(p.oilParallax, 55) / 100; // plane separation
     const cloudP = sl(p.oilClouds, 45) / 100; // cloud drift
-    const swellP = sl(p.oilSwell, 40) / 100; // paint swell
-    const shimP = sl(p.oilShimmer, 30) / 100; // heat shimmer
+    const swellP = sl(p.oilSwell, 55) / 100; // paint swell
+    const shimP = sl(p.oilShimmer, 45) / 100; // heat shimmer
     const crushP = sl(p.oilCrush, 50) / 100; // crush pulse
 
     // ── (4) Cache key — names every input the builds read, nothing more ────────
@@ -1591,10 +1591,10 @@ const oil: FieldEngine = {
       // SWELL — a travelling wave pushes the near paint sideways, strip by strip.
       // Its amplitude rides the clip envelope (so frame 0 is the still) with a
       // kick push on top; Wander (mids) scales it.
-      swellA = S * 0.009 * swellP * (0.5 + 0.5 * driftA) * envT;
-      swellK = S * 0.005 * swellP * kickS * surge;
+      swellA = S * 0.028 * swellP * (0.6 + 0.4 * driftA) * envT;
+      swellK = S * 0.014 * swellP * kickS * surge;
       // SHIMMER — the far plane wobbles like heat; Swirl (highs) scales it.
-      shimA = S * 0.0035 * shimP * (0.4 + 0.6 * swirlA) * envT;
+      shimA = S * 0.016 * shimP * (0.5 + 0.5 * swirlA) * envT;
 
       // CAMERA — one plane, no roll (a lens roll on a painting reads as shake).
       // Wander on a closed noise circle over the clip, a lean WITH the tide toward
@@ -1641,7 +1641,7 @@ const oil: FieldEngine = {
     // and frame 0 share one path.
     const px = 0.5 * S;
     const py = horizon * S;
-    const planeXf = (z: number): void => {
+    const planeXf = (z: number): number => {
       const t = 1 - (1 - z) * parallaxP; // this plane's share of the camera
       const ptx = tx * t;
       const pty = ty * t;
@@ -1651,6 +1651,7 @@ const oil: FieldEngine = {
         ctx.scale(psc, psc);
         ctx.translate(-px, -py);
       }
+      return Math.abs(ptx); // the overscan this plane's pan already spends
     };
 
     // ── (7) the painted planes — 1:1 at an integer offset when S is their
@@ -1665,13 +1666,16 @@ const oil: FieldEngine = {
     };
     // A plane in `n` horizontal strips, each pushed sideways by `off(i, yMid)`
     // (yMid in frame fractions) — the swell and the shimmer. Rows map 1:1 to the
-    // plane's pixels through k, so at rest this is the plain blit.
-    const strips = (c: HTMLCanvasElement, n: number, off: (i: number, ym: number) => number): void => {
+    // plane's pixels through k, so at rest this is the plain blit. `lim` is the
+    // overscan the plane has left after its pan: a strip never slides past its
+    // own edge, so the frame edge never shows the plane behind (containable).
+    const strips = (c: HTMLCanvasElement, n: number, lim: number, off: (i: number, ym: number) => number): void => {
       const rowsPer = Bo / n;
+      const L = Math.max(0, lim);
       for (let i = 0; i < n; i++) {
         const sy0 = Math.floor(i * rowsPer);
         const sy1 = i === n - 1 ? Bo : Math.floor((i + 1) * rowsPer);
-        const dx = off(i, ((sy0 + sy1) * 0.5 - Mb) / B);
+        const dx = clamp(off(i, ((sy0 + sy1) * 0.5 - Mb) / B), -L, L);
         ctx.drawImage(c, 0, sy0, Bo, sy1 - sy0, -Mb * k + dx, (sy0 - Mb) * k, Bo * k, (sy1 - sy0) * k);
       }
     };
@@ -1691,9 +1695,18 @@ const oil: FieldEngine = {
       ctx.restore();
       // far ridges — shimmering
       ctx.save();
-      planeXf(1 - PX_FAR);
+      const usedFar = planeXf(1 - PX_FAR);
       if (shimA !== 0) {
-        strips(slot.planes[1], SHIM_STRIPS, (i) => shimA * Math.sin(TAU * 3 * psi + i * 1.7 + cam.camx));
+        // smooth in space (a wave down the plane + a faster flutter), so at this
+        // amplitude it reads as heat, not as torn strips
+        strips(
+          slot.planes[1],
+          SHIM_STRIPS,
+          Mb * k - usedFar,
+          (_, ym) =>
+            shimA *
+            (0.7 * Math.sin(TAU * (3 * psi + 2.5 * ym) + cam.camx) + 0.3 * Math.sin(TAU * (5 * psi - 4 * ym))),
+        );
       } else {
         blit(slot.planes[1], 0);
       }
@@ -1701,11 +1714,12 @@ const oil: FieldEngine = {
       ctx.restore();
       // near land — the swell
       ctx.save();
-      planeXf(1);
+      const usedNear = planeXf(1);
       if (swellA !== 0 || swellK !== 0) {
         strips(
           slot.planes[2],
           SWELL_STRIPS,
+          Mb * k - usedNear,
           (_, ym) => swellA * Math.sin(TAU * (2 * psi - 1.6 * ym)) + swellK * Math.sin(TAU * (0.25 - 1.6 * ym)),
         );
       } else {
@@ -1785,8 +1799,8 @@ function oilParams(): ParamDef[] {
     { key: "oilSway", label: "CAMERA", type: "range", group: "motion", min: 0, max: 100, default: 50 },
     { key: "oilParallax", label: "PARALLAX", type: "range", group: "motion", min: 0, max: 100, default: 55 },
     { key: "oilClouds", label: "CLOUD DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 45 },
-    { key: "oilSwell", label: "PAINT SWELL", type: "range", group: "motion", min: 0, max: 100, default: 40 },
-    { key: "oilShimmer", label: "HEAT SHIMMER", type: "range", group: "motion", min: 0, max: 100, default: 30 },
+    { key: "oilSwell", label: "PAINT SWELL", type: "range", group: "motion", min: 0, max: 100, default: 55 },
+    { key: "oilShimmer", label: "HEAT SHIMMER", type: "range", group: "motion", min: 0, max: 100, default: 45 },
     { key: "oilDissolve", label: "TIDE REACH", type: "range", group: "motion", min: 0, max: 100, default: 45 },
     { key: "oilFlow", label: "TIDE DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 35 },
     { key: "oilCrush", label: "CRUSH PULSE", type: "range", group: "motion", min: 0, max: 100, default: 50 },
