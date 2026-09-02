@@ -2,7 +2,7 @@
 
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { CONTROL, FOCUS } from "@/components/controls/primitives/typography";
+import { CONTROL, FOCUS, TRAY, TRAY_ACTIVE, TRAY_IDLE, TRAY_ITEM } from "@/components/controls/primitives/typography";
 
 /** STILL / ANIMATE mode toggle. (Audio is now a driver of Animate, not a mode.) */
 export function ModeToggle({ className }: { className?: string }) {
@@ -19,10 +19,7 @@ export function ModeToggle({ className }: { className?: string }) {
     // Fill carries the active state, the weight never changes, so the label
     // doesn't jitter on toggle.
     <div
-      className={cn(
-        "grid grid-cols-2 gap-1 rounded-control border border-edge bg-grey-880 p-1",
-        className,
-      )}
+      className={cn(TRAY, className)}
     >
       {opts.map((o) => {
         const active = mode === o.value;
@@ -32,14 +29,7 @@ export function ModeToggle({ className }: { className?: string }) {
             type="button"
             onClick={() => setState({ mode: o.value })}
             aria-pressed={active}
-            className={cn(
-              CONTROL,
-              FOCUS,
-              "flex h-8 max-sm:h-10 items-center justify-center rounded-[2px] px-1 transition-colors",
-              active
-                ? "bg-grey-100 text-bg"
-                : "text-grey-250 hover:bg-wash-active hover:text-grey-100 active:bg-wash-active",
-            )}
+            className={cn(CONTROL, FOCUS, TRAY_ITEM, active ? TRAY_ACTIVE : TRAY_IDLE)}
           >
             {o.label}
           </button>

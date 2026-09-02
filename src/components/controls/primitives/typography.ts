@@ -38,3 +38,16 @@ export const FOCUS = "focus-ring";
 export const FOCUS_FIELD = "focus-field";
 /** Landing hero paragraph — the one run of prose in the app (13px, 14px ≥ sm). */
 export const COPY = "font-sans text-[13px]/[20px] font-normal sm:text-[14px]/[22px]";
+
+// ── The tray (segmented / toggle recipe, shared) ─────────────────────────────
+// One edge, grey-880 fill, 4px inset. Items are sized by their LABEL (10px
+// interior padding, never narrower than the text) and the row WRAPS when the
+// labels don't fit — a label must never spill past its own fill. Fill carries
+// the active state; weight never changes, so nothing jitters on select.
+export const TRAY = "flex flex-wrap items-center gap-1 rounded-control border border-edge bg-grey-880 p-1";
+export const TRAY_ITEM =
+  "inline-flex h-8 max-sm:h-10 min-w-fit flex-auto items-center justify-center whitespace-nowrap rounded-[2px] px-2.5 transition-colors";
+export const TRAY_IDLE = "text-grey-250 hover:bg-wash-active hover:text-grey-100 active:bg-wash-active";
+export const TRAY_ACTIVE = "bg-grey-100 text-bg";
+/** TRAY_ACTIVE for base-ui Toggle items, keyed on data-pressed. */
+export const TRAY_PRESSED = "data-pressed:bg-grey-100 data-pressed:text-bg data-pressed:hover:bg-grey-100";
