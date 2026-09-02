@@ -10,8 +10,14 @@ import { audioSession, transport, zeroFeatures } from "@/audio";
 import type { AudioFeatures } from "@/audio";
 import { createTrackMotion, stepTrackMotion, type TrackMotion } from "@/audio/trackMotion";
 import { applyAuto } from "./autoModulate";
+import { cn } from "@/lib/utils";
+import { DATA, MICRO } from "@/components/controls/primitives/typography";
 
 const DISPLAY = 880;
+
+// Caption numerals: DATA on desktop, one step smaller on phones where the
+// caption competes with the dock for height.
+const NUM = cn(DATA, "text-grey-200 max-sm:text-[11px]");
 // Cheaper backing-store size used for "draft" frames while params are actively
 // changing; we snap back to DISPLAY (full quality) once the value settles.
 const DRAFT = 560;
@@ -585,7 +591,7 @@ export default function CanvasStage({
   };
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-start gap-2.5 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] px-3 pt-14 pb-2 [container-type:size] sm:gap-[18px] sm:px-8 md:justify-center md:pt-16 md:pb-8">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-start gap-2.5 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,#121215,#0a0a0b_72%)] px-3 pt-16 pb-2 [container-type:size] sm:gap-[18px] sm:px-8 md:justify-center md:pb-8">
       <div
         className="relative overflow-hidden bg-black shadow-[0_30px_80px_rgba(0,0,0,0.65),0_0_0_1px_#1c1c20] transition-[width,height] duration-300 ease-out"
         style={frameStyle}
@@ -599,9 +605,20 @@ export default function CanvasStage({
           onPointerCancel={onPointerUp}
         />
       </div>
-      <div className="font-sans text-[11px] tabular-nums text-grey-400">
-        {fmt.w} × {fmt.h} px&nbsp;&nbsp;·&nbsp;&nbsp;{fmt.label}&nbsp;{fmt.ratio}
-        &nbsp;&nbsp;·&nbsp;&nbsp;Seed&nbsp;{state.seed >>> 0}
+      {/* Caption: words stay sans (MICRO); only the numerals take the mono DATA
+          role. Separators are decorative, so they're hidden from readers. */}
+      <div className={cn(MICRO, "flex items-center gap-3 text-grey-300")}>
+        <span>
+          <span className={NUM}>{fmt.w} × {fmt.h}</span> px
+        </span>
+        <span aria-hidden className="text-grey-500">·</span>
+        <span>
+          {fmt.label} <span className={NUM}>{fmt.ratio}</span>
+        </span>
+        <span aria-hidden className="text-grey-500">·</span>
+        <span>
+          Seed <span className={NUM}>{state.seed >>> 0}</span>
+        </span>
       </div>
     </section>
   );

@@ -15,6 +15,7 @@ import { listEnginesByFocus } from "@/engine";
 import { useStudio } from "@/lib/store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
+import { FOCUS, MICRO } from "@/components/controls/primitives/typography";
 
 // Engine display config. Labels + icons are driven from this single map so the
 // selector stays DRY; ordering/availability still defers to the registry.
@@ -87,9 +88,11 @@ export default function EngineSelector({ className }: { className?: string }) {
         const next = vals.find((v) => v !== engine);
         if (next) setState({ engine: next });
       }}
-      spacing={0}
+      spacing={1}
       className={cn(
-        "grid w-full gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
+        // Shared tray recipe (ModeToggle / Segmented): 4px inset, 1px edge,
+        // 40px items → a 48px control.
+        "grid w-full gap-1 rounded-control border border-edge bg-grey-880 p-1",
         GRID_COLS[engines.length] ?? "grid-cols-5",
         className,
       )}
@@ -100,15 +103,11 @@ export default function EngineSelector({ className }: { className?: string }) {
           value={value}
           aria-label={label}
           className={cn(
-            "flex h-11 flex-col items-center justify-center gap-[3px] rounded-[3px] border-0 bg-transparent px-0.5 text-[10px] leading-tight font-normal text-grey-300 transition-colors",
-            // idle hover
-            "hover:bg-grey-850 hover:text-grey-150",
-            // SELECTED: override the shadcn/base-ui default (data-[state=on]:bg-muted /
-            // aria-pressed:bg-muted = grey) so the active engine reads as a white pill.
-            "data-[state=on]:bg-grey-100 data-[state=on]:text-bg",
-            "data-[state=on]:hover:bg-grey-100 data-[state=on]:hover:text-bg",
-            "aria-pressed:bg-grey-100 aria-pressed:text-bg",
-            "aria-pressed:hover:bg-grey-100 aria-pressed:hover:text-bg",
+            MICRO,
+            FOCUS,
+            // Fill carries the selected state (base-ui emits `data-pressed`);
+            // the weight never changes so labels don't jitter on switch.
+            "flex h-10 flex-col items-center justify-center gap-0.5 rounded-[2px] border-0 bg-transparent px-0.5 text-grey-250 transition-colors hover:bg-wash-active hover:text-grey-100 active:bg-wash-active data-pressed:bg-grey-100 data-pressed:text-bg data-pressed:hover:bg-grey-100",
           )}
         >
           <Icon className="size-[14px]" />

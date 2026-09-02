@@ -5,8 +5,12 @@ import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useStudio } from "@/lib/store";
 import type { StrKey } from "./keys";
+import { CONTROL, FOCUS } from "./typography";
 
 // ── Segmented control (shadcn ToggleGroup, single-select) ─────────────────────
+// The tray recipe: one edge border + grey-880 fill, 2px-radius items inside.
+// State is carried by FILL (active = grey-100), never by weight — a 400→500
+// swap made Mood / Source / Case jitter when the selection moved.
 export interface SegOption {
   value: string;
   label: string;
@@ -33,19 +37,17 @@ function SegmentedInner({ paramKey, options, className }: SegmentedProps) {
         if (typeof next === "string")
           setState({ [paramKey]: next } as Parameters<typeof setState>[0]);
       }}
-      spacing={6}
-      className={cn("w-full", className)}
+      spacing={1}
+      className={cn("w-full rounded-control border border-edge bg-grey-880 p-1", className)}
     >
       {options.map((op) => (
         <ToggleGroupItem
           key={op.value}
           value={op.value}
-          variant="outline"
           className={cn(
-            "h-auto flex-1 rounded-[5px] border-grey-800/80 bg-grey-880/40 px-0 py-[7px] font-sans text-[11px] font-normal text-grey-350 transition-colors",
-            "hover:border-grey-700 hover:bg-grey-850/60 hover:text-grey-150",
-            "data-pressed:border-grey-500/70 data-pressed:bg-grey-100 data-pressed:font-medium data-pressed:text-grey-950",
-            "aria-pressed:border-grey-500/70 aria-pressed:bg-grey-100 aria-pressed:font-medium aria-pressed:text-grey-950",
+            CONTROL,
+            FOCUS,
+            "h-8 flex-1 rounded-[2px] px-1 text-grey-250 transition-colors hover:bg-wash-active hover:text-grey-100 active:bg-wash-active data-pressed:bg-grey-100 data-pressed:text-bg data-pressed:hover:bg-grey-100",
           )}
         >
           {op.label}

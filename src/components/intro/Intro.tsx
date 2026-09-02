@@ -4,6 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { renderTo } from "@/engine";
 import { PRESETS } from "./scenes";
 import { cn } from "@/lib/utils";
+import {
+  DATA_SM,
+  DISPLAY,
+  FOCUS,
+  MICRO,
+  SECTION,
+  COPY,
+} from "@/components/controls/primitives/typography";
 
 // ── Tuning ───────────────────────────────────────────────────────────────────
 // Square backing buffer, CSS-upscaled to fill the viewport. Higher = crisper
@@ -248,41 +256,57 @@ export default function Intro({ onStart }: { onStart: () => void }) {
 
       <div
         className={cn(
-          "relative z-10 flex h-full w-full flex-col items-center justify-center px-6 text-center transition-all duration-700 ease-out",
+          "relative z-10 flex h-full w-full flex-col items-center justify-center px-6 text-center transition-[opacity,transform] duration-700 ease-out",
           ready && !leaving ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
         )}
       >
         <span className="inline-flex select-none items-baseline [text-shadow:0_2px_22px_rgba(0,0,0,0.65)]">
-          <span className="text-[34px] font-light tracking-tight text-white/65 sm:text-[46px]">
-            aka
-          </span>
-          <span className="text-[34px] font-semibold tracking-tight text-white sm:text-[46px]">
-            COVART
-          </span>
+          <span className={cn(DISPLAY, "font-light text-white/65")}>aka</span>
+          <span className={cn(DISPLAY, "font-semibold text-white")}>COVART</span>
         </span>
-        <p className="mt-4 max-w-[36ch] font-sans text-[13px] leading-relaxed text-white/75 [text-shadow:0_1px_14px_rgba(0,0,0,0.75)] sm:text-[14px]">
+        <p className={cn(COPY, "mt-4 max-w-[36ch] text-white/80 [text-shadow:0_1px_14px_rgba(0,0,0,0.75)]")}>
           A generative album-art engine. Shape it, sync the motion to your
           track, and export the cover.
         </p>
         <button
           type="button"
           onClick={start}
-          className="mt-10 inline-flex h-11 items-center justify-center rounded-[7px] bg-white px-9 text-[13px] font-medium text-black shadow-[0_8px_30px_rgba(0,0,0,0.5)] transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          className={cn(
+            SECTION,
+            FOCUS,
+            // The one sanctioned press-scale in the product; hover carries state
+            // by fill so the button never re-rasterises the hero behind it.
+            "mt-10 inline-flex h-11 items-center justify-center rounded-card bg-white px-9 text-black shadow-float transition-[background-color,transform] hover:bg-grey-100 active:scale-[0.98] focus-visible:outline-white/80 motion-reduce:active:scale-100",
+          )}
         >
           Start
         </button>
       </div>
 
-      {/* Look switcher — current engine name + dots. Auto-cycles; click / scroll /
-          arrow keys move through the four engines. */}
+      {/* Look switcher — current engine name + position counter + dots.
+          Auto-cycles; click / scroll / arrow keys move through the engines.
+          The name is sans; only the counter is DATA (mono is for numerals). */}
       <div
         className={cn(
           "absolute inset-x-0 bottom-16 z-10 flex flex-col items-center gap-3 transition-opacity duration-700",
           ready && !leaving ? "opacity-100" : "opacity-0",
         )}
       >
-        <div className="font-sans text-[11px] tracking-[0.18em] text-white/55 uppercase [text-shadow:0_1px_10px_rgba(0,0,0,0.8)]">
-          {PRESETS[active].label}
+        <div
+          className={cn(
+            MICRO,
+            // On a scrim pill so the readout is AA over the live art, not just
+            // over the shadow (WCAG doesn't count text-shadow).
+            "flex items-center gap-2 rounded-full bg-black/40 px-2.5 py-1 text-white/85 [text-shadow:0_1px_10px_rgba(0,0,0,0.8)]",
+          )}
+        >
+          <span className="text-white/95">{PRESETS[active].label}</span>
+          <span aria-hidden className="text-white/40">
+            ·
+          </span>
+          <span className={DATA_SM}>
+            {active + 1} / {PRESETS.length}
+          </span>
         </div>
         <div className="flex items-center gap-2.5">
           {PRESETS.map((p, i) => (
@@ -292,8 +316,12 @@ export default function Intro({ onStart }: { onStart: () => void }) {
               onClick={() => go(i)}
               aria-label={`Show ${p.label}`}
               className={cn(
-                "h-1.5 rounded-full transition-all duration-300",
-                i === active ? "w-6 bg-white/85" : "w-1.5 bg-white/30 hover:bg-white/55",
+                FOCUS,
+                // 6px visual dot; the ::before pad gives it a ≥26×30 hit box.
+                "relative h-1.5 rounded-full transition-[width,background-color] duration-200 before:absolute before:-inset-x-2.5 before:-inset-y-3 before:content-['']",
+                i === active
+                  ? "w-6 bg-white/85"
+                  : "w-1.5 bg-white/40 hover:bg-white/60 active:bg-white/75",
               )}
             />
           ))}
@@ -307,13 +335,16 @@ export default function Intro({ onStart }: { onStart: () => void }) {
           ready && !leaving ? "opacity-100" : "opacity-0",
         )}
       >
-        <p className="pointer-events-auto font-sans text-[11px] tracking-wide text-white/35">
+        <p className={cn(MICRO, "pointer-events-auto text-white/80")}>
           Built by akaIeuan @{" "}
           <a
             href="https://akabuild.dev/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[#5b9dff] underline-offset-2 transition-colors hover:text-[#7db4ff] hover:underline"
+            className={cn(
+              FOCUS,
+              "rounded-[2px] text-white/85 underline decoration-white/30 underline-offset-2 transition-colors hover:text-white hover:decoration-white/60",
+            )}
           >
             akaBuild
           </a>

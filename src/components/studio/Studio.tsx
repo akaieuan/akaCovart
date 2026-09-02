@@ -19,6 +19,7 @@ import StartPicker from "./StartPicker";
 import { useStudio } from "@/lib/store";
 import { exportPng, exportVideo } from "@/lib/export";
 import { cn } from "@/lib/utils";
+import { FOCUS } from "@/components/controls/primitives/typography";
 
 export default function Studio() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -127,9 +128,9 @@ export default function Studio() {
         )}
       >
         <div className="flex h-full w-[324px] flex-col p-3 pt-[74px] lg:w-[348px]">
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/65 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border border-edge bg-panel/65 shadow-panel backdrop-blur-2xl">
             {/* Engine selector + seed/generate (sticky header zone) */}
-            <div className="flex flex-none flex-col gap-3 border-b border-white/[0.06] px-4 pt-4 pb-3.5">
+            <div className="flex flex-none flex-col gap-3 border-b border-hairline px-4 pt-4 pb-3.5">
               <EngineSelector />
               <SeedRow />
             </div>
@@ -140,7 +141,7 @@ export default function Studio() {
             </div>
 
             {/* Sticky action footer: mode + reset + export */}
-            <div className="flex flex-none flex-col gap-2.5 border-t border-white/[0.06] px-4 py-3.5">
+            <div className="flex flex-none flex-col gap-2.5 border-t border-hairline px-4 py-3.5">
               <div className="flex gap-2">
                 <ModeToggle className="flex-1" />
                 <ResetButton />
@@ -162,7 +163,10 @@ export default function Studio() {
         }
         aria-label={collapsed ? "Show controls" : "Hide controls"}
         className={cn(
-          "absolute top-1/2 z-30 hidden h-14 w-6 -translate-y-1/2 items-center justify-center rounded-l-[8px] border border-r-0 border-white/10 bg-panel/70 text-grey-300 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300 ease-out hover:text-white md:flex",
+          FOCUS,
+          // `right` rides the sidebar's own 300ms width transition so the handle
+          // stays glued to the panel edge; colour uses the theme curve.
+          "absolute top-1/2 z-30 hidden h-14 w-6 -translate-y-1/2 items-center justify-center rounded-l-card border border-r-0 border-edge bg-panel/70 text-grey-300 shadow-float backdrop-blur-xl transition-[right,color] duration-300 ease-out hover:text-grey-100 md:flex",
           overlayOpen && "pointer-events-none opacity-0",
           collapsed ? "right-0" : "right-[312px] lg:right-[336px]",
         )}

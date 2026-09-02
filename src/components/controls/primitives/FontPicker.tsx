@@ -5,11 +5,14 @@ import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
 import type { StrKey } from "./keys";
 import type { SegOption } from "./Segmented";
+import { CONTROL, FOCUS } from "./typography";
 
 // ── Font picker (2-col button grid, single-select) ────────────────────────────
 // A compact selector for the cover-text face. The long family names ("Instrument
 // Serif", "Space Grotesk") don't fit a single segmented row, so this lays them
-// out two-up. Each button previews its own face so the choice is visible.
+// out two-up. Each button previews its own face so the choice is visible — the
+// inline fontFamily is the content, so this is the one control that doesn't
+// take the CONTROL role; only the face is overridden inline per option.
 //
 // Self-subscribing: reads ONLY its own string store slice (paramKey, i.e.
 // `textFont`) and writes through the stable `setState` action. Memoized so it
@@ -25,7 +28,7 @@ function FontPickerInner({ paramKey, options, className }: FontPickerProps) {
   const setState = useStudio((s) => s.setState);
 
   return (
-    <div className={cn("grid grid-cols-2 gap-[6px]", className)}>
+    <div className={cn("grid grid-cols-2 gap-1 rounded-control border border-edge bg-grey-880 p-1", className)}>
       {options.map((op) => {
         const active = value === op.value;
         return (
@@ -40,9 +43,10 @@ function FontPickerInner({ paramKey, options, className }: FontPickerProps) {
             }
             style={{ fontFamily: `"${op.value}", sans-serif` }}
             className={cn(
-              "h-auto truncate rounded-[5px] border border-grey-800/80 bg-grey-880/40 px-2 py-[9px] text-[12px] font-normal leading-none text-grey-300 transition-colors",
-              "hover:border-grey-700 hover:bg-grey-850/60 hover:text-grey-150",
-              active && "border-grey-500/70 bg-grey-100 text-grey-950",
+              CONTROL,
+              FOCUS,
+              "h-8 truncate rounded-[2px] px-2 text-grey-250 transition-colors hover:bg-wash-active hover:text-grey-100 active:bg-wash-active",
+              active && "bg-grey-100 text-bg hover:bg-grey-100",
             )}
           >
             {op.label}

@@ -2,9 +2,12 @@
 
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { MICRO } from "./typography";
+import { CONTROL } from "./typography";
 
-// ── Micro-label ──────────────────────────────────────────────────────────────
+// ── Control label ────────────────────────────────────────────────────────────
+// grey-250 (≈7:1 on the panel, still AA on a glass pill over mid-grey art);
+// `sub` steps down to grey-300, the floor for any text. Indent for sub rows
+// lives on the row, not here.
 export function Label({
   children,
   sub,
@@ -15,7 +18,7 @@ export function Label({
   className?: string;
 }) {
   return (
-    <span className={cn(MICRO, sub ? "text-grey-350" : "text-grey-300", className)}>
+    <span className={cn(CONTROL, sub ? "text-grey-300" : "text-grey-250", className)}>
       {children}
     </span>
   );

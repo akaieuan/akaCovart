@@ -29,28 +29,28 @@ function StackTextSectionInner() {
   const stackMode = useStudio((s) => s.stackMode);
   return (
     <>
-      <GroupLabel variant="sub">Type engine</GroupLabel>
-      <Segmented className="mb-[14px]" paramKey="stackTxt" options={STACK_TXT_OPTIONS} />
-      <GroupLabel variant="sub">Composite</GroupLabel>
-      <Segmented className="mb-[14px]" paramKey="stackMode" options={STACK_MODE_OPTIONS} />
+      <GroupLabel>Type engine</GroupLabel>
+      <Segmented className="mb-4" paramKey="stackTxt" options={STACK_TXT_OPTIONS} />
+      <GroupLabel>Composite</GroupLabel>
+      <Segmented className="mb-4" paramKey="stackMode" options={STACK_MODE_OPTIONS} />
       {stackMode !== "knockout" && (
         <SliderRow label="Scrim behind type" paramKey="stackScrim" min={0} max={100} sub />
       )}
       <Divider />
-      <GroupLabel variant="sub">Treatment</GroupLabel>
+      <GroupLabel>Treatment</GroupLabel>
       {renderGroups(COMPOSITION_BY_ENGINE[stackTxt] ?? [])}
       <Divider />
-      <TextRow paramKey="txtText" placeholder="Display text" className="mb-[9px]" />
-      <TextRow paramKey="txtSub" placeholder="Subline (optional)" muted className="mb-[14px]" />
-      <GroupLabel variant="sub">Font</GroupLabel>
-      <FontPicker className="mb-[14px]" paramKey="textFont" options={TEXT_FONT_OPTIONS} />
-      <GroupLabel variant="sub">Case</GroupLabel>
-      <Segmented className="mb-[14px]" paramKey="textCase" options={TEXT_CASE_OPTIONS} />
+      <TextRow paramKey="txtText" placeholder="Display text" className="mb-2" />
+      <TextRow paramKey="txtSub" placeholder="Subline (optional)" muted className="mb-4" />
+      <GroupLabel>Font</GroupLabel>
+      <FontPicker className="mb-4" paramKey="textFont" options={TEXT_FONT_OPTIONS} />
+      <GroupLabel>Case</GroupLabel>
+      <Segmented className="mb-4" paramKey="textCase" options={TEXT_CASE_OPTIONS} />
       <SliderRow label="Size" paramKey="txtSize" min={0} max={100} />
-      <GroupLabel variant="sub">Align</GroupLabel>
-      <Segmented className="mb-[14px]" paramKey="txtAlign" options={TXT_ALIGN_OPTIONS} />
-      <GroupLabel variant="sub">Position</GroupLabel>
-      <Segmented className="mb-[14px]" paramKey="txtVAlign" options={TXT_VALIGN_OPTIONS} />
+      <GroupLabel>Align</GroupLabel>
+      <Segmented className="mb-4" paramKey="txtAlign" options={TXT_ALIGN_OPTIONS} />
+      <GroupLabel>Position</GroupLabel>
+      <Segmented className="mb-4" paramKey="txtVAlign" options={TXT_VALIGN_OPTIONS} />
     </>
   );
 }

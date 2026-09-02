@@ -1,11 +1,13 @@
 "use client";
 
 import { memo } from "react";
+import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
 import { Divider, GroupLabel, Segmented, ToggleRow, SliderRow } from "../primitives";
 import { AudioControls } from "@/components/audio";
 import { BEAT_GROUP, DRIFT_GROUP, HIDE_DRIFT_FOR, MOTION_BY_ENGINE } from "../controls-config";
 import { renderControl } from "./renderControls";
+import { CONTROL, MICRO } from "../primitives/typography";
 
 // Source segmented options — drives the (single) Animate motion from either the
 // internal BPM clock or an imported audio track.
@@ -22,17 +24,17 @@ function MotionSectionInner() {
   const isTrack = animSource === "track";
   return (
     <div>
-      <div className="px-5 pt-4 pb-1 font-sans text-[11px] leading-[1.7] text-grey-350">
+      <div className={cn(CONTROL, "px-5 pt-4 pb-1 text-grey-300")}>
         {isTrack
-          ? "Drive the motion from an imported track — import an MP3/WAV, trim a clip window, then export a synced video loop."
-          : "Beat-synced motion for techno. Set the BPM, dial the pump & kick, then export a looping video (MP4 where supported, else WEBM)."}
+          ? "Import a track, trim a clip window, then export a synced video."
+          : "Set the BPM, dial pump and kick, then export a looping video."}
       </div>
-      <div className="px-5 pt-[14px] pb-[6px]">
-        <GroupLabel variant="beat">Source</GroupLabel>
+      <div className="px-5 pt-4 pb-2">
+        <GroupLabel>Source</GroupLabel>
         <Segmented
           paramKey="animSource"
           options={ANIM_SOURCE_OPTIONS}
-          className="mb-[6px]"
+          className="mb-2"
         />
 
         {isTrack && (
@@ -45,7 +47,7 @@ function MotionSectionInner() {
         {!isTrack && (
           <>
             <Divider />
-            <GroupLabel variant="beat">{BEAT_GROUP.heading}</GroupLabel>
+            <GroupLabel>{BEAT_GROUP.heading}</GroupLabel>
             {BEAT_GROUP.controls.map((c) => renderControl(c))}
           </>
         )}
@@ -55,24 +57,24 @@ function MotionSectionInner() {
         {!HIDE_DRIFT_FOR.has(engine) && (
           <>
             <Divider />
-            <GroupLabel variant="beat">{DRIFT_GROUP.heading}</GroupLabel>
+            <GroupLabel>{DRIFT_GROUP.heading}</GroupLabel>
             {DRIFT_GROUP.controls.map((c) => renderControl(c))}
           </>
         )}
 
         <Divider />
-        <GroupLabel variant="beat">Motion</GroupLabel>
+        <GroupLabel>Motion</GroupLabel>
         {MOTION_BY_ENGINE[engine] ? (
           MOTION_BY_ENGINE[engine].map((c) => renderControl(c))
         ) : (
-          <div className="font-sans text-[11px] leading-[1.7] text-grey-400">
+          <div className={cn(MICRO, "text-grey-300")}>
             This engine rides the Beat and Drift above.
           </div>
         )}
 
         <Divider />
-        <GroupLabel variant="beat">Auto</GroupLabel>
-        <div className="mb-1 font-sans text-[11px] leading-[1.7] text-grey-400">
+        <GroupLabel>Auto</GroupLabel>
+        <div className={cn(MICRO, "mb-2 text-grey-300")}>
           Gently auto-evolves a curated set of look params so the frame stays
           alive. Your sliders are the base — Auto only wanders around them.
         </div>

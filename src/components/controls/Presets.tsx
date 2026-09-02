@@ -1,8 +1,10 @@
 "use client";
 
 import { memo } from "react";
+import { cn } from "@/lib/utils";
 import { useStudio, makeSeeds, randSeed } from "@/lib/store";
 import { GroupLabel } from "./primitives";
+import { CONTROL, FOCUS, MICRO } from "./primitives/typography";
 import { getPresets } from "@/presets";
 
 // ── Presets grid ─────────────────────────────────────────────────────────────
@@ -14,12 +16,10 @@ function PresetsInner() {
 
   return (
     <>
-      <GroupLabel variant="sub">Presets</GroupLabel>
-      <div className="mb-4 grid grid-cols-4 gap-[6px]">
+      <GroupLabel>Presets</GroupLabel>
+      <div className="mb-2 grid grid-cols-4 gap-2">
         {presets.length === 0 ? (
-          <span className="col-span-4 font-sans text-[11px] text-grey-400">
-            No presets
-          </span>
+          <span className={cn(MICRO, "col-span-4 text-grey-300")}>No presets</span>
         ) : (
           presets.map((p, i) => (
             <button
@@ -33,7 +33,11 @@ function PresetsInner() {
                   gallerySeeds: makeSeeds(9),
                 })
               }
-              className="rounded-[4px] border border-grey-800 bg-grey-880 px-1 py-[10px] text-center font-sans text-[11px] font-medium text-grey-200 transition-colors hover:border-grey-500 hover:bg-grey-850 hover:text-grey-100"
+              className={cn(
+                CONTROL,
+                FOCUS,
+                "h-10 rounded-control border border-edge bg-grey-880 px-1 text-center text-grey-200 transition-colors hover:border-edge-hover hover:text-grey-100 active:bg-grey-850",
+              )}
             >
               {p.name}
             </button>

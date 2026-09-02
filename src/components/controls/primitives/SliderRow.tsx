@@ -1,15 +1,20 @@
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Slider as UISlider } from "@/components/ui/slider";
 import { useStudio } from "@/lib/store";
 import { Label } from "./Label";
 import type { NumKey } from "./keys";
+import { DATA, FOCUS, FOCUS_FIELD, SLOT } from "./typography";
 
 // ── Slider row (shadcn Slider + click-to-edit value) ─────────────────────────
 // Self-subscribing: reads ONLY its own numeric store slice via a narrow
 // selector and writes through the stable `setState` action. Wrapped in
 // React.memo so a tick on another slider never re-renders this row.
+// The value is DATA (mono) in a fixed 4ch SLOT, so the label never shifts as
+// the figure ticks; the edit input shares the button's exact geometry so the
+// row doesn't jump when editing starts.
 export interface SliderRowProps {
   paramKey: NumKey;
   label: string;
@@ -64,11 +69,9 @@ function SliderRowInner({
   };
 
   return (
-    <div className="mb-[18px]">
-      <div className="mb-[7px] flex items-center justify-between gap-2">
-        <Label sub={sub} className="!text-grey-300">
-          {label}
-        </Label>
+    <div className={cn("mb-3", sub && "pl-3")}>
+      <div className="mb-1 flex h-5 items-center justify-between gap-2">
+        <Label sub={sub}>{label}</Label>
         {editing ? (
           <input
             ref={inputRef}
@@ -83,14 +86,27 @@ function SliderRowInner({
               if (e.key === "Enter") commit();
               else if (e.key === "Escape") setEditing(false);
             }}
-            className="w-[52px] rounded-[4px] border border-grey-600 bg-grey-880/80 px-1.5 py-0.5 text-right font-sans text-[11px] font-medium tabular-nums text-grey-100 outline-none focus:border-grey-450"
+            // Number inputs always match :focus-visible, so the auto-focus shows
+            // the field outline without a pointer-vs-keyboard heuristic.
+            className={cn(
+              DATA,
+              SLOT,
+              FOCUS_FIELD,
+              "-mr-1 h-4 rounded-[3px] border border-edge bg-grey-880 px-1 text-grey-100",
+            )}
           />
         ) : (
           <button
             type="button"
             onClick={startEdit}
             title="Click to edit"
-            className="-mr-1.5 cursor-text rounded-[4px] bg-transparent px-1.5 py-0.5 font-sans text-[11px] font-medium tabular-nums text-grey-150 transition-colors hover:bg-grey-800/50 hover:text-grey-100"
+            // Hairline underline on hover = the click-to-edit affordance.
+            className={cn(
+              DATA,
+              SLOT,
+              FOCUS,
+              "-mr-1 h-4 cursor-text rounded-[3px] px-1 text-grey-200 transition-colors hover:text-grey-100 hover:shadow-[inset_0_-1px_0_var(--color-grey-500)]",
+            )}
           >
             {value}
           </button>

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { renderTo, listEnginesByFocus } from "@/engine";
 import { useStudio, randSeed } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { CONTROL, FOCUS } from "@/components/controls/primitives/typography";
 import {
   ART_START_LOOKS,
   OIL_START_LOOKS,
@@ -85,7 +86,12 @@ function Tile({ look, onClick }: { look: Preset; onClick: () => void }) {
       onPointerEnter={startAnim}
       onPointerLeave={stopAnim}
       aria-label={`Start with the ${look.label} look`}
-      className="group relative aspect-square overflow-hidden rounded-[7px] border border-white/12 bg-black transition-transform duration-200 hover:scale-[1.05] hover:border-white/40"
+      // Hover plays the live animation (above); the edge is the only other hover
+      // cue — a scale re-rasterised the canvas every frame for nothing.
+      className={cn(
+        FOCUS,
+        "group relative aspect-square overflow-hidden rounded-card border border-edge bg-black transition-colors hover:border-white/40 active:border-white/60",
+      )}
     >
       <canvas ref={ref} className="block h-full w-full" />
     </button>
@@ -156,9 +162,12 @@ export default function StartGrid({
         type="button"
         onClick={onRandom}
         aria-label="Start with a random look"
-        className="flex aspect-square flex-col items-center justify-center gap-0.5 rounded-[7px] border border-dashed border-white/25 bg-white/[0.03] text-center transition-transform duration-200 hover:scale-[1.05] hover:border-white/55 hover:bg-white/[0.08]"
+        className={cn(
+          FOCUS,
+          "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-card border border-dashed border-white/25 bg-white/[0.03] text-center transition-colors hover:border-white/55 hover:bg-white/[0.08] active:bg-white/[0.12]",
+        )}
       >
-        <span className="text-[11px] font-semibold text-white/90">Random</span>
+        <span className={cn(CONTROL, "font-medium text-grey-100")}>Random</span>
       </button>
     </div>
   );

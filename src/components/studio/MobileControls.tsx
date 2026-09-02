@@ -15,6 +15,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { CONTROL, FOCUS } from "@/components/controls/primitives/typography";
 import {
   LookSection,
   CompositionSection,
@@ -94,14 +95,17 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
         // RESERVES its height — the artwork always sits fully visible above it.
         // Lifted off the bottom with safe-area padding; lifted further when
         // collapsed so the toggle clears browser chrome and stays in thumb reach.
-        "z-30 flex-none px-3 pt-2 transition-[padding,opacity] duration-300 md:hidden",
+        "z-30 flex-none px-3 pt-2 transition-[padding,opacity] duration-200 md:hidden",
         collapsed
           ? "pb-[calc(env(safe-area-inset-bottom)+34px)]"
           : "pb-[calc(env(safe-area-inset-bottom)+10px)]",
         overlayOpen && "pointer-events-none opacity-0",
       )}
     >
-      <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-panel/95 shadow-[0_-8px_40px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+      {/* No backdrop-blur: the dock is 95% opaque, so the blur was a full-width
+          GPU pass on phones for nothing. The hairline top highlight rides in
+          the shadow token. */}
+      <div className="flex flex-col overflow-hidden rounded-panel border border-edge bg-panel/95 shadow-dock">
         {/* Nav row: scrollable tabs (incl. Engine) + collapse toggle. */}
         <div className="flex flex-none items-center gap-1.5 px-2 py-2">
           <div className="flex flex-1 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -112,10 +116,12 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
                 onClick={() => pick(t.id)}
                 aria-pressed={!collapsed && activeId === t.id}
                 className={cn(
-                  "flex-none rounded-full px-3.5 py-2 text-[12px] font-medium whitespace-nowrap transition-colors",
+                  CONTROL,
+                  FOCUS,
+                  "flex h-10 flex-none items-center rounded-full px-4 whitespace-nowrap transition-colors",
                   !collapsed && activeId === t.id
                     ? "bg-grey-100 text-bg"
-                    : "text-grey-300 hover:bg-white/5 hover:text-white",
+                    : "text-grey-250 hover:bg-wash hover:text-grey-100 active:bg-wash-active",
                 )}
               >
                 {t.label}
@@ -127,7 +133,7 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
             onClick={() => setCollapsed((c) => !c)}
             aria-label={collapsed ? "Expand controls" : "Collapse controls"}
             aria-expanded={!collapsed}
-            className="flex-none rounded-full bg-white/8 px-3 py-2 text-grey-200 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
+            className={cn(FOCUS, "flex size-10 flex-none items-center justify-center rounded-full bg-white/8 text-grey-200 transition-colors hover:bg-white/15 hover:text-grey-100 active:bg-white/20")}
           >
             {collapsed ? <ChevronUp className="size-5" /> : <ChevronDown className="size-5" />}
           </button>
@@ -137,10 +143,10 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
             height so switching tabs never moves the page; they scroll internally. */}
         {!collapsed && (
           <>
-            <div className="pnl h-[30vh] max-h-[300px] min-h-[148px] overflow-y-auto overscroll-contain border-t border-white/[0.06] px-3 py-2.5">
+            <div className="pnl h-[30vh] max-h-[300px] min-h-[148px] overflow-y-auto overscroll-contain border-t border-hairline px-3 py-3">
               <ActiveBody />
             </div>
-            <div className="flex flex-none flex-col gap-2 border-t border-white/[0.06] px-3 py-2.5">
+            <div className="flex flex-none flex-col gap-2 border-t border-hairline px-3 py-3">
               <div className="flex gap-2">
                 <ModeToggle className="flex-1" />
                 <ResetButton />

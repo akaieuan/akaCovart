@@ -41,8 +41,11 @@ function ToggleGroup({
       data-spacing={spacing}
       data-orientation={orientation}
       style={{ "--gap": spacing } as React.CSSProperties}
+      // rounded-control (not rounded-lg): the tray recipe's radius. A consumer's
+      // own rounded-control can't override rounded-lg — tailwind-merge doesn't
+      // know the custom key, and rounded-lg sorts later in the stylesheet.
       className={cn(
-        "group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] rounded-lg data-[size=sm]:rounded-[min(var(--radius-md),10px)] data-vertical:flex-col data-vertical:items-stretch",
+        "group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] rounded-control data-[size=sm]:rounded-[min(var(--radius-md),10px)] data-vertical:flex-col data-vertical:items-stretch",
         className
       )}
       {...props}

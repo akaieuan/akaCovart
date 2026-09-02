@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
 // App font: Geist (clean neutral sans). The `Geist` loader isn't available in
 // next/font/google in this Next version, so we use the `geist` package's
 // GeistSans. It exposes --font-geist-sans, which globals.css aliases to
-// --font-app and points --font-sans/-mono/-heading at.
+// --font-app and points --font-sans/-heading at. Geist Mono (same package,
+// --font-geist-mono) backs --font-mono and is used for DATA ONLY — numerals
+// via the DATA role in controls/primitives/typography.ts — never for labels,
+// headings or prose.
 
 // Icons + share image are STATIC files in /public (real .png with an image/png
 // content-type). The previous next/og route handlers (opengraph-image.tsx,
@@ -48,7 +52,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${GeistSans.variable}`}>
+    <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="font-sans">
         {children}
       </body>

@@ -2,38 +2,12 @@
 
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { MICRO } from "./typography";
+import { GROUP } from "./typography";
 
-// ── Group sub-heading ────────────────────────────────────────────────────────
-export function GroupLabel({
-  children,
-  variant = "default",
-}: {
-  children: ReactNode;
-  variant?: "default" | "sub" | "beat";
-}) {
-  if (variant === "sub") {
-    return (
-      <div className={cn(MICRO, "mb-2 tracking-[0.01em] text-grey-350")}>
-        {children}
-      </div>
-    );
-  }
-  if (variant === "beat") {
-    return (
-      <div className="mb-[14px] font-sans text-[12px] font-medium tracking-[0.01em] text-grey-300">
-        {children}
-      </div>
-    );
-  }
-  return (
-    <div
-      className={cn(
-        MICRO,
-        "mt-[18px] mb-3 font-medium tracking-[0.01em] text-grey-300",
-      )}
-    >
-      {children}
-    </div>
-  );
+// ── Group heading (the only in-panel heading) ────────────────────────────────
+// One render path: the air ABOVE a group comes from its wrapper (renderGroups'
+// `not-first:mt-6`, a Divider, or the section body padding), never from the
+// heading — so the same heading sits right under a Divider or a section top.
+export function GroupLabel({ children }: { children: ReactNode }) {
+  return <div className={cn(GROUP, "mb-3 text-grey-200")}>{children}</div>;
 }

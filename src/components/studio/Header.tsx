@@ -10,8 +10,30 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { CONTROL, FOCUS, FOCUS_FIELD, MICRO, SECTION, TITLE } from "@/components/controls/primitives/typography";
 import StartGrid from "./StartGrid";
 import { FOCUS_OPTIONS, switchFocus, type Focus } from "./focus";
+
+// One glass-pill recipe for both dropdown triggers. 26px on desktop; 40px on
+// phones so the primary header controls clear the touch-target floor (the
+// stage/picker reserve 64px of top padding to match).
+const PILL = cn(
+  CONTROL,
+  FOCUS,
+  // Hover/open TINT the glass (panel/85) rather than swapping the fill for a
+  // white wash — a wash over bright artwork drops the label below AA.
+  "group inline-flex h-[26px] max-sm:h-10 max-sm:px-3 cursor-pointer items-center gap-1 rounded-full border border-edge bg-panel/70 px-2.5 shadow-float backdrop-blur-xl transition-colors hover:border-edge-hover hover:bg-panel/85 active:bg-panel/85 aria-expanded:border-edge-hover aria-expanded:bg-panel/85",
+);
+
+// One view-nav item recipe (also the StartPicker Style pills). 36px items inside
+// the 40px tray on phones. Fill carries the active state, not weight.
+export const NAV_ITEM = cn(
+  CONTROL,
+  FOCUS,
+  "inline-flex h-[26px] max-sm:h-10 max-sm:min-w-10 max-sm:px-3 items-center justify-center gap-1 rounded-full px-2.5 transition-colors",
+);
+export const NAV_IDLE = "text-grey-250 hover:bg-wash hover:text-grey-100 active:bg-wash-active";
+export const NAV_ACTIVE = "bg-grey-100 text-bg";
 
 /**
  * Style switcher — flips the studio between its lanes: Art (abstract fields),
@@ -39,12 +61,12 @@ function FocusMenu() {
           "Style" prefix names what the dropdown changes; hidden on phones where
           the header runs tight. */}
       <PopoverTrigger
-        className="inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-full border border-white/10 bg-panel/70 px-2.5 text-[11px] font-medium text-grey-100 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-colors hover:border-white/20 hover:text-white"
+        className={cn(PILL, "text-grey-100")}
         aria-label={`Style: ${active.label}`}
       >
-        <span className="hidden text-grey-400 sm:inline">Style</span>
+        <span className="hidden text-grey-250 sm:inline">Style</span>
         <span>{active.label}</span>
-        <ChevronDown className="size-3 text-grey-500" />
+        <ChevronDown className="size-3 text-grey-350 transition-transform group-aria-expanded:rotate-180 motion-reduce:transition-none" />
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -59,8 +81,9 @@ function FocusMenu() {
               type="button"
               onClick={() => pick(o.value)}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
-                on ? "bg-white/[0.07]" : "hover:bg-white/5",
+                FOCUS_FIELD,
+                "flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left transition-colors hover:bg-wash active:bg-wash-active",
+                on && "bg-wash-active",
               )}
             >
               <span
@@ -72,8 +95,8 @@ function FocusMenu() {
                 <Check className="size-3.5" />
               </span>
               <span className="flex flex-col">
-                <span className="text-[13px] font-medium text-grey-100">{o.label}</span>
-                <span className="text-[11px] text-grey-400">{o.hint}</span>
+                <span className={cn(SECTION, "text-grey-100")}>{o.label}</span>
+                <span className={cn(MICRO, "text-grey-300")}>{o.hint}</span>
               </span>
             </button>
           );
@@ -96,11 +119,11 @@ function StartMenu() {
     <Popover open={open} onOpenChange={setOpen}>
       {/* Same pill treatment as the Style switcher (muted text = secondary). */}
       <PopoverTrigger
-        className="inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-full border border-white/10 bg-panel/70 px-2.5 text-[11px] font-medium text-grey-300 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-colors hover:border-white/20 hover:text-white"
+        className={cn(PILL, "text-grey-250 hover:text-grey-100")}
         aria-label="Starting points"
       >
         <span>Starts</span>
-        <ChevronDown className="size-3 text-grey-500" />
+        <ChevronDown className="size-3 text-grey-350 transition-transform group-aria-expanded:rotate-180 motion-reduce:transition-none" />
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={8} className="w-[300px] gap-0 p-2.5">
         <StartGrid
@@ -142,16 +165,16 @@ export default function Header({ onHome }: { onHome?: () => void }) {
   ];
 
   return (
-    <header className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-2 px-3 py-2.5 sm:px-5">
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-2 px-3 py-2.5 max-sm:py-2 sm:px-5">
       <div className="pointer-events-auto flex min-w-0 items-center gap-1.5 sm:gap-3">
         <button
           type="button"
           onClick={onHome}
           aria-label="Back to start"
-          className="inline-flex cursor-pointer items-baseline select-none transition-opacity hover:opacity-70"
+          className={cn(FOCUS, "inline-flex cursor-pointer items-baseline rounded-[2px] select-none transition-opacity hover:opacity-70")}
         >
-          <span className="text-[15px] font-light text-grey-350">aka</span>
-          <span className="text-[15px] font-semibold text-grey-100">COVART</span>
+          <span className={cn(TITLE, "font-light text-grey-250")}>aka</span>
+          <span className={cn(TITLE, "font-semibold text-grey-100")}>COVART</span>
         </button>
 
         <FocusMenu />
@@ -159,7 +182,9 @@ export default function Header({ onHome }: { onHome?: () => void }) {
       </div>
 
       <div className="pointer-events-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <nav className="flex items-center gap-0.5 rounded-full border border-white/10 bg-panel/70 p-0.5 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        {/* panel/85 (not /70): idle grey-250 items must stay AA over bright art.
+            Phones: no tray padding so the 40px items ARE the 40px header line. */}
+        <nav className="flex items-center gap-0.5 rounded-full border border-edge bg-panel/85 p-0.5 shadow-float backdrop-blur-xl max-sm:p-0">
           {items.map(({ key, label, Icon, onClick, active }) => (
             <button
               key={key}
@@ -167,12 +192,7 @@ export default function Header({ onHome }: { onHome?: () => void }) {
               onClick={onClick}
               aria-label={label}
               aria-pressed={active}
-              className={cn(
-                "inline-flex h-[26px] items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-colors",
-                active
-                  ? "bg-grey-100 text-bg"
-                  : "text-grey-300 hover:bg-white/5 hover:text-white",
-              )}
+              className={cn(NAV_ITEM, active ? NAV_ACTIVE : NAV_IDLE)}
             >
               <Icon className="size-[12px]" />
               <span className="hidden sm:inline">{label}</span>
@@ -189,7 +209,7 @@ export default function Header({ onHome }: { onHome?: () => void }) {
           onClick={goFormats}
           aria-label="Export"
           title="Export"
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-grey-100 text-bg shadow-[0_8px_30px_rgba(0,0,0,0.45)] transition-colors hover:bg-white active:scale-95 md:hidden"
+          className={cn(FOCUS, "inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-grey-100 text-bg shadow-float transition-colors hover:bg-white active:bg-grey-200 md:hidden")}
         >
           <Download className="size-[15px]" />
         </button>

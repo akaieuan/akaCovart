@@ -6,6 +6,7 @@ import { ArrowLeft, Film, ImageIcon } from "lucide-react";
 import { useStudio } from "@/lib/store";
 import { FORMATS, getFormat, type Format } from "@/lib/formats";
 import { cn } from "@/lib/utils";
+import { CONTROL, DATA_SM, FOCUS, GROUP, MICRO, TITLE } from "@/components/controls/primitives/typography";
 
 import { FormatCanvas } from "@/components/canvas";
 
@@ -31,7 +32,7 @@ function Hero({
   animated?: boolean;
 }) {
   return (
-    <figure className="group relative min-w-0 flex-1 overflow-hidden rounded-[9px] border border-border bg-black">
+    <figure className="group relative min-w-0 flex-1 overflow-hidden rounded-card border border-edge bg-black">
       <div
         className="relative w-full"
         style={{ aspectRatio: `${f.w} / ${f.h}` }}
@@ -45,7 +46,7 @@ function Hero({
       </div>
 
       {/* Corner tag: which view this is (Still / Motion). */}
-      <figcaption className="pointer-events-none absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-[5px] text-[11px] font-medium text-grey-100 backdrop-blur-sm">
+      <figcaption className={cn(MICRO, "pointer-events-none absolute left-2.5 top-2.5 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-[5px] font-medium text-grey-100 backdrop-blur-sm")}>
         {icon}
         {label}
       </figcaption>
@@ -58,7 +59,7 @@ function Hero({
 function StillTile({ f }: { f: Format }) {
   return (
     <div
-      className="group relative overflow-hidden rounded-[9px] border border-border bg-black transition-colors hover:border-grey-500"
+      className="group relative overflow-hidden rounded-card border border-edge bg-black transition-colors hover:border-edge-hover"
       style={{ aspectRatio: `${f.w} / ${f.h}` }}
     >
       <div className="absolute inset-0">
@@ -72,14 +73,15 @@ function StillTile({ f }: { f: Format }) {
       {/* Bottom scrim: name / hint + ratio, legible over any art. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/35 to-transparent p-2.5 pt-10">
         <div className="leading-tight">
-          <div className="text-[12px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
+          <div className={cn(CONTROL, "font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]")}>
             {f.label}
           </div>
-          <div className="text-[10px] text-grey-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
+          <div className={cn(MICRO, "text-grey-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]")}>
             {f.hint}
           </div>
         </div>
-        <div className="text-[11px] tabular-nums text-grey-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
+        {/* The ratio is numerals → DATA_SM. */}
+        <div className={cn(DATA_SM, "text-grey-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]")}>
           {f.ratio}
         </div>
       </div>
@@ -119,26 +121,28 @@ export default function Preview() {
         // `invisible` when closed removes this always-mounted z-50 overlay from
         // hit-testing entirely (see Formats.tsx for the full rationale) so its
         // controls can't intercept taps meant for the editor underneath.
-        "absolute inset-0 z-50 flex flex-col bg-bg transition-all duration-300 ease-out",
+        // `visibility` is listed explicitly so it keeps its delayed-off timing
+        // and the fade-OUT still plays.
+        "absolute inset-0 z-50 flex flex-col bg-bg transition-[opacity,transform,visibility] duration-200 ease-out",
         open
           ? "pointer-events-auto visible opacity-100 scale-100"
           : "pointer-events-none invisible scale-[0.99] opacity-0",
       )}
     >
       {/* Header — sibling of the Formats header. */}
-      <header className="flex flex-none items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-7">
+      <header className="flex flex-none items-center justify-between gap-3 border-b border-hairline px-5 py-4 sm:px-7">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={close}
-            className="inline-flex h-9 items-center gap-1.5 rounded-[6px] border border-border bg-panel px-3 text-[12px] font-normal text-grey-200 transition-colors hover:bg-grey-900 hover:text-white"
+            className={cn(CONTROL, FOCUS, "inline-flex h-9 items-center gap-1.5 rounded-control border border-edge bg-panel px-3 text-grey-200 transition-colors hover:border-edge-hover hover:text-grey-100 active:bg-wash")}
           >
             <ArrowLeft className="size-[15px]" />
             Edit
           </button>
           <div className="leading-tight">
-            <div className="text-[14px] font-medium text-grey-100">Preview</div>
-            <div className="hidden text-[11px] text-grey-400 sm:block">
+            <div className={cn(TITLE, "text-grey-100")}>Preview</div>
+            <div className={cn(MICRO, "hidden text-grey-300 sm:block")}>
               Still + motion, every format at a glance.
             </div>
           </div>
@@ -154,11 +158,12 @@ export default function Preview() {
           {/* Still vs Motion comparison of the ACTIVE format. */}
           <section>
             <div className="mb-3 flex items-baseline justify-between gap-3">
-              <h2 className="text-[12px] font-medium text-grey-200">
+              <h2 className={cn(GROUP, "text-grey-200")}>
                 Still vs Motion
               </h2>
-              <span className="text-[11px] text-grey-400">
-                {active.label} · {active.ratio}
+              <span className={cn(MICRO, "text-grey-300")}>
+                {active.label} <span aria-hidden className="text-grey-500">·</span>{" "}
+                <span className={DATA_SM}>{active.ratio}</span>
               </span>
             </div>
             {/* Stack on narrow screens; side-by-side from sm up. */}
@@ -181,11 +186,11 @@ export default function Preview() {
           {others.length > 0 && (
             <section>
               <div className="mb-3 flex items-baseline justify-between gap-3">
-                <h2 className="text-[12px] font-medium text-grey-200">
+                <h2 className={cn(GROUP, "text-grey-200")}>
                   Other formats
                 </h2>
-                <span className="text-[11px] text-grey-400">
-                  {others.length} sizes
+                <span className={cn(MICRO, "text-grey-300")}>
+                  <span className={DATA_SM}>{others.length}</span> sizes
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">

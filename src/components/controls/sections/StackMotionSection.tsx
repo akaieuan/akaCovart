@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
 import { Divider, GroupLabel, Segmented, ToggleRow, SliderRow } from "../primitives";
 import { AudioControls } from "@/components/audio";
@@ -11,6 +12,7 @@ import {
   STACK_ANIM_OPTIONS,
 } from "../controls-config";
 import { renderControl } from "./renderControls";
+import { CONTROL, MICRO } from "../primitives/typography";
 
 const ANIM_SOURCE_OPTIONS = [
   { value: "bpm", label: "BPM" },
@@ -29,17 +31,16 @@ function StackMotionSectionInner() {
   const txtMotion = MOTION_BY_ENGINE[stackTxt] ?? [];
   return (
     <div>
-      <div className="px-5 pt-4 pb-1 font-sans text-[11px] leading-[1.7] text-grey-350">
-        Animate the art background, the type, or both — the type always resolves back
-        to the readable word each cycle. Beat-synced; export a looping video.
+      <div className={cn(CONTROL, "px-5 pt-4 pb-1 text-grey-300")}>
+        Animate the background, the type, or both, then export a looping video.
       </div>
-      <div className="px-5 pt-[14px] pb-[6px]">
-        <GroupLabel variant="beat">Animate</GroupLabel>
-        <Segmented paramKey="stackAnim" options={STACK_ANIM_OPTIONS} className="mb-[6px]" />
+      <div className="px-5 pt-4 pb-2">
+        <GroupLabel>Animate</GroupLabel>
+        <Segmented paramKey="stackAnim" options={STACK_ANIM_OPTIONS} className="mb-2" />
 
         <Divider />
-        <GroupLabel variant="beat">Source</GroupLabel>
-        <Segmented paramKey="animSource" options={ANIM_SOURCE_OPTIONS} className="mb-[6px]" />
+        <GroupLabel>Source</GroupLabel>
+        <Segmented paramKey="animSource" options={ANIM_SOURCE_OPTIONS} className="mb-2" />
 
         {isTrack && (
           <>
@@ -51,31 +52,31 @@ function StackMotionSectionInner() {
         {!isTrack && (
           <>
             <Divider />
-            <GroupLabel variant="beat">{BEAT_GROUP.heading}</GroupLabel>
+            <GroupLabel>{BEAT_GROUP.heading}</GroupLabel>
             {BEAT_GROUP.controls.map((c) => renderControl(c))}
           </>
         )}
 
         <Divider />
-        <GroupLabel variant="beat">{DRIFT_GROUP.heading}</GroupLabel>
+        <GroupLabel>{DRIFT_GROUP.heading}</GroupLabel>
         {DRIFT_GROUP.controls.map((c) => renderControl(c))}
 
         <Divider />
-        <GroupLabel variant="beat">Background motion</GroupLabel>
+        <GroupLabel>Background motion</GroupLabel>
         {bgMotion.length ? (
           bgMotion.map((c) => renderControl(c))
         ) : (
-          <div className="font-sans text-[11px] leading-[1.7] text-grey-400">
+          <div className={cn(MICRO, "text-grey-300")}>
             This background rides the Beat and Drift above.
           </div>
         )}
 
         <Divider />
-        <GroupLabel variant="beat">Text motion</GroupLabel>
+        <GroupLabel>Text motion</GroupLabel>
         {txtMotion.map((c) => renderControl(c))}
 
         <Divider />
-        <GroupLabel variant="beat">Auto</GroupLabel>
+        <GroupLabel>Auto</GroupLabel>
         <ToggleRow label="Auto" paramKey="auto" />
         <SliderRow label="Intensity" paramKey="autoIntensity" min={0} max={100} />
       </div>

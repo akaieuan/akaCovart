@@ -44,9 +44,11 @@ export function renderControl(c: Control): ReactNode {
   }
 }
 
+// Group air comes from the wrapper (`not-first:mt-6`), not the heading, so a
+// heading right under a Divider / section top sits flush.
 export function renderGroups(groups: ControlGroup[]): ReactNode {
   return groups.map((g, gi) => (
-    <div key={g.heading ?? gi}>
+    <div key={g.heading ?? gi} className="not-first:mt-6">
       {g.heading && <GroupLabel>{g.heading}</GroupLabel>}
       {g.controls.map((c) => renderControl(c))}
     </div>

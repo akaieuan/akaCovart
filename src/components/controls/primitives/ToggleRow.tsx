@@ -9,6 +9,8 @@ import type { BoolKey } from "./keys";
 // ── Toggle row (label + shadcn Switch) ───────────────────────────────────────
 // Self-subscribing: reads ONLY its own boolean store slice and writes through
 // the stable `setState` action. Memoized so it ignores unrelated store churn.
+// A real <label> so clicking the text toggles the switch; with the switch's
+// `after:` hit area the whole row is a 42px-tall target.
 export interface ToggleRowProps {
   paramKey: BoolKey;
   label: string;
@@ -19,15 +21,15 @@ function ToggleRowInner({ paramKey, label }: ToggleRowProps) {
   const setState = useStudio((s) => s.setState);
 
   return (
-    <div className="mt-[18px] mb-3 flex items-center justify-between">
-      <Label className="!text-grey-300">{label}</Label>
+    <label className="mt-6 mb-3 flex h-8 cursor-pointer items-center justify-between">
+      <Label>{label}</Label>
       <UISwitch
         checked={value}
         onCheckedChange={(v) =>
           setState({ [paramKey]: v } as Parameters<typeof setState>[0])
         }
       />
-    </div>
+    </label>
   );
 }
 

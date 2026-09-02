@@ -9,6 +9,7 @@ import { exportFormat } from "@/lib/export";
 import { FORMATS, getFormat, type Format, fitDims } from "@/lib/formats";
 import { ensureCoverFont } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
+import { CONTROL, DATA_SM, FOCUS, FOCUS_FIELD, MICRO, TITLE } from "@/components/controls/primitives/typography";
 
 // Longest edge of each preview canvas (cheap; the square is re-rendered per tile).
 const PREVIEW_PX = 640;
@@ -69,32 +70,29 @@ function FormatTile({
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-[9px] border bg-black transition-colors",
+        "group relative overflow-hidden rounded-card border bg-black transition-colors",
         active
-          ? "border-grey-200 ring-1 ring-grey-200"
-          : "border-border hover:border-grey-500",
+          ? "border-grey-100 ring-1 ring-grey-100"
+          : "border-edge hover:border-edge-hover",
       )}
       style={{ aspectRatio: `${f.w} / ${f.h}` }}
     >
       {/* Full-bleed preview — the tile IS the format aspect, so the crop is exact
-          and there's no dead space. */}
-      <canvas
-        ref={ref}
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-      />
+          and there's no dead space. No hover scale: it re-rasterised the canvas. */}
+      <canvas ref={ref} className="absolute inset-0 h-full w-full object-cover" />
 
       {/* Full-tile click = focus this format and return to editing in it. */}
       <button
         type="button"
         onClick={onFocus}
         aria-label={`Edit in ${f.label} (${f.ratio})`}
-        className="absolute inset-0 z-10 cursor-pointer"
+        className={cn(FOCUS_FIELD, "absolute inset-0 z-10 cursor-pointer rounded-[inherit]")}
       />
 
       {/* Top row: active pill + export. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between p-2.5">
         {active ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-grey-100 px-2 py-[3px] text-[10px] font-medium text-bg shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+          <span className={cn(MICRO, "inline-flex items-center gap-1 rounded-full bg-grey-100 px-2 py-[3px] font-medium text-bg shadow-float")}>
             <Check className="size-[11px]" /> Editing
           </span>
         ) : (
@@ -105,7 +103,7 @@ function FormatTile({
           onClick={handleExport}
           disabled={busy}
           aria-label={`Export ${f.label}`}
-          className="pointer-events-auto inline-flex h-8 items-center gap-1.5 rounded-[5px] border border-white/15 bg-black/55 px-2.5 text-[11px] font-medium text-grey-100 opacity-100 backdrop-blur-sm transition-all hover:bg-black/80 hover:text-white focus-visible:opacity-100 disabled:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+          className={cn(MICRO, FOCUS, "pointer-events-auto inline-flex h-9 items-center gap-1.5 rounded-control border border-edge-hover bg-black/65 px-2.5 font-medium text-grey-100 opacity-100 backdrop-blur-sm transition-[opacity,background-color,color] hover:bg-black/80 hover:text-white focus-visible:opacity-100 disabled:opacity-100 md:opacity-0 md:group-hover:opacity-100")}
         >
           {busy ? (
             <Loader2 className="size-[12px] animate-spin" />
@@ -119,14 +117,15 @@ function FormatTile({
       {/* Bottom row: name / hint + ratio over a scrim for legibility on any art. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between bg-gradient-to-t from-black/80 via-black/35 to-transparent p-2.5 pt-10">
         <div className="leading-tight">
-          <div className="text-[12px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
+          <div className={cn(CONTROL, "font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]")}>
             {f.label}
           </div>
-          <div className="text-[10px] text-grey-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
+          <div className={cn(MICRO, "text-grey-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]")}>
             {f.hint}
           </div>
         </div>
-        <div className="text-[11px] tabular-nums text-grey-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
+        {/* The ratio is numerals → DATA_SM. */}
+        <div className={cn(DATA_SM, "text-grey-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]")}>
           {f.ratio}
         </div>
       </div>
@@ -186,28 +185,29 @@ export default function Formats() {
         // closed, leaving invisible Export buttons hit-testable across the whole
         // screen — so taps on the editor/drawer underneath would randomly trigger a
         // download. `visibility:hidden` removes the entire subtree from hit-testing
-        // and can't be overridden by a child's pointer-events. transition-all keeps
-        // visibility's special-cased timing so the fade-OUT still plays.
-        "absolute inset-0 z-50 flex flex-col bg-bg transition-all duration-300 ease-out",
+        // and can't be overridden by a child's pointer-events. `visibility` is
+        // listed in the transition explicitly so it keeps its delayed-off timing
+        // and the fade-OUT still plays.
+        "absolute inset-0 z-50 flex flex-col bg-bg transition-[opacity,transform,visibility] duration-200 ease-out",
         open
           ? "pointer-events-auto visible scale-100 opacity-100"
           : "pointer-events-none invisible scale-[0.99] opacity-0",
       )}
     >
       {/* Header */}
-      <header className="flex flex-none items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-7">
+      <header className="flex flex-none items-center justify-between gap-3 border-b border-hairline px-5 py-4 sm:px-7">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={close}
-            className="inline-flex h-9 items-center gap-1.5 rounded-[6px] border border-border bg-panel px-3 text-[12px] font-normal text-grey-200 transition-colors hover:bg-grey-900 hover:text-white"
+            className={cn(CONTROL, FOCUS, "inline-flex h-9 items-center gap-1.5 rounded-control border border-edge bg-panel px-3 text-grey-200 transition-colors hover:border-edge-hover hover:text-grey-100 active:bg-wash")}
           >
             <ArrowLeft className="size-[15px]" />
             Edit
           </button>
           <div className="leading-tight">
-            <div className="text-[14px] font-medium text-grey-100">Formats</div>
-            <div className="hidden text-[11px] text-grey-400 sm:block">
+            <div className={cn(TITLE, "text-grey-100")}>Formats</div>
+            <div className={cn(MICRO, "hidden text-grey-300 sm:block")}>
               Click a format to keep editing in it, or export any size.
             </div>
           </div>
@@ -216,7 +216,7 @@ export default function Formats() {
           type="button"
           onClick={exportAll}
           disabled={busyAll}
-          className="inline-flex h-9 items-center gap-2 rounded-[6px] bg-grey-100 px-3.5 text-[12px] font-medium text-bg transition-colors hover:bg-white disabled:opacity-70"
+          className={cn(CONTROL, FOCUS, "inline-flex h-9 items-center gap-2 rounded-control bg-grey-100 px-3.5 font-medium text-bg transition-colors hover:bg-white active:bg-grey-200 disabled:opacity-60")}
         >
           {busyAll ? (
             <Loader2 className="size-[14px] animate-spin" />

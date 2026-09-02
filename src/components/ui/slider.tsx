@@ -6,14 +6,17 @@ import { cn } from "@/lib/utils"
 
 // ── Slider ────────────────────────────────────────────────────────────────
 // Restyled @base-ui slider for the akaCOVART studio. Designed to sit on a
-// muted, glassy panel: the rail is a quiet hairline-ish bar, the min→value
-// fill is near-white (grey-100), and the handle is a clear, grabbable dot
-// with a generous invisible hit area (the `before:` pseudo) so it is easy to
-// grab and drag. Hover / dragging / focus states are subtle, never neon.
+// muted, glassy panel: the rail is a faint white-alpha bar (its extent is
+// deliberately below 3:1 — the 10:1 fill and 16:1 thumb carry the state), the
+// min→value fill is grey-200 → grey-100 on hover, and the handle is a dot with
+// a knockout ring so it separates from the fill, plus a generous invisible hit
+// area (the `before:` pseudo, wider on phones). Drag = a crisp 2px ring; no
+// scale, no shadow, no halo.
 //
 // The whole `Control` row is the pointer target (base-ui lets you click /
 // drag anywhere on the track), and the nested <input type="range"> inside the
-// Thumb keeps full keyboard accessibility (arrows / home / end).
+// Thumb keeps full keyboard accessibility (arrows / home / end) — keyboard
+// focus is keyed to that inner input via `has-[:focus-visible]`.
 function Slider({
   className,
   defaultValue,
@@ -42,13 +45,13 @@ function Slider({
       thumbAlignment="edge"
       {...props}
     >
-      {/* Tall, padded hit area so clicking/dragging near the bar still works. */}
-      <SliderPrimitive.Control className="relative flex w-full cursor-pointer touch-none items-center py-2 select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col data-vertical:py-0">
+      {/* 24px control row: tall enough that clicking near the bar still works. */}
+      <SliderPrimitive.Control className="relative flex h-6 w-full cursor-pointer touch-none items-center py-0 select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col data-vertical:py-0">
         <SliderPrimitive.Track
           data-slot="slider-track"
           className={cn(
-            "relative grow overflow-hidden rounded-full bg-grey-700/70 transition-colors select-none",
-            "group-hover/slider:bg-grey-600 group-data-dragging/slider:bg-grey-600",
+            "relative grow overflow-hidden rounded-full bg-white/[0.12] transition-colors select-none",
+            "group-hover/slider:bg-white/[0.16] group-data-dragging/slider:bg-white/[0.16]",
             "data-horizontal:h-[3px] data-horizontal:w-full data-vertical:h-full data-vertical:w-[3px]",
           )}
         >
@@ -66,17 +69,17 @@ function Slider({
             data-slot="slider-thumb"
             key={index}
             className={cn(
-              // The visible handle.
-              "relative block size-[13px] shrink-0 rounded-full bg-grey-100 shadow-sm outline-none select-none",
-              "ring-1 ring-grey-500/60 transition-[transform,box-shadow,background-color] duration-100 ease-out",
-              // Generous invisible grab area around the handle.
-              "before:absolute before:-inset-2.5 before:content-['']",
-              // Hover / focus / active feedback — a soft halo, no colour shift.
-              "group-hover/slider:ring-grey-300",
-              "hover:scale-[1.06]",
-              "focus-visible:ring-[3px] focus-visible:ring-grey-200/40",
-              "active:scale-95 active:ring-grey-200",
-              "data-dragging:scale-95 data-dragging:ring-[3px] data-dragging:ring-grey-200/40",
+              // The visible handle: idle knockout ring (grey-600, 7.5:1 vs the
+              // grey-200 fill) so the dot reads as a separate object.
+              "relative block size-[13px] shrink-0 cursor-grab rounded-full bg-grey-100 outline-none select-none",
+              "ring-1 ring-grey-600 transition-[box-shadow,background-color]",
+              // Invisible grab area: 33px on desktop, 41px on phones.
+              "before:absolute before:-inset-2.5 before:content-[''] max-md:before:-inset-3.5",
+              // Hover ring = +1 step; drag = crisp 2px ring, white dot.
+              "group-hover/slider:ring-grey-400",
+              "data-dragging:cursor-grabbing data-dragging:bg-white data-dragging:ring-2 data-dragging:ring-grey-100",
+              // Keyboard focus lives on base-ui's inner <input type="range">.
+              "has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-1 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus",
               "data-disabled:pointer-events-none",
             )}
           />

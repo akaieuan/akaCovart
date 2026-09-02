@@ -1,8 +1,10 @@
 "use client";
 
 import { memo } from "react";
+import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
 import { Label } from "./primitives";
+import { FOCUS, MICRO } from "./primitives/typography";
 import { POS_COLS, POS_ROWS } from "./controls-config";
 
 // ── Text position 3x3 grid ───────────────────────────────────────────────────
@@ -19,12 +21,10 @@ function PositionGridInner() {
   return (
     <>
       <div className="mb-2 flex items-baseline justify-between">
-        <Label sub>Position</Label>
-        <span className="font-sans text-[11px] text-grey-400">
-          or drag on canvas ⤢
-        </span>
+        <Label>Position</Label>
+        <span className={cn(MICRO, "text-grey-300")}>or drag on canvas ⤢</span>
       </div>
-      <div className="grid w-[120px] grid-cols-3 gap-[5px]">
+      <div className="grid w-[132px] grid-cols-3 gap-1">
         {POS_ROWS.map((ry, ri) =>
           POS_COLS.map((col, ci) => {
             const active =
@@ -45,12 +45,14 @@ function PositionGridInner() {
                     textAlign: col.align,
                   })
                 }
-                className={
-                  "flex aspect-[1.4] rounded-[3px] border p-[5px] transition-colors " +
-                  (active
-                    ? "border-grey-500 bg-grey-600"
-                    : "border-grey-800 bg-grey-880 hover:border-grey-500")
-                }
+                // Active = grey-100 edge + grey-100 dot; the fill stays the tray grey.
+                className={cn(
+                  FOCUS,
+                  "flex aspect-[1.25] rounded-control border p-1 transition-colors",
+                  active
+                    ? "border-grey-100 bg-grey-880"
+                    : "border-edge bg-grey-880 hover:border-edge-hover",
+                )}
                 style={{
                   alignItems:
                     col.align === "left"
@@ -67,10 +69,10 @@ function PositionGridInner() {
                 }}
               >
                 <span
-                  className={
-                    "h-1 w-1 rounded-full " +
-                    (active ? "bg-grey-100" : "bg-grey-400")
-                  }
+                  className={cn(
+                    "h-1 w-1 rounded-full",
+                    active ? "bg-grey-100" : "bg-grey-350",
+                  )}
                 />
               </button>
             );

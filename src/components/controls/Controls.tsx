@@ -1,7 +1,9 @@
 "use client";
 
 import { type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { useStudio } from "@/lib/store";
+import { SECTION } from "./primitives/typography";
 import {
   Accordion,
   AccordionItem,
@@ -29,11 +31,18 @@ function PanelSection({
   children: ReactNode;
 }) {
   return (
-    <AccordionItem value={value} className="border-b border-grey-800/50">
-      <AccordionTrigger className="rounded-none px-5 py-4 font-sans text-[13px] font-medium tracking-[0.01em] text-grey-250 no-underline transition-colors hover:no-underline hover:text-grey-100">
+    <AccordionItem value={value} className="border-b border-hairline">
+      {/* 48px row; SECTION strong grey-150, primary grey-100 on hover / open. */}
+      <AccordionTrigger
+        className={cn(
+          SECTION,
+          "h-12 items-center px-5 py-0 text-grey-150 hover:text-grey-100 aria-expanded:text-grey-100",
+        )}
+      >
         {title}
       </AccordionTrigger>
-      <AccordionContent className="px-5 pt-0 pb-[18px]">
+      {/* Last row's mb-3 + 8 = 20px to the hairline. */}
+      <AccordionContent className="px-5 pt-0 pb-2">
         {children}
       </AccordionContent>
     </AccordionItem>

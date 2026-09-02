@@ -17,6 +17,14 @@ import {
   type ClipLength,
 } from "@/lib/store";
 import { GroupLabel, SliderRow, ToggleRow } from "@/components/controls/primitives";
+import {
+  CONTROL,
+  DATA,
+  DATA_SM,
+  FOCUS,
+  MICRO,
+} from "@/components/controls/primitives/typography";
+import { cn } from "@/lib/utils";
 import Waveform from "./Waveform";
 
 const ACCEPT = "audio/mpeg,audio/wav,.mp3,.wav";
@@ -188,10 +196,10 @@ export function AudioControls({ intro = true }: { intro?: boolean }) {
   return (
     <div>
       {intro && (
-        <div className="mb-4 font-sans text-[11px] leading-[1.7] text-grey-350">
-          Import an MP3 or WAV, trim a clip window (up to {DEFAULT_CLIP}s+ or the
-          full track), and the engine reacts live to its analyzed energy &amp;
-          beats. Export a synced video loop.
+        <div className={cn(CONTROL, "mb-4 text-grey-300")}>
+          Import a track, trim a clip window (up to{" "}
+          <span className={DATA}>{DEFAULT_CLIP}</span>s or the full track), then
+          export a synced video.
         </div>
       )}
 
@@ -212,12 +220,13 @@ export function AudioControls({ intro = true }: { intro?: boolean }) {
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={
-          "flex w-full flex-col items-center justify-center gap-[7px] rounded-[5px] border border-dashed px-4 py-6 text-center transition-colors " +
-          (dragOver
-            ? "border-grey-400 bg-grey-850"
-            : "border-grey-700 bg-grey-880 hover:border-grey-500 hover:bg-grey-850")
-        }
+        className={cn(
+          FOCUS,
+          "flex w-full flex-col items-center justify-center gap-2 rounded-control border border-dashed px-4 py-6 text-center transition-colors",
+          dragOver
+            ? "border-grey-200 bg-wash-active"
+            : "border-edge-hover bg-grey-880 hover:border-white/30 hover:bg-wash",
+        )}
       >
         {busy ? (
           <Loader2 className="size-[18px] animate-spin text-grey-200" />
@@ -226,15 +235,22 @@ export function AudioControls({ intro = true }: { intro?: boolean }) {
         ) : (
           <Upload className="size-[18px] text-grey-300" />
         )}
-        <span className="max-w-full truncate font-sans text-[12px] font-medium text-grey-150">
+        <span className={cn(CONTROL, "max-w-full truncate text-grey-100")}>
           {audioName ?? "Drop audio or click"}
         </span>
-        <span className="font-sans text-[11px] text-grey-400">
-          {busy
-            ? audioStatus === "decoding"
-              ? "Decoding…"
-              : `Analyzing ${Math.round(progress * 100)}%`
-            : "MP3 · WAV"}
+        <span className={cn(MICRO, "text-grey-300")}>
+          {busy ? (
+            audioStatus === "decoding" ? (
+              "Decoding…"
+            ) : (
+              <>
+                Analyzing{" "}
+                <span className={DATA_SM}>{Math.round(progress * 100)}%</span>
+              </>
+            )
+          ) : (
+            "MP3 · WAV"
+          )}
         </span>
       </button>
 
@@ -249,20 +265,18 @@ export function AudioControls({ intro = true }: { intro?: boolean }) {
       )}
 
       {error && (
-        <div className="mt-2 font-sans text-[11px] text-red-400">
-          {error}
-        </div>
+        <div className={cn(MICRO, "mt-2 text-red-400")}>{error}</div>
       )}
 
       {/* ── Waveform + transport (once a file is loaded) ─────────────────── */}
       {hasAudio && audioDuration > 0 && (
         <>
           <div className="mt-5">
-            <GroupLabel variant="beat">Clip window</GroupLabel>
+            <GroupLabel>Clip window</GroupLabel>
             <Waveform onScrub={scheduleReanalyze} />
 
-            {/* Length presets */}
-            <div className="mt-[10px] flex items-center gap-[6px]">
+            {/* Length presets — the shared tray recipe (Segmented / ModeToggle). */}
+            <div className="mt-3 flex items-center gap-1 rounded-control border border-edge bg-grey-880 p-1">
               {CLIP_PRESETS.map((len) => {
                 const active = clipLength === len;
                 return (
@@ -271,12 +285,14 @@ export function AudioControls({ intro = true }: { intro?: boolean }) {
                     type="button"
                     onClick={() => pickLength(len)}
                     aria-pressed={active}
-                    className={
-                      "flex-1 rounded-[4px] border px-2 py-[6px] font-sans text-[11px] tabular-nums transition-colors " +
-                      (active
-                        ? "border-grey-400 bg-grey-150 text-bg"
-                        : "border-grey-800 bg-grey-880 text-grey-300 hover:border-grey-600 hover:text-grey-150")
-                    }
+                    className={cn(
+                      DATA_SM,
+                      FOCUS,
+                      "flex h-8 flex-1 items-center justify-center rounded-[2px] transition-colors",
+                      active
+                        ? "bg-grey-100 text-bg"
+                        : "text-grey-250 hover:bg-wash-active hover:text-grey-100 active:bg-wash-active",
+                    )}
                   >
                     {len === "full" ? "Full" : `${len}s`}
                   </button>
@@ -291,7 +307,11 @@ export function AudioControls({ intro = true }: { intro?: boolean }) {
               type="button"
               onClick={togglePlay}
               aria-label={audioPlaying ? "Pause" : "Play"}
-              className="flex h-10 flex-none items-center gap-[8px] rounded-[4px] bg-grey-100 px-[18px] font-sans text-[12px] font-medium text-bg transition-colors hover:bg-white"
+              className={cn(
+                CONTROL,
+                FOCUS,
+                "flex h-10 flex-none items-center gap-2 rounded-control bg-grey-100 px-4 font-medium text-bg transition-colors hover:bg-white active:bg-grey-200",
+              )}
             >
               {audioPlaying ? (
                 <Pause className="size-[13px]" />
@@ -300,8 +320,12 @@ export function AudioControls({ intro = true }: { intro?: boolean }) {
               )}
               {audioPlaying ? "Pause" : "Play"}
             </button>
-            <div className="flex-1 text-right font-sans text-[12px] tabular-nums text-grey-200">
-              {fmt(now)} <span className="text-grey-450">/</span> {fmt(clipDur)}
+            <div className={cn(DATA, "flex-1 text-right text-grey-200")}>
+              {fmt(now)}{" "}
+              <span aria-hidden className="text-grey-500">
+                /
+              </span>{" "}
+              {fmt(clipDur)}
             </div>
           </div>
         </>
@@ -309,7 +333,7 @@ export function AudioControls({ intro = true }: { intro?: boolean }) {
 
       {/* ── AUDIO REACT ─────────────────────────────────────────────────── */}
       <div className="mt-6">
-        <GroupLabel variant="beat">Audio react</GroupLabel>
+        <GroupLabel>Audio react</GroupLabel>
         <ToggleRow label="Reactive" paramKey="audioReactive" />
         <SliderRow
           label="Intensity"

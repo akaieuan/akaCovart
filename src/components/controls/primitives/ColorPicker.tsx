@@ -18,6 +18,7 @@ import {
 import { useStudio, type StudioState } from "@/lib/store";
 import { parseHex } from "@/engine";
 import { Label } from "./Label";
+import { CONTROL, DATA, FOCUS, FOCUS_FIELD, MICRO } from "./typography";
 
 // ── Color picker (swatch button -> shadcn Popover w/ react-colorful) ──────────
 // Replaces the abstract hue/saturation sliders. The user picks a real colour and
@@ -89,12 +90,12 @@ function ColorPickerInner({
   return (
     <div className={cn("mb-4", className)}>
       <div className="mb-2 flex items-center justify-between">
-        <Label className="!text-grey-300">{label}</Label>
+        <Label>{label}</Label>
         {active && (
           <button
             type="button"
             onClick={() => set(null)}
-            className="bg-transparent font-sans text-[11px] font-normal text-grey-350 hover:text-grey-150"
+            className={cn(MICRO, FOCUS, "rounded-[2px] bg-transparent text-grey-300 hover:text-grey-100")}
           >
             Reset
           </button>
@@ -107,12 +108,12 @@ function ColorPickerInner({
             <button
               type="button"
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-[5px] border border-grey-800/80 bg-grey-880/40 px-2.5 py-2 transition-colors",
-                "hover:border-grey-700 hover:bg-grey-850/60",
+                FOCUS,
+                "flex h-10 w-full items-center gap-2.5 rounded-control border border-edge bg-grey-880 px-2.5 transition-colors hover:border-edge-hover active:bg-grey-850 aria-expanded:border-edge-hover",
               )}
             >
               <span
-                className="size-5 shrink-0 rounded-[4px] border border-grey-600 shadow-sm"
+                className="size-5 shrink-0 rounded-[2px] border border-grey-600"
                 style={
                   active
                     ? { background: value }
@@ -125,7 +126,8 @@ function ColorPickerInner({
                       }
                 }
               />
-              <span className="font-sans text-[12px] font-normal text-grey-200">
+              {/* A picked hex is DATA (mono); the "auto" wording is a CONTROL label. */}
+              <span className={cn(active ? DATA : CONTROL, "text-grey-200")}>
                 {active ? value : emptyLabel}
               </span>
             </button>
@@ -134,12 +136,12 @@ function ColorPickerInner({
         <PopoverContent
           align="start"
           sideOffset={6}
-          className="covart-colorpicker w-[232px] gap-3 border border-grey-700 bg-grey-900 p-3 ring-0"
+          className="covart-colorpicker w-[232px] gap-3 border border-edge bg-grey-900 p-3 ring-0"
         >
           <HexColorPicker color={pickerColor} onChange={set} />
 
           <div className="flex items-center gap-2">
-            <span className="font-sans text-[11px] text-grey-400">#</span>
+            <span className={cn(DATA, "text-grey-300")}>#</span>
             <input
               type="text"
               value={draft.replace(/^#/, "")}
@@ -151,18 +153,26 @@ function ColorPickerInner({
                 commitHex(v);
               }}
               onBlur={() => setDraft(value ?? "")}
-              className="h-[30px] w-full rounded-[3px] border border-grey-700 bg-grey-880 px-2 font-sans text-[12px] tracking-wide text-grey-100 outline-none focus:border-grey-500"
+              className={cn(
+                DATA,
+                FOCUS_FIELD,
+                "h-8 w-full rounded-control border border-edge bg-grey-880 px-2 text-grey-100",
+              )}
             />
             <button
               type="button"
               onClick={() => set(null)}
-              className="shrink-0 rounded-[3px] border border-grey-700 px-2 py-[6px] font-sans text-[11px] text-grey-300 hover:border-grey-500 hover:text-grey-100"
+              className={cn(
+                CONTROL,
+                FOCUS,
+                "h-8 shrink-0 rounded-control border border-edge px-2 text-grey-300 transition-colors hover:border-edge-hover hover:text-grey-100",
+              )}
             >
               None
             </button>
           </div>
 
-          <div className="grid grid-cols-8 gap-[5px]">
+          <div className="grid grid-cols-8 gap-1">
             {PRESETS.map((hex) => (
               <button
                 key={hex}
@@ -170,7 +180,8 @@ function ColorPickerInner({
                 title={hex}
                 onClick={() => set(hex)}
                 className={cn(
-                  "aspect-square rounded-[3px] border",
+                  FOCUS,
+                  "aspect-square rounded-[2px] border transition-colors",
                   value === hex
                     ? "border-grey-100"
                     : "border-black/30 hover:border-grey-300",

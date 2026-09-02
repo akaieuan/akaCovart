@@ -1,11 +1,9 @@
 export { default as Studio } from "./Studio";
 export { default as EngineSelector } from "./EngineSelector";
-export { default as TopBar } from "./TopBar";
 export { SeedRow } from "./SeedRow";
 export { ModeToggle } from "./ModeToggle";
 export { ResetButton } from "./ResetButton";
 export { ExportButton } from "./ExportButton";
-export { FormatsButton } from "./FormatsButton";
 export { default as Formats } from "./Formats";
 export { default as Preview } from "./Preview";
 export { default as Header } from "./Header";

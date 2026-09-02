@@ -5,10 +5,14 @@ import { cn } from "@/lib/utils";
 import { Input as UIInput } from "@/components/ui/input";
 import { useStudio } from "@/lib/store";
 import type { StrKey } from "./keys";
+import { CONTROL } from "./typography";
 
-// ── Text input (shadcn Input, mono micro-type) ───────────────────────────────
+// ── Text input (shadcn Input) ────────────────────────────────────────────────
 // Self-subscribing: reads ONLY its own string store slice and writes through
 // the stable `setState` action. Memoized so it ignores unrelated store churn.
+// Border / fill / focus come from the Input atom; this only sets height, type
+// role and ink. `muted` (the subline / artist field) is quieter by colour, not
+// weight — both fields are 400.
 export interface TextRowProps {
   paramKey: StrKey;
   placeholder?: string;
@@ -28,11 +32,7 @@ function TextRowInner({ paramKey, placeholder, muted, className }: TextRowProps)
       onChange={(e) =>
         setState({ [paramKey]: e.target.value } as Parameters<typeof setState>[0])
       }
-      className={cn(
-        "h-[38px] rounded-[5px] border-grey-800/80 bg-grey-880/40 px-3 font-sans text-[12px] text-ink transition-colors hover:border-grey-700 focus-visible:border-grey-600",
-        muted ? "font-normal text-grey-200" : "font-medium",
-        className,
-      )}
+      className={cn(CONTROL, "h-10 px-3", muted ? "text-grey-250" : "text-grey-100", className)}
     />
   );
 }

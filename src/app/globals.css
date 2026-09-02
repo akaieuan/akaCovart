@@ -10,12 +10,43 @@
 /* Design tokens ported from the prototype (index.html). Dark studio palette. */
 @theme {
   /* App font: Geist (clean neutral sans), loaded via the `geist` package which
-     exposes --font-geist-sans; we alias it to --font-app and point every font
-     token at it so the whole UI is one Geist sans. mono maps to the same app
-     font so old font-mono labels lose the mono look. */
+     exposes --font-geist-sans; we alias it to --font-app and point the sans /
+     heading tokens at it so the whole UI is one Geist sans. */
   --font-app: var(--font-geist-sans);
   --font-sans: var(--font-app), system-ui, sans-serif;
-  --font-mono: var(--font-app), system-ui, sans-serif;
+  /* Geist Mono, DATA ONLY via the DATA role (controls/primitives/typography.ts)
+     — numerals, seeds, dims, BPM, % — never labels, headings or prose. */
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Motion: one ease-out curve for every short state transition (colour,
+     transform, height). Duration stays Tailwind's 150ms default — declared
+     here so both defaults are visible in one place. Long transitions (sidebar
+     width, overlays, hero) declare their own duration + ease-out explicitly. */
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Structure: white-alpha tokens so hairlines / edges read the same on the
+     opaque panel and on glass over bright art. Hover = +1 step. */
+  --color-hairline: rgb(255 255 255 / 0.06); /* dividers, accordion items, zones */
+  --color-edge: rgb(255 255 255 / 0.1); /* THE control border: inputs, trays, pills, tiles */
+  --color-edge-hover: rgb(255 255 255 / 0.2);
+  --color-wash: rgb(255 255 255 / 0.05); /* hover fill for tray items / nav pills */
+  --color-wash-active: rgb(255 255 255 / 0.09); /* pressed fill (touch feedback) */
+  /* Focus outline = grey-200: 10.3:1 on the panel, ≈4.9:1 on a glass pill over
+     bright art. Drawn as an outline (see @utility focus-ring), never a ring. */
+  --color-focus: #bcbcc2;
+
+  /* Radii: pills stay rounded-full; tray inner items use rounded-[2px] — the
+     only other value. */
+  --radius-control: 4px;
+  --radius-card: 8px;
+  --radius-panel: 16px;
+
+  /* Depth: shadows only, no extra layers. The inset 1px = a hairline top
+     highlight on the floating panel / dock. */
+  --shadow-float: 0 8px 30px rgb(0 0 0 / 0.45);
+  --shadow-panel: 0 20px 60px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --shadow-dock: 0 -8px 40px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.06);
 
   /* Surfaces */
   --color-bg: #0a0a0b;
@@ -60,53 +91,42 @@ body {
 body {
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* Geist Sans tnum verified (zero.tf…nine.tf); every figure in the UI is
+     tabular so values never reflow as they tick. Does not reach canvas
+     ctx.fillText. Other verified-but-unused Geist features, so nobody
+     re-researches them: Sans ss02 = single-storey a, ss09 = slashed zero;
+     Mono has no tnum (fixed pitch by construction), ss09 = plain zero.
+     No font-feature-settings / -webkit-font-smoothing anywhere — by decision. */
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── Range inputs (ported from prototype) ───────────────────────────── */
-input[type="range"] {
+/* ── Focus (the ONE recipe) ─────────────────────────────────────────────
+   Outline-based so it works on glass: a ring-offset paints an opaque
+   panel-coloured halo over a translucent pill; an outline with a transparent
+   gap does not. focus-ring = 2px outside (buttons, pills, tiles);
+   focus-field = on the border edge (inputs, full-bleed rows). */
+@utility focus-ring {
+  @apply outline-none focus-visible:outline-solid focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus;
+}
+@utility focus-field {
+  @apply outline-none focus-visible:outline-solid focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-focus;
+}
+
+/* ── Number inputs ──────────────────────────────────────────────────────
+   Spinners hidden: the seed and slider-value fields are DATA slots (mono,
+   fixed width); a native spinner breaks the slot and never matched the UI. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  /* Default track colour; the Slider primitive overrides this with a
-     min→value filled gradient via an inline style. */
-  background: #26262a;
-  border-radius: 2px;
-  cursor: pointer;
-  height: 2px;
-  margin: 5px 0;
-}
-input[type="range"]::-webkit-slider-runnable-track {
-  height: 2px;
-  background: transparent;
-  border-radius: 2px;
-}
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #e8e8ea;
-  margin-top: -4.5px;
-}
-input[type="range"]::-moz-range-track {
-  height: 2px;
-  background: transparent;
-  border-radius: 2px;
-}
-input[type="range"]::-moz-range-thumb {
-  width: 11px;
-  height: 11px;
-  border: none;
-  border-radius: 50%;
-  background: #e8e8ea;
-}
-input[type="number"]::-webkit-inner-spin-button {
-  opacity: 0.3;
+  margin: 0;
 }
 ::placeholder {
-  color: #48484c;
-  letter-spacing: 0.1em;
+  color: var(--color-grey-300);
+  letter-spacing: 0;
 }
 
 /* ── Panel scrollbar (ported from prototype) ────────────────────────── */
@@ -136,8 +156,8 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @theme inline {
-  /* Fonts: a single plain sans (Geist, via --font-app) for sans/mono/heading.
-     Do NOT re-alias --font-sans here or it shadows the @theme definition. */
+  /* Fonts: heading = the same Geist sans (via --font-app). Do NOT re-alias
+     --font-sans / --font-mono here or it shadows the @theme definition. */
   --font-heading: var(--font-app), system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -213,7 +233,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --destructive: oklch(0.704 0.191 22.216);
   --border: #18181b;
   --input: #1f1f23;
-  --ring: #6a6a6e;
+  --ring: #bcbcc2;
   --chart-1: #ececef;
   --chart-2: #bcbcc2;
   --chart-3: #8a8a8e;
@@ -248,7 +268,7 @@ input[type="number"]::-webkit-inner-spin-button {
   --destructive: oklch(0.704 0.191 22.216);
   --border: #18181b;
   --input: #1f1f23;
-  --ring: #6a6a6e;
+  --ring: #bcbcc2;
   --chart-1: #ececef;
   --chart-2: #bcbcc2;
   --chart-3: #8a8a8e;

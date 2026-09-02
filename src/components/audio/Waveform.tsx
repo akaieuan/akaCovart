@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { audioSession, transport } from "@/audio";
 import { useStudio, maxClipSeconds } from "@/lib/store";
+import { DATA_SM, MICRO } from "@/components/controls/primitives/typography";
+import { cn } from "@/lib/utils";
 
 // Theme greys (resolved literals so the canvas paints without CSS vars).
 const C_TRACK = "#3a3a3a"; // unselected peaks
@@ -258,7 +260,7 @@ export default function Waveform({
     <div className="select-none">
       <div
         ref={wrapRef}
-        className="relative h-[76px] w-full rounded-[4px] border border-grey-800 bg-grey-880"
+        className="relative h-[76px] w-full rounded-control border border-edge bg-grey-880"
         style={{ cursor }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -273,16 +275,23 @@ export default function Waveform({
           className="absolute inset-0 h-full w-full touch-none"
         />
       </div>
-      <div className="mt-[6px] flex items-center justify-between font-sans text-[11px] text-grey-400">
-        <span>{fmt(clipStart)}</span>
-        <span className={atMax ? "text-grey-200" : "text-grey-350"}>
-          {span.toFixed(1)}s window{atMax ? " · max" : ""}
-          <span className="text-grey-450"> · </span>
-          {fmt(clipStart)}
-          <span className="text-grey-450">→</span>
-          {fmt(clipEnd)}
+      {/* Readout: words sans, every figure in DATA_SM; separators are decorative. */}
+      <div className={cn(MICRO, "mt-2 flex items-center justify-between text-grey-300")}>
+        <span className={DATA_SM}>{fmt(clipStart)}</span>
+        <span className={atMax ? "text-grey-200" : "text-grey-300"}>
+          <span className={DATA_SM}>{span.toFixed(1)}</span>s window
+          {atMax ? " · max" : ""}
+          <span aria-hidden className="text-grey-500">
+            {" "}
+            ·{" "}
+          </span>
+          <span className={DATA_SM}>{fmt(clipStart)}</span>
+          <span aria-hidden className="text-grey-500">
+            →
+          </span>
+          <span className={DATA_SM}>{fmt(clipEnd)}</span>
         </span>
-        <span>{fmt(clipEnd)}</span>
+        <span className={DATA_SM}>{fmt(clipEnd)}</span>
       </div>
     </div>
   );

@@ -22,10 +22,10 @@ function LookSectionInner() {
   if (focus === "oil") {
     return (
       <>
-        <Segmented paramKey="oilPalette" options={OIL_PALETTE_OPTIONS} className="mb-[14px]" />
+        <Segmented paramKey="oilPalette" options={OIL_PALETTE_OPTIONS} className="mb-4" />
         {renderGroups([OIL_LOOK_GROUP])}
         <Divider />
-        <GroupLabel variant="sub">Atmosphere</GroupLabel>
+        <GroupLabel>Atmosphere</GroupLabel>
         {renderGroups([ATMOSPHERE_GROUP])}
       </>
     );
@@ -33,11 +33,11 @@ function LookSectionInner() {
   if (focus === "txt") {
     return (
       <>
-        <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
+        <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-4" />
         <ColorPicker paramKey="txtBg" label="Background" emptyLabel="From mood" />
         <ColorPicker paramKey="txtInk" label="Text" emptyLabel="From mood" />
         <Divider />
-        <GroupLabel variant="sub">Atmosphere</GroupLabel>
+        <GroupLabel>Atmosphere</GroupLabel>
         {renderGroups([ATMOSPHERE_GROUP])}
       </>
     );
@@ -47,33 +47,33 @@ function LookSectionInner() {
     // behind-type fill used by the scrim / art-filled mode) for the type layer.
     return (
       <>
-        <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
+        <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-4" />
         <ColorPicker paramKey="colorPick" label="Color" />
         {renderGroups([COLOR_GROUP])}
         <Divider />
-        <GroupLabel variant="sub">Type colour</GroupLabel>
+        <GroupLabel>Type colour</GroupLabel>
         <ColorPicker paramKey="txtInk" label="Text" emptyLabel="From mood" />
         <ColorPicker paramKey="txtBg" label="Behind type" emptyLabel="From mood" />
         <Divider />
-        <GroupLabel variant="sub">Atmosphere</GroupLabel>
+        <GroupLabel>Atmosphere</GroupLabel>
         {renderGroups([ATMOSPHERE_GROUP])}
       </>
     );
   }
   return (
     <>
-      <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-[14px]" />
+      <Segmented paramKey="mood" options={MOOD_OPTIONS} className="mb-4" />
       <ColorPicker paramKey="colorPick" label="Color" />
       {renderGroups([COLOR_GROUP])}
       <Divider />
-      <GroupLabel variant="sub">Atmosphere</GroupLabel>
+      <GroupLabel>Atmosphere</GroupLabel>
       {renderGroups([ATMOSPHERE_GROUP])}
       {/* The curated presets are Art-engine looks; Oil shares this palette panel
           but its starting points are the lane's own grid. */}
       {focus === "art" && (
         <>
           <Divider />
-          <GroupLabel variant="sub">Starting points</GroupLabel>
+          <GroupLabel>Starting points</GroupLabel>
           <Presets />
         </>
       )}

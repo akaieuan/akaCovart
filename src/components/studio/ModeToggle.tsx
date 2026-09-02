@@ -2,6 +2,7 @@
 
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { CONTROL, FOCUS } from "@/components/controls/primitives/typography";
 
 /** STILL / ANIMATE mode toggle. (Audio is now a driver of Animate, not a mode.) */
 export function ModeToggle({ className }: { className?: string }) {
@@ -12,9 +13,14 @@ export function ModeToggle({ className }: { className?: string }) {
     { value: "animate", label: "Animate" },
   ];
   return (
+    // The shared "tray" recipe (same as Segmented / EngineSelector): 4px inset,
+    // 1px edge, 32px items → a 40px control (40px ITEMS on phones — it is a
+    // primary control there, so the items themselves clear the touch floor).
+    // Fill carries the active state, the weight never changes, so the label
+    // doesn't jitter on toggle.
     <div
       className={cn(
-        "grid grid-cols-2 gap-[2px] rounded-[5px] border border-grey-800 bg-grey-880 p-[3px]",
+        "grid grid-cols-2 gap-1 rounded-control border border-edge bg-grey-880 p-1",
         className,
       )}
     >
@@ -25,11 +31,14 @@ export function ModeToggle({ className }: { className?: string }) {
             key={o.value}
             type="button"
             onClick={() => setState({ mode: o.value })}
+            aria-pressed={active}
             className={cn(
-              "flex h-9 items-center justify-center rounded-[3px] px-1 text-[12px] font-normal transition-colors",
+              CONTROL,
+              FOCUS,
+              "flex h-8 max-sm:h-10 items-center justify-center rounded-[2px] px-1 transition-colors",
               active
                 ? "bg-grey-100 text-bg"
-                : "bg-transparent text-grey-300 hover:bg-grey-850 hover:text-grey-150",
+                : "text-grey-250 hover:bg-wash-active hover:text-grey-100 active:bg-wash-active",
             )}
           >
             {o.label}
