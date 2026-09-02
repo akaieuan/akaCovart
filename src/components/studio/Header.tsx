@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Check, ChevronDown, Download, Eye, Proportions, SlidersHorizontal } from "lucide-react";
 
-import { listEnginesByFocus } from "@/engine";
 import { useStudio } from "@/lib/store";
 import {
   Popover,
@@ -12,56 +11,23 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import StartGrid from "./StartGrid";
-
-type Focus = "art" | "txt" | "stack" | "oil";
-
-const FOCUS_OPTIONS: { value: Focus; label: string; hint: string }[] = [
-  { value: "art", label: "Art", hint: "Abstract generative fields" },
-  { value: "oil", label: "Oil", hint: "Painted landscapes, bit-crushed" },
-  { value: "txt", label: "TxT", hint: "Type as the subject" },
-  { value: "stack", label: "Stack", hint: "Art background + type on top" },
-];
-
-const FALLBACK_ENGINE: Record<Focus, string> = { art: "blob", oil: "oil", txt: "dither", stack: "blob" };
-
-// The engines a lane's `engine` may be. Stack's `engine` is its BACKGROUND, so
-// it accepts any field engine — the Art roster plus Oil's (type over a landscape).
-function enginesFor(focus: Focus) {
-  return focus === "stack"
-    ? [...listEnginesByFocus("art"), ...listEnginesByFocus("oil")]
-    : listEnginesByFocus(focus);
-}
-
-// First registered engine for a lane (fallbacks keep this safe pre-registration).
-function defaultEngine(focus: Focus): string {
-  return enginesFor(focus)[0]?.id ?? FALLBACK_ENGINE[focus];
-}
+import { FOCUS_OPTIONS, switchFocus, type Focus } from "./focus";
 
 /**
  * Style switcher — flips the studio between its lanes: Art (abstract fields),
  * Oil (painted landscapes), TxT (type-driven) and Stack (art + type). A small
  * dropdown next to the wordmark, so it
  * sits "above the sidebar" on desktop and at the top of the page on mobile (the
- * header is the same element in both layouts). Remembers the last-used engine in
- * each focus so round-trips feel natural.
+ * header is the same element in both layouts). The switch logic (and the
+ * per-lane engine memory) lives in ./focus.ts, shared with the start screen.
  */
 function FocusMenu() {
   const focus = useStudio((s) => s.focus);
-  const setState = useStudio((s) => s.setState);
   const [open, setOpen] = useState(false);
-  // Per-focus engine memory (component-scoped; seeded with the defaults).
-  const lastEngine = useRef<Record<Focus, string>>({ ...FALLBACK_ENGINE });
 
   const pick = (next: Focus) => {
     setOpen(false);
-    if (next === focus) return;
-    const cur = useStudio.getState();
-    // Stash the engine we're leaving, restore (or default) the one we're entering.
-    lastEngine.current[cur.focus as Focus] = cur.engine;
-    const remembered = lastEngine.current[next];
-    // Validate the remembered engine against what the lane accepts.
-    const known = enginesFor(next).some((e) => e.id === remembered);
-    setState({ focus: next, engine: known ? remembered : defaultEngine(next) });
+    switchFocus(next);
   };
 
   const active = FOCUS_OPTIONS.find((o) => o.value === focus) ?? FOCUS_OPTIONS[0];

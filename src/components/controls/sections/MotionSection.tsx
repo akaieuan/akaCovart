@@ -4,7 +4,7 @@ import { memo } from "react";
 import { useStudio } from "@/lib/store";
 import { Divider, GroupLabel, Segmented, ToggleRow, SliderRow } from "../primitives";
 import { AudioControls } from "@/components/audio";
-import { BEAT_GROUP, DRIFT_GROUP, MOTION_BY_ENGINE } from "../controls-config";
+import { BEAT_GROUP, DRIFT_GROUP, HIDE_DRIFT_FOR, MOTION_BY_ENGINE } from "../controls-config";
 import { renderControl } from "./renderControls";
 
 // Source segmented options — drives the (single) Animate motion from either the
@@ -50,9 +50,15 @@ function MotionSectionInner() {
           </>
         )}
 
-        <Divider />
-        <GroupLabel variant="beat">{DRIFT_GROUP.heading}</GroupLabel>
-        {DRIFT_GROUP.controls.map((c) => renderControl(c))}
+        {/* Drift (Speed / Wander / Swirl) is hidden for engines that never read it
+            — an inert slider reads as broken. */}
+        {!HIDE_DRIFT_FOR.has(engine) && (
+          <>
+            <Divider />
+            <GroupLabel variant="beat">{DRIFT_GROUP.heading}</GroupLabel>
+            {DRIFT_GROUP.controls.map((c) => renderControl(c))}
+          </>
+        )}
 
         <Divider />
         <GroupLabel variant="beat">Motion</GroupLabel>

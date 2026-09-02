@@ -204,7 +204,6 @@ export const COMPOSITION_BY_ENGINE: Record<string, ControlGroup[]> = {
         { kind: "slider", key: "oilPaint", label: "Brush load", min: 0, max: 100 },
         { kind: "slider", key: "oilStroke", label: "Stroke length", min: 0, max: 100 },
         { kind: "slider", key: "oilOpacity", label: "Paint opacity", min: 0, max: 100 },
-        { kind: "slider", key: "oilTooth", label: "Canvas tooth", min: 0, max: 100 },
       ],
     },
     {
@@ -406,9 +405,12 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "signalFlow", label: "Shimmer", min: 0, max: 100 },
   ],
   oil: [
-    { kind: "slider", key: "oilSway", label: "Camera sway", min: 0, max: 100 },
-    { kind: "slider", key: "oilFlow", label: "Paint flow", min: 0, max: 100 },
-    { kind: "slider", key: "oilDissolve", label: "Beat dissolve", min: 0, max: 100 },
+    // The tide + camera run on the CLIP clock (an integer number of resolve loops
+    // ≈ 6 s), so the loop length sets the pace of the whole motion.
+    { kind: "slider", key: "txtLoopBeats", label: "Loop length", min: 0, max: 100 },
+    { kind: "slider", key: "oilSway", label: "Camera", min: 0, max: 100 },
+    { kind: "slider", key: "oilFlow", label: "Tide drift", min: 0, max: 100 },
+    { kind: "slider", key: "oilDissolve", label: "Tide reach", min: 0, max: 100 },
   ],
   grid: [
     { kind: "slider", key: "gridRipple", label: "Ripple", min: 0, max: 100 },
@@ -441,3 +443,35 @@ export const MOTION_BY_ENGINE: Record<string, Control[]> = {
     { kind: "slider", key: "blurDrift", label: "Drift", min: 0, max: 100 },
   ],
 };
+
+// ── OIL lane: its own colour + texture ───────────────────────────────────────
+// Oil colours from the prototype's palettes + grade (hue / saturation /
+// lightness), NOT the shared mood / Color pipeline — so its Look panel is this
+// group, and its Texture panel is the canvas tooth + colour drift (the shared
+// film grain / scratches are skipped for Oil in render.ts).
+export const OIL_PALETTE_OPTIONS: SegOption[] = [
+  { value: "paper", label: "Paper" },
+  { value: "dusk", label: "Dusk" },
+  { value: "ash", label: "Ash" },
+];
+
+export const OIL_LOOK_GROUP: ControlGroup = {
+  controls: [
+    { kind: "slider", key: "oilHue", label: "Hue shift", min: 0, max: 100 },
+    { kind: "slider", key: "oilSat", label: "Saturation", min: 0, max: 100 },
+    { kind: "slider", key: "oilLight", label: "Lightness", min: 0, max: 100 },
+    { kind: "slider", key: "oilDepth", label: "Depth spread", min: 0, max: 100 },
+  ],
+};
+
+export const OIL_TEXTURE_GROUP: ControlGroup = {
+  controls: [
+    { kind: "slider", key: "oilTooth", label: "Canvas tooth", min: 0, max: 100 },
+    { kind: "slider", key: "oilDrift", label: "Colour drift", min: 0, max: 100 },
+  ],
+};
+
+// Engines whose motion never reads Speed / Wander / Swirl (Oil's tide and camera
+// run on the beat + the clip clock only), so the Drift group is hidden for them
+// rather than shown inert.
+export const HIDE_DRIFT_FOR: ReadonlySet<string> = new Set(["oil"]);

@@ -4,14 +4,32 @@ import { memo } from "react";
 import { useStudio } from "@/lib/store";
 import { Divider, GroupLabel, Segmented, ColorPicker } from "../primitives";
 import { Presets } from "../Presets";
-import { MOOD_OPTIONS, COLOR_GROUP, ATMOSPHERE_GROUP } from "../controls-config";
+import {
+  MOOD_OPTIONS,
+  COLOR_GROUP,
+  ATMOSPHERE_GROUP,
+  OIL_PALETTE_OPTIONS,
+  OIL_LOOK_GROUP,
+} from "../controls-config";
 import { renderGroups } from "./renderControls";
 
 // LOOK — the first step. TxT focus = direct two-tone Background/Text (the
 // starting-point suggestions live on the landing now). Art focus = palette
-// controls + Presets. Atomic + memoised; subscribes only to `focus`.
+// controls + Presets. Oil = its own palettes + grade (it never reads the mood /
+// Color pipeline). Atomic + memoised; subscribes only to `focus`.
 function LookSectionInner() {
   const focus = useStudio((s) => s.focus);
+  if (focus === "oil") {
+    return (
+      <>
+        <Segmented paramKey="oilPalette" options={OIL_PALETTE_OPTIONS} className="mb-[14px]" />
+        {renderGroups([OIL_LOOK_GROUP])}
+        <Divider />
+        <GroupLabel variant="sub">Atmosphere</GroupLabel>
+        {renderGroups([ATMOSPHERE_GROUP])}
+      </>
+    );
+  }
   if (focus === "txt") {
     return (
       <>
