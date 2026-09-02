@@ -1,9 +1,9 @@
-import type { FieldArgs, FieldEngine, ParamDef, RNG } from "../types";
+import type { AnimState, FieldArgs, FieldEngine, ParamDef, RNG } from "../types";
 import { registerEngine } from "../registry";
 import { prng } from "../prng";
 import { rgba } from "../color";
 import { drawBlurred } from "../blur";
-import { resolveEnv } from "./txtMask";
+import { clipPhaseOf as sharedClipPhase, loopBeatsOf } from "../loop";
 
 // OIL — an oil-painted landscape that BIT-CRUSHES itself. Three stacked passes,
 // ported from the "Abstract Oil-Bit Landscape Banner" study (poster-generator/
@@ -22,37 +22,97 @@ import { resolveEnv } from "./txtMask";
 //  • Deterministic — every random value comes from a seeded stream (`prng(seed ^
 //    C_*)`, drawn in a FIXED order) or an integer hash. Each pass owns its OWN
 //    stream, so changing (say) the cloud count can never shift the strokes. No
-//    Math.random / Date.now anywhere.
-//  • Flicker-free — everything time-driven is gated on `anim.anim` and moves
-//    SPACE only: the camera wanders/zooms, the strokes swim along their own axis,
-//    and the dissolve front pops cells in by SCALE. Colour, brightness and alpha
-//    are time-independent per element, so nothing ever strobes.
+//    Math.random / Date.now anywhere; the only per-frame inputs are the three
+//    periodic clocks below.
+//  • Flicker-free — the PAINTING IS LOCKED OFF: the strokes are baked into the
+//    raster and nothing swims. Everything time-driven is gated on `anim.anim`
+//    and moves SPACE only: a single-plane camera (a closed noise-circle wander
+//    plus a slow push-in about the horizon) and the BIT TIDE — the crush front
+//    advances from the crushed edge toward the painted edge and every extra cell
+//    GROWS in by scale from nothing, sliding onto its rest position as it fills.
+//    Colour, brightness and alpha are constants per element, so nothing strobes.
+//
+// THE THREE CLOCKS — all periodic and all EXACTLY 0 at frame 0, so the still,
+// the first frame and the last frame of an export loop are the same image:
+//   b = anim.beat       → kick / pump / spring, attack-shaped (`att`) so they are
+//                         0 at b = 0 and ride through the loop seam.
+//   φ = anim.loopPhase  → one resolve cycle: a small cycle breath (push-in).
+//   ψ = clip phase      → one export clip (nCyc cycles ≈ 6 s): the tide, the
+//                         camera wander and the slow push-in. Read from
+//                         `anim.clipPhase` when the driver supplies it, else
+//                         derived from `anim.rt` on the SHARED clip clock
+//                         (../loop.ts — the same arithmetic export.ts's
+//                         loopFrames uses) — see `clipPhaseOf`.
+//   Track mode: `beat` there is a smoothed feature, not a phase, so `att` merely
+//   suppresses the pushes while the music is quiet; ψ/φ are clocks on clip time
+//   and the loop carries no seamless guarantee (as with every engine in track).
+//   `anim.t / drift / swirl / speed` are deliberately NOT read: Speed / Wander /
+//   Swirl are inert for Oil.
 //
 // THE REF SAMPLING CONTRACT (why this looks the same at 156px and 3000px):
 //   `REF = 396` is the tuning reference — the short side of the original study —
 //   so 1 REF pixel == 1 prototype "u" unit and painter.ts's constants transcribe
 //   literally. Every build paints the SAME vector underlay twice: once onto a
-//   REF-scale buffer and once at the output scale. All *decisions* (stroke
-//   colours, cell colours, cell survival) are read from the REF buffer, so the
-//   layout and the palette of a frame are a pure function of (seed, params) and
-//   never of the canvas size — only the rasterisation gets finer. The output-scale
+//   REF-scale buffer and once at the raster BUCKET scale (below). All *decisions*
+//   (stroke colours, cell colours, cell survival) are read from the REF buffer, so
+//   the layout and the palette of a frame are a pure function of (seed, params)
+//   and never of the canvas size — only the rasterisation gets finer. The bucket
 //   copy is what is actually drawn.
 //
-// OVERSCAN: the underlay, the strokes and the cells all extend 6% past the frame
-// so the ANIM camera transform can never expose an unpainted edge.
+// OIL OWNS ITS COLOUR (why the Color panel does not touch it):
+//   The painting is built from the study's OWN three palettes (paper / dusk /
+//   ash — sky, ridge and field swatches transcribed verbatim from poster-
+//   generator/lib/palettes.ts) plus its five brand accents, graded exactly as
+//   painter.ts grades them: `grade(swatch, hue, sat, light)` = an HSL hue
+//   rotation, a saturation multiply and a lightness lift, with the per-depth
+//   lightness lift on ridges and bands (the Depth slider). The ridge ramp keeps
+//   PROTOTYPE ORDER (index 0 = far, 5 = near — paper reads light-far / dark-
+//   near, dusk dark-far / light-near, exactly as its data says; nothing is
+//   re-sorted by luminance). `cfg` (the mood palette with the Color transforms
+//   applied) is NOT read at all, so the studio's Hue / Vibrance / Warmth and
+//   Auto mode's slow hue drift cannot reach the cache key and can never force a
+//   rebuild — Oil's own Palette panel (palette, hue, saturation, light) is the
+//   only colour input, and it is in the key like any composition param.
 //
-// SCOPED DETERMINISM EXCEPTION (same spirit as dither.ts's broken-pixel sparkle):
-// during the resolve loop a COHERENT dissolve front sweeps along a seed-drawn
-// axis and temporarily reveals extra bit cells, each popping in by SCALE. It is
-// hashed from (seed, cell, level) and driven by `loopPhase`, so it is reproducible
-// at any fps and on export; at `loopPhase === 0` the boost is EXACTLY zero, so the
-// resolve frame is the still cell set. Cell colour + alpha never change with time.
+// THE SIZE-BUCKET CACHE (why animating never rebuilds):
+//   The build is split in two memos keyed on the SAME numeric key (seed, every
+//   composition + palette param — never S, never time, never a motion param,
+//   never the Animate flag):
+//     • refSlots (2, LRU) — everything size-independent: the REF images, the
+//       stroke pack, the cell pack and its prebuilt fill styles. Two slots so
+//       two Oil keys rendering in one loop (the studio canvas + a hovered start
+//       tile) each keep theirs instead of rebuilding every frame.
+//     • rasterSlots (2, LRU) — the painted underlay + strokes + tooth at a
+//       BUCKET size from LADDER (the smallest rung ≥ S). Per frame the raster is
+//       blitted scaled to S (1:1 for the 880 still and the 1080 hero/video), so
+//       the live valve's 640–880 hunting all lands in ONE bucket and can never
+//       cause a rebuild; the strokes and cells are vectors at S already. Two
+//       slots so the 880 still survives a 3072 PNG export or a 560 draft; three
+//       concurrent buckets would thrash (not a real path today).
+//
+// OVERSCAN: the underlay, the strokes and the cells all extend 6% past the frame
+// so the ANIM camera transform can never expose an unpainted edge (its
+// translation is bounded to < 4.7% of S; its zoom is always ≥ 1 about an
+// interior pivot).
 
 // ── tuning reference ─────────────────────────────────────────────────────────
 const REF = 396; // 1 REF px == 1 prototype u-unit
 const OVERSCAN = 0.06; // painted margin outside the frame, as a fraction of the edge
 const OVER = 1 + 2 * OVERSCAN;
 const TAU = Math.PI * 2;
+
+// ── raster size ladder ───────────────────────────────────────────────────────
+// StartGrid tiles 180 → 256; DRAFT 560 / Preview 520 → 560; Formats 640, Preview
+// 720, the live valve 640–880 and the still 880 → 880 (1:1 for the still); hero
+// 1080 + video ≤ 1080 → 1080 (1:1); PNG 3000 → 3072. Anything larger rounds up
+// to a multiple of 512.
+const LADDER = [256, 560, 880, 1080, 1536, 2048, 3072];
+function bucketOf(S: number): number {
+  for (let i = 0; i < LADDER.length; i++) if (LADDER[i] >= S) return LADDER[i];
+  return Math.ceil(S / 512) * 512;
+}
+const RASTER_SLOTS = 2;
+const REF_SLOTS = 2;
 
 // ── PRNG streams (one per pass, so passes never shift each other) ────────────
 const C_CAM = 0x4f1b8ad3; // seedHash + camera phases + sweep axis
@@ -67,13 +127,25 @@ const CH_SURV = 0x5203;
 const CH_ALPHA = 0x5307;
 const CH_ACC = 0x540d;
 const CH_PICK = 0x5513;
-const CH_PHASE = 0x5617;
+const CH_PHASE = 0x5617; // pack slot 9 — no longer read, kept so the pack stays byte-stable
 
-// Largest boost the dissolve front can ever add (dis ≤ 1 · E ≤ 1 · bump ≤ 1 · 0.9).
-// Used to cull cells that can never be shown at ANY dissolve setting — a constant,
-// so the pack stays independent of the (motion-only) oilDissolve slider.
+// ── value-noise lanes the camera / tide own (no fbm caller ever lands on them) ─
+const LANE_PANX = 11;
+const LANE_PANY = 17;
+const LANE_PATCH = 83;
+
+// ── the bit tide ─────────────────────────────────────────────────────────────
+// Largest participation the tide can ever add (G ≤ BOOST_MAX). Used to cull cells
+// that can never be shown at ANY Tide-reach setting — a constant, so the pack
+// stays independent of the (motion-only) oilDissolve slider.
 const BOOST_MAX = 0.9;
-const BAND = 0.28; // width of the dissolve front, in sweep-axis units
+const BANDW = 0.6; // width of the grow band, in sweep-axis units
+const LAG = 0.25; // how far behind the front the deepest / most-sheltered cells rise
+const KSURGE = 0.03; // kick surge of the front, in sweep units
+const SUBPX = 1.0; // px — a cell narrower than this is not drawn yet (grows from nothing)
+const KBREATH = 0.05; // crush thump on the kick …
+const PBREATH = 0.02; // … and on the pump, both scaled by Tide reach
+const BREATH_MAX = 0.03; // cap on that thump (a lattice pulse would read as strobe)
 
 type SceneId = "ridgeline" | "dunes" | "coast" | "basin" | "mesa" | "storm";
 type BrushId = "impasto" | "knife" | "scumble" | "stipple" | "dry";
@@ -119,12 +191,23 @@ function fade(t: number): number {
 function mix(a: number[], b: number[], t: number): number[] {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
-/** Relative luminance in [0,1] — the ONLY ordering used for the palette ramps. */
-function lum(c: number[]): number {
-  return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255;
+/** A slider read: the default for a missing OR non-finite value, so neither the
+ *  cache key nor the build can ever see NaN (a NaN key slot would miss forever). */
+function sl(v: unknown, def: number): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : def;
+}
+/** Key-slot guard: a non-finite value becomes a sentinel that compares equal to
+ *  itself, so a junk param can never force a rebuild every frame. */
+function fin(v: number): number {
+  return Number.isFinite(v) ? v : -1;
+}
+/** Attack shaping for the beat envelopes: 0 at b = 0, a quarter-sine up to 1 over
+ *  the first `w` of the beat. Keeps every push EXACTLY 0 on the loop seam. */
+function att(b: number, w: number): number {
+  return b <= 0 ? 0 : b < w ? Math.sin((Math.PI / 2) * (b / w)) : 1;
 }
 
-// Reused colour triple for the hot draw loops (no per-stroke / per-cell alloc).
+// Reused colour triple for the build loops (no per-stroke / per-cell alloc).
 const tmpCol = [0, 0, 0];
 
 // ── noise (contours-style integer hash; NO Math.sin hashing anywhere) ────────
@@ -171,58 +254,139 @@ function makeNoise(seedHash: number): Noise {
   return { hash3, vnoise, fbm };
 }
 
-// ── palette ramps ────────────────────────────────────────────────────────────
-// cfg arrives with every Color transform already applied (render.ts), so the
-// engine NEVER touches hue/sat/light — it only orders what it is given.
-interface Pal {
-  base: number[];
-  colors: number[][];
-  accentColors: number[][];
+// ── the seed's own stream, memoised ──────────────────────────────────────────
+// The C_CAM stream (seedHash, camera phases, sweep axis) and the noise closures
+// are a pure function of the seed, so they are built once per seed instead of
+// per frame (that was 4 closure allocations a frame).
+interface Cam {
+  seed: number;
+  seedHash: number;
+  camx: number;
+  camy: number;
+  sx: number; // sweep axis (unit vector): t grows along +(sx, sy) toward the crushed edge
+  sy: number;
+  noise: Noise;
 }
-interface Ramps {
-  sky: number[][]; // 3 stops, top -> horizon
-  ridge: number[][]; // 6 stops, index 0 = FAR (nearest the sky), 5 = NEAR
-  band: number[][]; // foreground field bands
-  accent: number[][]; // bit-cell punctuation
+let camMemo: Cam | null = null;
+
+function camOf(seed: number): Cam {
+  if (camMemo && camMemo.seed === seed) return camMemo;
+  const r: RNG = prng(seed ^ C_CAM);
+  const seedHash = (Math.floor(r() * 0xffffffff) ^ (seed * 0x9e3779b1)) | 0;
+  const camx = r() * TAU;
+  const camy = r() * TAU;
+  // Dissolve axis: ±35° around horizontal, so the sweep always reads as a
+  // left-to-right wipe rather than an arbitrary diagonal.
+  const sweepAng = (r() - 0.5) * ((70 * Math.PI) / 180);
+  camMemo = {
+    seed,
+    seedHash,
+    camx,
+    camy,
+    sx: Math.cos(sweepAng),
+    sy: Math.sin(sweepAng),
+    noise: makeNoise(seedHash),
+  };
+  return camMemo;
 }
 
-function deriveRamps(pal: Pal, scene: SceneId): Ramps {
-  const src = pal.colors && pal.colors.length ? pal.colors : [pal.base];
-  const sorted = src.map((c) => c.slice()).sort((a, b) => lum(a) - lum(b)); // dark -> light
-  // Drop swatches that sit ON the base's luminance: some palettes repeat the base
-  // inside `colors`, which would make the far ridge (and the sky gradient built
-  // from it) collapse to a flat fill.
-  let pool = sorted.filter((c) => Math.abs(lum(c) - lum(pal.base)) > 0.05);
-  if (pool.length < 3) pool = sorted;
+// ── the study's palettes (poster-generator/lib/palettes.ts, hex -> RGB verbatim)
+// "Art-layer constants: mid-toned, readable on paper and near-black alike."
+// sky = 3 gradient stops top -> horizon; ridge = 6 swatches FAR -> NEAR (index
+// 0 sits against the sky); field = 5 foreground bands, index = band index.
+interface OilPalette {
+  sky: number[][];
+  ridge: number[][];
+  field: number[][];
+}
+type PaletteId = "paper" | "dusk" | "ash";
+const PALETTE_IDS: PaletteId[] = ["paper", "dusk", "ash"];
+const OIL_PALETTES: Record<PaletteId, OilPalette> = {
+  paper: {
+    sky: [[245, 243, 235], [234, 235, 228], [216, 224, 227]],
+    ridge: [[183, 201, 218], [159, 181, 203], [132, 156, 183], [106, 131, 160], [82, 108, 136], [67, 89, 111]],
+    field: [[167, 177, 137], [196, 183, 120], [143, 158, 109], [119, 133, 94], [97, 110, 76]],
+  },
+  dusk: {
+    sky: [[22, 22, 20], [31, 33, 30], [44, 50, 51]],
+    ridge: [[51, 60, 76], [62, 74, 94], [76, 90, 112], [92, 107, 130], [112, 128, 154], [132, 147, 171]],
+    field: [[35, 38, 31], [51, 57, 42], [69, 74, 48], [44, 49, 38], [29, 32, 25]],
+  },
+  ash: {
+    sky: [[232, 230, 223], [217, 216, 209], [196, 198, 195]],
+    ridge: [[168, 171, 166], [149, 153, 154], [127, 132, 136], [105, 110, 116], [84, 88, 97], [67, 70, 78]],
+    field: [[142, 141, 128], [163, 156, 134], [120, 120, 107], [96, 95, 85], [76, 75, 68]],
+  },
+};
+/** The five brand accents — punctuation only: a handful of cells, never a fill. */
+const OIL_ACCENTS: number[][] = [
+  [235, 187, 99],
+  [143, 217, 166],
+  [127, 176, 227],
+  [179, 157, 232],
+  [232, 143, 174],
+];
 
-  // AERIAL PERSPECTIVE: index 0 is the FAR ridge and must be the end of the ramp
-  // adjacent to the sky in luminance, so distance reads as "fades into the air"
-  // on light and dark palettes alike.
-  const light = lum(pal.base) > 0.5;
-  const ridge: number[][] = [];
-  for (let i = 0; i < 6; i++) {
-    const t = i / 5;
-    const k = light ? 1 - t : t;
-    ridge.push(pool[Math.min(pool.length - 1, Math.round(k * (pool.length - 1)))].slice());
+// ── grade (poster-generator/lib/color.ts, transcribed) ───────────────────────
+/** Hue-rotate / saturate / lift a swatch: RGB -> HSL, h + hueDeg, s × satMul
+ *  (clamped to [0,1]), l + lightAdd (clamped to [0.02,0.98]) -> RGB. Pure;
+ *  build-time only (never on the frame path). Floats out — rgba() rounds. */
+function gradeRGB(c: number[], hueDeg: number, satMul: number, lightAdd: number): number[] {
+  const r = c[0] / 255;
+  const g = c[1] / 255;
+  const b = c[2] / 255;
+  const mx = Math.max(r, g, b);
+  const mn = Math.min(r, g, b);
+  const l0 = (mx + mn) / 2;
+  let h = 0;
+  let s = 0;
+  if (mx !== mn) {
+    const d = mx - mn;
+    s = l0 > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
   }
+  h = (((h + hueDeg) % 360) + 360) % 360;
+  s = clamp(s * satMul, 0, 1);
+  const l = clamp(l0 + lightAdd, 0.02, 0.98);
+  if (s === 0) {
+    const v = l * 255;
+    return [v, v, v];
+  }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hh = h / 360;
+  const f = (t: number): number => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [f(hh + 1 / 3) * 255, f(hh) * 255, f(hh - 1 / 3) * 255];
+}
 
-  // Sky = the base walked toward the far-ridge colour, so the horizon cools/warms
-  // into the land instead of banding against it.
-  const skyEnd = ridge[0];
-  let sky = [mix(pal.base, skyEnd, 0), mix(pal.base, skyEnd, 0.35), mix(pal.base, skyEnd, 0.7)];
+// ── palette ramps ────────────────────────────────────────────────────────────
+// The graded swatches the underlay consumes AS-IS. Ridge and band fills are NOT
+// here: painter.ts grades those per element with a depth-dependent lightness
+// lift, so the underlay grades them from the source palette where the swatch is
+// chosen (see `gradeRGB` calls in paintUnderlayVector — build-time only).
+interface Ramps {
+  sky: number[][]; // 3 stops, top -> horizon (storm: pre-mixed 42 % toward ridge[5])
+  ridge: number[][]; // 6 base-graded stops in PROTOTYPE order: 0 = FAR, 5 = NEAR
+  accent: number[][]; // bit-cell punctuation (hue/sat graded, never lifted)
+}
+
+function rampsFromPalette(pal: OilPalette, hueDeg: number, satMul: number, lightAdd: number, scene: SceneId): Ramps {
+  const ridge = pal.ridge.map((c) => gradeRGB(c, hueDeg, satMul, lightAdd));
+  let sky = pal.sky.map((c) => gradeRGB(c, hueDeg, satMul, lightAdd));
   // Storm pre-mixes the whole sky toward the NEAR ridge — heavy weather overhead.
   if (scene === "storm") sky = sky.map((s) => mix(s, ridge[5], 0.42));
-
-  // Field bands come from the mid-luminance body of the palette (the ramp ends are
-  // already spoken for by sky + near ridge), cycled.
-  const lo = Math.floor(pool.length * 0.25);
-  const hi = Math.max(lo + 1, Math.ceil(pool.length * 0.75));
-  const band = pool.slice(lo, hi).map((c) => c.slice());
-
-  const accent =
-    pal.accentColors && pal.accentColors.length ? pal.accentColors.map((c) => c.slice()) : pool.map((c) => c.slice());
-
-  return { sky, ridge, band, accent };
+  const accent = OIL_ACCENTS.map((c) => gradeRGB(c, hueDeg, satMul, 0));
+  return { sky, ridge, accent };
 }
 
 // ── build spec (everything the cached build consumes) ────────────────────────
@@ -241,7 +405,7 @@ interface BuildSpec {
   baseAlpha: number;
   nStrokes: number;
   tooth: number;
-  bakeStrokes: boolean;
+  drift: number; // per-stroke RGB jitter amplitude (painter.ts's p.drift)
   cellU: number;
   steps: number;
   split: number;
@@ -250,18 +414,41 @@ interface BuildSpec {
   accent: number;
   sx: number;
   sy: number;
+  pal: OilPalette; // the source swatches (ridges / bands grade from these per element)
+  hueDeg: number;
+  satMul: number;
+  lightAdd: number;
   ramps: Ramps;
+}
+
+// ── the numeric cache key ────────────────────────────────────────────────────
+// One reusable Float64Array, filled per frame and compared element-wise — no
+// string joins, no per-frame allocation. Slots: seed, sceneIdx, brushIdx, the 16
+// composition sliders (3..17), then the palette panel — paletteIdx, hue, sat,
+// light, depth, drift (18..23). Every slot is finite (`sl` / `fin`). NOTHING that
+// changes while animating with fixed params is in here (no S, no time, no motion
+// params, no Animate flag, and nothing from cfg).
+const KEY_LEN = 24;
+const keyTmp = new Float64Array(KEY_LEN);
+function sameKey(a: Float64Array, b: Float64Array): boolean {
+  for (let i = 0; i < KEY_LEN; i++) if (a[i] !== b[i]) return false;
+  return true;
 }
 
 // ── module singletons (one engine instance; every field() call is synchronous
 // and self-contained, so these can never race — same pattern as signal.ts) ────
 let rCanvas: HTMLCanvasElement | null = null; // REF-scale build buffer (read back)
-let sCanvas: HTMLCanvasElement | null = null; // underlay at output scale (drawn)
 let xCanvas: HTMLCanvasElement | null = null; // scratch for the drawBlurred layers
+let frameNo = 0; // LRU clock for the raster slots
 
-interface OilCache {
-  key: string;
-  underlayS: HTMLCanvasElement;
+/** Build counters — for the perf harness / dev hooks only; never read by the render path. */
+export const oilStats = { refBuilds: 0, rasterBuilds: 0 };
+
+/** Everything size-independent: a pure function of the key. */
+interface OilRef {
+  keyVec: Float64Array;
+  lastUse: number; // LRU clock (frameNo)
+  spec: BuildSpec;
   underlayImg: ImageData; // REF, vector only — what the strokes sample
   compositeImg: ImageData; // REF, underlay + strokes + tooth — what the cells read
   strokePack: Float32Array;
@@ -272,24 +459,32 @@ interface OilCache {
   cellSurv: Float32Array;
   cellProb: Float32Array;
   cellSweep: Float32Array;
+  cellPatch: Float32Array; // smooth 0..1 fbm field — shapes the tide's shoreline
+  cellStyle: string[]; // prebuilt rgba() strings — the hot loop never formats
   cellCount: number;
-  ramps: Ramps;
-  margin: number; // output-scale overscan margin, in px
-  bakedStrokes: boolean;
 }
-let cache: OilCache | null = null;
+const refSlots: OilRef[] = [];
+
+/** The painted raster (underlay + strokes + tooth) at one bucket size. */
+interface RasterSlot {
+  keyVec: Float64Array;
+  B: number; // bucket edge (0 = never valid)
+  Mb: number; // overscan margin at B, in px
+  canvas: HTMLCanvasElement; // (B + 2·Mb)²
+  lastUse: number;
+}
+const rasterSlots: RasterSlot[] = [];
 
 const STRIDE = 10; // x, y, ang, len, thick, alpha, r, g, b, phaseHash
 
 function ctxOf(c: HTMLCanvasElement, willRead: boolean): CanvasRenderingContext2D | null {
   return c.getContext("2d", willRead ? { willReadFrequently: true } : undefined);
 }
-function ensureCanvas(which: 0 | 1 | 2, side: number): HTMLCanvasElement {
-  let c = which === 0 ? rCanvas : which === 1 ? sCanvas : xCanvas;
+function ensureCanvas(which: 0 | 1, side: number): HTMLCanvasElement {
+  let c = which === 0 ? rCanvas : xCanvas;
   if (!c) {
     c = document.createElement("canvas");
     if (which === 0) rCanvas = c;
-    else if (which === 1) sCanvas = c;
     else xCanvas = c;
   }
   if (c.width !== side || c.height !== side) {
@@ -328,7 +523,7 @@ function paintUnderlayVector(
   const frame = (): void => ctx.setTransform(1, 0, 0, 1, M, M);
   // A blurred layer is drawn into the scratch buffer and composited ONCE through
   // drawBlurred — ctx.filter is unreliable on WebKit, so blur.ts owns every blur.
-  const scratch = ensureCanvas(2, N);
+  const scratch = ensureCanvas(1, N);
   const beginLayer = (): CanvasRenderingContext2D | null => {
     const sc = ctxOf(scratch, false);
     if (!sc) return null;
@@ -393,9 +588,18 @@ function paintUnderlayVector(
   const x0 = -M - stepX;
   const x1 = edge + M + stepX;
   const floorY = edge + M;
+  const pal = spec.pal;
   for (let i = 0; i < spec.nRidges; i++) {
     const depth = spec.nRidges === 1 ? 0 : i / (spec.nRidges - 1); // 0 far .. 1 near
-    const swatch = ridgeRamp[Math.min(ridgeRamp.length - 1, Math.round(depth * (ridgeRamp.length - 1)))];
+    // painter.ts: g(ridge[round(depth·5)], (0.5 - depth)·0.1·(contrast - 1)·2) — the
+    // Depth slider lifts the far ridges and sinks the near ones (a tiny HSL lift,
+    // graded from the source swatch in ONE shot so the clamps match the study).
+    const swatch = gradeRGB(
+      pal.ridge[Math.min(pal.ridge.length - 1, Math.round(depth * (pal.ridge.length - 1)))],
+      spec.hueDeg,
+      spec.satMul,
+      spec.lightAdd + (0.5 - depth) * 0.1 * (spec.depthContrast - 1) * 2,
+    );
     // Aerial perspective: far ridges are mostly SKY, near ridges are mostly pigment.
     const shaded = mix(sky[2], swatch, clamp(0.35 + depth * 0.65 * spec.depthContrast, 0.1, 1));
     const baseY = edge * (horizon + (mod.top + depth * mod.spread) * span);
@@ -415,10 +619,16 @@ function paintUnderlayVector(
   }
 
   // ──────────────────────────────────────────────────────── foreground bands
-  const bandRamp = spec.ramps.band;
   for (let i = 0; i < spec.nBands; i++) {
     const t = spec.nBands === 1 ? 0 : i / (spec.nBands - 1);
-    const col = bandRamp[i % bandRamp.length];
+    // painter.ts: g(field[min(4, i)], (t - 0.5)·0.06·(contrast - 1)) — band i takes
+    // field swatch i (the last one repeats past five), with the Depth lift.
+    const col = gradeRGB(
+      pal.field[Math.min(pal.field.length - 1, i)],
+      spec.hueDeg,
+      spec.satMul,
+      spec.lightAdd + (t - 0.5) * 0.06 * (spec.depthContrast - 1),
+    );
     const baseY = edge * (horizon + (0.1 + t * 0.34) * span);
     const sc = beginLayer();
     if (!sc) break;
@@ -524,7 +734,7 @@ function ridgeProfile(
 
 // ── pass 2: the oil strokes ──────────────────────────────────────────────────
 // Every value is packed in u-units / normalised frame coords, so ONE pack serves
-// the REF bake, the output-scale bake and the per-frame live draw.
+// the REF bake and every bucket raster.
 function buildStrokePack(
   spec: BuildSpec,
   noise: Noise,
@@ -552,9 +762,11 @@ function buildStrokePack(
     const sxp = clamp((px + (r() - 0.5) * 16) | 0, 0, W - 1);
     const syp = clamp((py + (r() - 0.5) * 11) | 0, 0, H - 1);
     const k = (syp * W + sxp) * 4;
-    // painter.ts's fixed ±24 RGB drift + a 12% warm bias — pigment never mixes
-    // perfectly, and the warm flecks are what stop the field reading as a gradient.
-    const jit = (r() - 0.5) * 24;
+    // painter.ts's ±drift RGB jitter (the Colour drift slider; the study's default
+    // was 24) + a 12% warm bias — pigment never mixes perfectly, and the warm
+    // flecks are what stop the field reading as a gradient. The draw happens even
+    // at drift 0, so the stream is the same for every drift setting.
+    const jit = (r() - 0.5) * spec.drift;
     const warm = r() < 0.12 ? 1 : 0;
     const cr = clamp(d[k] + jit + warm * 10, 0, 255);
     const cg = clamp(d[k + 1] + jit + warm * 4, 0, 255);
@@ -617,38 +829,26 @@ function buildStrokePack(
     pack[o + 6] = Math.round(cr);
     pack[o + 7] = Math.round(cg);
     pack[o + 8] = Math.round(cb);
-    pack[o + 9] = noise.hash3(i, 7, CH_PHASE); // fixed per-stroke motion phase
+    pack[o + 9] = noise.hash3(i, 7, CH_PHASE); // legacy per-stroke phase (unused; keeps the pack stable)
   }
   return pack;
 }
 
-/** Draw the pack into `ctx`. `flowAmt > 0` adds the ANIM-gated swim (space only:
- *  a tilt about the stroke's own axis plus a slide along it — never a colour or
- *  alpha change, so a moving stroke can never strobe). */
+/** Bake the pack into `ctx` — the REF composite and every bucket raster. Strokes
+ *  are STATIC: the paint under the tide is the still's paint at every phase, so
+ *  there is no per-frame ellipse cost and nothing to boil. */
 function drawStrokes(
   ctx: CanvasRenderingContext2D,
   edge: number,
   margin: number,
   pack: Float32Array,
   count: number,
-  flowAmt: number,
-  T: number,
 ): void {
   const u = edge / REF;
   for (let i = 0; i < count; i++) {
     const o = i * STRIDE;
     const len = pack[o + 3];
     if (len <= 0) continue; // dry-brush skip
-    let ang = pack[o + 2];
-    let cx = margin + pack[o] * edge;
-    let cy = margin + pack[o + 1] * edge;
-    if (flowAmt > 0) {
-      const h = pack[o + 9];
-      ang += flowAmt * 0.3 * Math.sin(T * (0.3 + 0.5 * h) + h * TAU);
-      const slide = flowAmt * 2.2 * u * Math.sin(T * (0.21 + 0.37 * h) + h * Math.PI);
-      cx += Math.cos(ang) * slide;
-      cy += Math.sin(ang) * slide;
-    }
     tmpCol[0] = pack[o + 6];
     tmpCol[1] = pack[o + 7];
     tmpCol[2] = pack[o + 8];
@@ -656,7 +856,15 @@ function drawStrokes(
     ctx.beginPath();
     // Floor the radii so strokes stay visible when the field renders SMALL (the
     // gallery thumbnails), exactly as contours floors its line weight.
-    ctx.ellipse(cx, cy, Math.max(0.35, len * u), Math.max(0.2, pack[o + 4] * u), ang, 0, TAU);
+    ctx.ellipse(
+      margin + pack[o] * edge,
+      margin + pack[o + 1] * edge,
+      Math.max(0.35, len * u),
+      Math.max(0.2, pack[o + 4] * u),
+      pack[o + 2],
+      0,
+      TAU,
+    );
     ctx.fill();
   }
 }
@@ -686,6 +894,8 @@ interface CellPack {
   surv: Float32Array;
   prob: Float32Array;
   sweep: Float32Array;
+  patch: Float32Array;
+  style: string[];
   count: number;
 }
 
@@ -696,6 +906,7 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
   const surv: number[] = [];
   const prob: number[] = [];
   const sweep: number[] = [];
+  const patch: number[] = [];
   if (spec.bit <= 0) {
     return {
       rect: new Float32Array(0),
@@ -704,6 +915,8 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
       surv: new Float32Array(0),
       prob: new Float32Array(0),
       sweep: new Float32Array(0),
+      patch: new Float32Array(0),
+      style: [],
       count: 0,
     };
   }
@@ -742,8 +955,8 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
   };
 
   // The quad-tree's SHAPE is decided by the split hash alone (never by survival),
-  // so the cell geometry is static and the dissolve front only ever toggles
-  // VISIBILITY — cells can never re-shape mid-loop.
+  // so the cell geometry is static and the tide only ever GROWS a cell in place —
+  // cells can never re-shape mid-loop.
   const walk = (ax: number, ay: number, sz: number, level: number): void => {
     const half = sz >> 1;
     if (sz >= 8 && half >= minChild && noise.hash3(ax, ay, CH_SPLIT + level) < spec.split) {
@@ -761,7 +974,7 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
     let p = bitP * (0.1 + Math.pow(t, 1.7) * sweepP + Math.pow(Math.max(0, 1 - cy), 1.6) * 0.45);
     p *= 0.35 + noise.fbm(cx * 5, cy * 5, 77, 3) * 1.5;
     const s = noise.hash3(ax, ay, CH_SURV + level);
-    if (s >= p + BOOST_MAX) return; // can never be shown at ANY dissolve setting
+    if (s >= p + BOOST_MAX) return; // can never be shown at ANY tide setting
 
     const avg = averageCell(ax, ay, sz);
     if (!avg) return;
@@ -792,42 +1005,53 @@ function buildCellPack(spec: BuildSpec, noise: Noise, img: ImageData, refMargin:
     surv.push(s);
     prob.push(p);
     sweep.push(t);
+    // A smooth 0..1 field with ~⅓-frame features (2 octaves, max 0.75): the tide's
+    // shoreline advances in coherent patches instead of hash-noise.
+    patch.push(clamp(noise.fbm(cx * 3, cy * 3, LANE_PATCH, 2) / 0.75, 0, 1));
   };
 
   for (let y = 0; y < H; y += cellPx) {
     for (let x = 0; x < W; x += cellPx) walk(x, y, cellPx, 0);
   }
 
+  const alphaArr = Float32Array.from(alpha);
+  const rgbArr = Uint8Array.from(rgbv);
+  // Prebuilt fill styles from the PACKED values (float32 alpha), so the hot loop
+  // emits exactly the strings the per-cell rgba() call used to.
+  const style: string[] = new Array(alphaArr.length);
+  for (let i = 0; i < alphaArr.length; i++) {
+    tmpCol[0] = rgbArr[i * 3];
+    tmpCol[1] = rgbArr[i * 3 + 1];
+    tmpCol[2] = rgbArr[i * 3 + 2];
+    style[i] = rgba(tmpCol, alphaArr[i]);
+  }
+
   return {
     rect: Float32Array.from(rect),
-    rgbv: Uint8Array.from(rgbv),
-    alpha: Float32Array.from(alpha),
+    rgbv: rgbArr,
+    alpha: alphaArr,
     surv: Float32Array.from(surv),
     prob: Float32Array.from(prob),
     sweep: Float32Array.from(sweep),
-    count: alpha.length,
+    patch: Float32Array.from(patch),
+    style,
+    count: alphaArr.length,
   };
 }
 
-// ── the cached build ─────────────────────────────────────────────────────────
-// A PURE memo: the key names every input the build reads, and the build reads
+// ── the cached builds ────────────────────────────────────────────────────────
+// PURE memos: the key names every input the builds read, and the builds read
 // nothing else — so the frame is byte-identical with or without a cache hit.
-function ensureCache(spec: BuildSpec, noise: Noise, seed: number, S: number, key: string): OilCache | null {
-  if (cache && cache.key === key) return cache;
-  // Drop the old entry BEFORE the buffers it points at get resized/repainted, so a
-  // failed build can never leave a live key pointing at half-painted pixels.
-  cache = null;
 
+/** Steps 1, 2, 4: the REF images, the stroke pack and the cell pack. Returns a
+ *  NEW entry (the caller slots it); the live entries hold their own ImageData
+ *  copies, so repainting the shared REF buffer can never touch them. */
+function buildRef(spec: BuildSpec, noise: Noise, seed: number): OilRef | null {
   const refMargin = Math.round(OVERSCAN * REF); // 24
   const RS = REF + 2 * refMargin; // 444
-  const margin = Math.round(OVERSCAN * S);
-  const So = S + 2 * margin;
-
   const rc = ensureCanvas(0, RS);
   const rctx = ctxOf(rc, true); // read back twice per build
-  const sc = ensureCanvas(1, So);
-  const sctx = ctxOf(sc, false);
-  if (!rctx || !sctx) return null;
+  if (!rctx) return null;
 
   // 1. REF underlay -> the raster the strokes lift their colour from.
   paintUnderlayVector(rctx, REF, refMargin, spec, noise, seed);
@@ -835,28 +1059,18 @@ function ensureCache(spec: BuildSpec, noise: Noise, seed: number, S: number, key
 
   // 2. strokes, then the REF composite the cells read (underlay + paint + tooth).
   const strokePack = buildStrokePack(spec, noise, underlayImg, refMargin, seed);
-  drawStrokes(rctx, REF, refMargin, strokePack, spec.nStrokes, 0, 0);
+  drawStrokes(rctx, REF, refMargin, strokePack, spec.nStrokes);
   const compositeImg = rctx.getImageData(0, 0, RS, RS);
   if (spec.tooth > 0) toothInPlace(compositeImg.data, RS, RS, spec.tooth);
   // (no putImageData — the REF buffer is only ever sampled, never displayed)
 
-  // 3. the same underlay at output scale. Strokes are baked in ONLY when they are
-  //    not going to be redrawn per frame; `bakeStrokes` is part of the key, so the
-  //    two modes are separate builds and each is internally consistent.
-  paintUnderlayVector(sctx, S, margin, spec, noise, seed);
-  if (spec.bakeStrokes) drawStrokes(sctx, S, margin, strokePack, spec.nStrokes, 0, 0);
-  if (spec.tooth > 0) {
-    const img = sctx.getImageData(0, 0, So, So);
-    toothInPlace(img.data, So, So, spec.tooth);
-    sctx.putImageData(img, 0, 0);
-  }
-
   // 4. the bit cells, read off the REF composite.
   const cells = buildCellPack(spec, noise, compositeImg, refMargin);
 
-  cache = {
-    key,
-    underlayS: sc,
+  const ref: OilRef = {
+    keyVec: Float64Array.from(keyTmp),
+    lastUse: frameNo,
+    spec,
     underlayImg,
     compositeImg,
     strokePack,
@@ -867,12 +1081,179 @@ function ensureCache(spec: BuildSpec, noise: Noise, seed: number, S: number, key
     cellSurv: cells.surv,
     cellProb: cells.prob,
     cellSweep: cells.sweep,
+    cellPatch: cells.patch,
+    cellStyle: cells.style,
     cellCount: cells.count,
-    ramps: spec.ramps,
-    margin,
-    bakedStrokes: spec.bakeStrokes,
   };
-  return cache;
+  oilStats.refBuilds++;
+  return ref;
+}
+
+/** The ref entry under the current key (a hit, LRU-touched), or null — a miss;
+ *  `refVictim` then names the least-recently-used slot for `slotRef`. A plain
+ *  lookup + a module index rather than a build callback so a hit allocates
+ *  nothing (mirrors ensureRaster's LRU). */
+let refVictim = -1;
+function findRef(): OilRef | null {
+  refVictim = -1;
+  for (let i = 0; i < refSlots.length; i++) {
+    const s = refSlots[i];
+    if (sameKey(s.keyVec, keyTmp)) {
+      s.lastUse = frameNo;
+      return s;
+    }
+    if (refVictim < 0 || s.lastUse < refSlots[refVictim].lastUse) refVictim = i;
+  }
+  return null;
+}
+function slotRef(ref: OilRef): void {
+  if (refSlots.length < REF_SLOTS || refVictim < 0) refSlots.push(ref);
+  else refSlots[refVictim] = ref;
+}
+
+/** Step 3: the underlay + baked strokes + tooth at bucket `B`, into `slot`. */
+function buildRaster(slot: RasterSlot, B: number, ref: OilRef, noise: Noise, seed: number): boolean {
+  slot.B = 0; // never valid until the build completes
+  const Mb = Math.round(OVERSCAN * B);
+  const Bo = B + 2 * Mb;
+  const c = slot.canvas;
+  if (c.width !== Bo || c.height !== Bo) {
+    c.width = Bo;
+    c.height = Bo;
+  }
+  const sctx = ctxOf(c, false);
+  if (!sctx) return false;
+
+  paintUnderlayVector(sctx, B, Mb, ref.spec, noise, seed);
+  drawStrokes(sctx, B, Mb, ref.strokePack, ref.strokeCount);
+  if (ref.spec.tooth > 0) {
+    const img = sctx.getImageData(0, 0, Bo, Bo);
+    toothInPlace(img.data, Bo, Bo, ref.spec.tooth);
+    sctx.putImageData(img, 0, 0);
+  }
+  // A PNG-export raster leaves a ~42 MB scratch behind — release it.
+  if (B >= 2048) ensureCanvas(1, 1);
+
+  slot.keyVec.set(keyTmp);
+  slot.B = B;
+  slot.Mb = Mb;
+  slot.lastUse = frameNo;
+  oilStats.rasterBuilds++;
+  return true;
+}
+
+/** The raster slot for bucket `B` under the current key: a hit, or the LRU slot rebuilt. */
+function ensureRaster(B: number, ref: OilRef, noise: Noise, seed: number): RasterSlot | null {
+  let victim: RasterSlot | null = null;
+  for (let i = 0; i < rasterSlots.length; i++) {
+    const s = rasterSlots[i];
+    if (s.B === B && sameKey(s.keyVec, keyTmp)) {
+      s.lastUse = frameNo;
+      return s;
+    }
+    if (!victim || s.lastUse < victim.lastUse) victim = s;
+  }
+  let slot: RasterSlot;
+  if (rasterSlots.length < RASTER_SLOTS || !victim) {
+    slot = {
+      keyVec: new Float64Array(KEY_LEN),
+      B: 0,
+      Mb: 0,
+      canvas: document.createElement("canvas"),
+      lastUse: 0,
+    };
+    rasterSlots.push(slot);
+  } else {
+    slot = victim;
+  }
+  return buildRaster(slot, B, ref, noise, seed) ? slot : null;
+}
+
+// ── the clip clock ───────────────────────────────────────────────────────────
+/** ψ in [0,1): the phase of one export clip (nCyc resolve cycles, ≈ 6 s). Prefers
+ *  `anim.clipPhase` from the driver; otherwise the shared clip clock (../loop.ts
+ *  — the arithmetic export.ts's loopFrames uses) on `anim.rt`, so the tide period
+ *  equals the clip and the export loop is seamless. 0 at rt = 0. */
+function clipPhaseOf(anim: AnimState, p: Record<string, any>): number {
+  if (typeof anim.clipPhase === "number") return anim.clipPhase;
+  const bps = (p.animBPM == null ? 128 : p.animBPM) / 60;
+  return sharedClipPhase(anim.rt, bps, loopBeatsOf(p.txtLoopBeats));
+}
+
+// ── the camera's noise circle ────────────────────────────────────────────────
+/** A closed loop through 3D value noise (C²-smooth through the seam) minus its
+ *  ψ = 0 sample, squashed by tanh: EXACTLY 0 at ψ = 0 because both vnoise calls
+ *  then receive identical arguments. `cs`/`sn` = cos/sin(2πψ). */
+function nzc(noise: Noise, camx: number, camy: number, cs: number, sn: number, lane: number): number {
+  return Math.tanh(
+    2.6 * (noise.vnoise(camx + 0.35 * cs, camy + 0.35 * sn, lane) - noise.vnoise(camx + 0.35, camy, lane)),
+  );
+}
+
+// ── the bit tide ─────────────────────────────────────────────────────────────
+/** Draw the cell set: the still cells (slack > 0) at rest, plus — while the front
+ *  `F` is out — every tide cell inside the grow band, scaled by a smoothstep of
+ *  its distance behind the front and slid `off` along the sweep axis. Scale is a
+ *  continuous function of (F, t, deficit, patch): nothing appears or vanishes
+ *  except by growth, neighbours share t and patch so they rise together, and
+ *  colour/alpha are per-cell constants. At F = 0 and breath = 1 this is EXACTLY
+ *  the still cell set (the `scl === 1` path uses the rest arithmetic). */
+function drawCells(
+  ctx: CanvasRenderingContext2D,
+  S: number,
+  ref: OilRef,
+  F: number,
+  G: number,
+  breath: number,
+  flowP: number,
+  sx: number,
+  sy: number,
+): void {
+  const n = ref.cellCount;
+  if (n === 0) return;
+  const rect = ref.cellRect;
+  const surv = ref.cellSurv;
+  const prob = ref.cellProb;
+  const sweep = ref.cellSweep;
+  const patch = ref.cellPatch;
+  const style = ref.cellStyle;
+  const tideOn = F > 0;
+  const invB = 1 / BANDW;
+  for (let i = 0; i < n; i++) {
+    const slack = prob[i] - surv[i];
+    let pop = 1;
+    if (slack <= 0) {
+      if (!tideOn) continue;
+      const deficit = -slack;
+      if (deficit >= G) continue; // time-independent participation gate
+      const u = deficit / G;
+      // The hash breaks up the interior; the smooth patch shapes the shoreline.
+      const lag = LAG * (0.5 * u + 0.5 * (1 - patch[i]));
+      const x = (F - (1 - sweep[i]) - lag) * invB; // 0 at the front's edge, 1 fully grown
+      if (x <= 0) continue;
+      pop = x >= 1 ? 1 : x * x * (3 - 2 * x);
+    }
+    const o = i * 4;
+    const x0 = rect[o] * S;
+    const y0 = rect[o + 1] * S;
+    const w = rect[o + 2] * S;
+    const h = rect[o + 3] * S;
+    const scl = pop * breath;
+    ctx.fillStyle = style[i];
+    if (scl === 1) {
+      ctx.fillRect(x0, y0, w, h);
+      continue;
+    }
+    const ws = w * scl;
+    const hs = h * scl;
+    if (ws < SUBPX) continue; // grows from nothing — continuous threshold
+    // The cell sits toward the crushed side while small and lands on its rest
+    // position as it fills (still cells have pop 1 ⇒ off 0).
+    const off = flowP * 1.2 * w * (1 - pop);
+    const cx = x0 + w * 0.5 + off * sx;
+    const cy = y0 + h * 0.5 + off * sy;
+    ctx.fillRect(cx - ws * 0.5, cy - hs * 0.5, ws, hs);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -884,184 +1265,211 @@ const oil: FieldEngine = {
   focus: "oil",
   params: oilParams(),
   field(args: FieldArgs): void {
-    const { ctx, size: S, params: p, cfg, seed, anim } = args;
+    // NB: `cfg` is deliberately not read — Oil owns its colour (see the header).
+    const { ctx, size: S, params: p, seed, anim } = args;
     if (!(S > 0)) return;
+    frameNo++;
 
-    // ── (1) DETERMINISTIC — seed stream up front, stable order ────────────────
-    const r: RNG = prng(seed ^ C_CAM);
-    const seedHash = (Math.floor(r() * 0xffffffff) ^ (seed * 0x9e3779b1)) | 0;
-    const camx = r() * TAU;
-    const camy = r() * TAU;
-    // Dissolve axis: ±35° around horizontal, so the sweep always reads as a
-    // left-to-right wipe rather than an arbitrary diagonal.
-    const sweepAng = (r() - 0.5) * ((70 * Math.PI) / 180);
-    const sx = Math.cos(sweepAng);
-    const sy = Math.sin(sweepAng);
-    const noise = makeNoise(seedHash);
+    // ── (1) DETERMINISTIC — the seed's stream, memoised per seed ──────────────
+    const cam = camOf(seed);
+    const noise = cam.noise;
+    const sx = cam.sx;
+    const sy = cam.sy;
 
     // ── (2) Shaping params ────────────────────────────────────────────────────
     const sceneRaw = typeof p.oilScene === "string" ? p.oilScene : "ridgeline";
-    const scene: SceneId = (SCENE_IDS.indexOf(sceneRaw as SceneId) >= 0 ? sceneRaw : "ridgeline") as SceneId;
+    const sceneIdx = Math.max(0, SCENE_IDS.indexOf(sceneRaw as SceneId));
+    const scene: SceneId = SCENE_IDS[sceneIdx];
     const brushRaw = typeof p.oilBrush === "string" ? p.oilBrush : "impasto";
-    const brush: BrushId = (BRUSH_IDS.indexOf(brushRaw as BrushId) >= 0 ? brushRaw : "impasto") as BrushId;
+    const brushIdx = Math.max(0, BRUSH_IDS.indexOf(brushRaw as BrushId));
+    const brush: BrushId = BRUSH_IDS[brushIdx];
     const mod = SCENE_MODS[scene];
 
-    const horizonP = (p.oilHorizon == null ? 63 : p.oilHorizon) / 100;
-    const ridgesP = (p.oilRidges == null ? 83 : p.oilRidges) / 100;
-    const peaksP = (p.oilPeaks == null ? 35 : p.oilPeaks) / 100;
-    const roughP = (p.oilRough == null ? 23 : p.oilRough) / 100;
-    const skyP = (p.oilSky == null ? 40 : p.oilSky) / 100;
-    const paintP = (p.oilPaint == null ? 45 : p.oilPaint) / 100;
-    const strokeP = (p.oilStroke == null ? 26 : p.oilStroke) / 100;
-    const opacityP = (p.oilOpacity == null ? 35 : p.oilOpacity) / 100;
-    const toothP = (p.oilTooth == null ? 50 : p.oilTooth) / 100;
-    const bitP = (p.oilBit == null ? 43 : p.oilBit) / 100;
-    const cellP = (p.oilCell == null ? 27 : p.oilCell) / 100;
-    const stepsP = (p.oilSteps == null ? 18 : p.oilSteps) / 100;
-    const splitP = (p.oilSplit == null ? 42 : p.oilSplit) / 100;
-    const accentP = (p.oilAccent == null ? 4 : p.oilAccent) / 100;
-    const sweepSl = (p.oilSweep == null ? 53 : p.oilSweep) / 100;
+    const horizonP = sl(p.oilHorizon, 63) / 100;
+    const ridgesP = sl(p.oilRidges, 83) / 100;
+    const peaksP = sl(p.oilPeaks, 35) / 100;
+    const roughP = sl(p.oilRough, 23) / 100;
+    const skyP = sl(p.oilSky, 40) / 100;
+    const paintP = sl(p.oilPaint, 45) / 100;
+    const strokeP = sl(p.oilStroke, 26) / 100;
+    const opacityP = sl(p.oilOpacity, 35) / 100;
+    const toothP = sl(p.oilTooth, 50) / 100;
+    const bitP = sl(p.oilBit, 43) / 100;
+    const cellP = sl(p.oilCell, 27) / 100;
+    const stepsP = sl(p.oilSteps, 18) / 100;
+    const splitP = sl(p.oilSplit, 42) / 100;
+    const accentP = sl(p.oilAccent, 4) / 100;
+    const sweepSl = sl(p.oilSweep, 53) / 100;
 
-    // The scene composes the frame; the slider still steers (half-and-half blend).
-    const horizon = clamp((0.15 + horizonP * 0.75) * 0.5 + mod.hz * 0.5, 0.12, 0.9);
-    const haze = skyP * 3 * mod.hazeMul;
-    // Depth spread is NOT a slider — atmosphere and depth contrast are the same
-    // physical thing, so haze drives both (more air => flatter depth).
-    const depthContrast = 1.25 - 0.5 * (haze / 3);
+    // The Palette panel — Oil's ONLY colour input (cfg is never read).
+    const paletteRaw = typeof p.oilPalette === "string" ? p.oilPalette : "paper";
+    const paletteIdx = Math.max(0, PALETTE_IDS.indexOf(paletteRaw as PaletteId)); // unknown -> paper
+    const hueP = sl(p.oilHue, 50) / 100; // 0.5 = 0°, maps to -180..180°
+    const satP = sl(p.oilSat, 50) / 100; // 0.5 = 1×, maps to 0..2×
+    const lightP = sl(p.oilLight, 50) / 100; // 0.5 = 0, maps to -0.2..0.2
+    const depthP = sl(p.oilDepth, 47) / 100; // maps to 0.3..1.8× (47 ≈ 1.0)
+    const driftP = sl(p.oilDrift, 40) / 100; // maps to 0..60 (40 = the study's 24)
 
-    // ── (3) FLICKER-FREE motion — gated, SPACE only ───────────────────────────
+    // ── (3) FLICKER-FREE motion params — gated, SPACE only ────────────────────
     const ANIM = anim.anim;
-    const swayP = (p.oilSway == null ? 50 : p.oilSway) / 100;
-    const flowP = (p.oilFlow == null ? 35 : p.oilFlow) / 100;
-    const dissolveP = (p.oilDissolve == null ? 45 : p.oilDissolve) / 100;
-    const T = ANIM ? anim.t : 0;
-    // Strokes are either BAKED into the underlay (still / no flow) or redrawn per
-    // frame with their swim (live flow). Never both — the flag is in the key.
-    const flowLive = ANIM && flowP > 0 && paintP > 0;
+    const swayA = sl(p.oilSway, 50) / 100; // Camera
+    const flowP = sl(p.oilFlow, 35) / 100; // Tide drift
+    const dissolveP = sl(p.oilDissolve, 45) / 100; // Tide reach
 
-    // ── (4) Cache key — names every input the build reads, nothing more ────────
-    // Palette bytes: exact for a true still, quantised whenever animating —
-    // INCLUDING bake/export frames. Auto mode drifts the palette every frame;
-    // on the exact path a video export would rebuild the whole underlay per
-    // encoded frame (minutes, not seconds). Quantising costs ≤4/255 per channel
-    // vs the still, is imperceptible, and stays fully deterministic. The BUILD
-    // consumes the same quantised values it is keyed on, so the memo stays pure.
-    const exactCfg = !ANIM;
-    const q = (v: number): number => clamp(Math.round(v / 8) * 8, 0, 255);
-    const pal: Pal = exactCfg
-      ? { base: cfg.base, colors: cfg.colors, accentColors: cfg.accentColors }
-      : {
-          base: cfg.base.map(q),
-          colors: cfg.colors.map((c) => c.map(q)),
-          accentColors: (cfg.accentColors || []).map((c) => c.map(q)),
-        };
-    const palKey =
-      pal.base.join(",") + ";" + pal.colors.map((c) => c.join(",")).join(";") + "|" +
-      pal.accentColors.map((c) => c.join(",")).join(";");
+    // ── (4) Cache key — names every input the builds read, nothing more ────────
+    keyTmp[0] = fin(seed);
+    keyTmp[1] = sceneIdx;
+    keyTmp[2] = brushIdx;
+    keyTmp[3] = fin(horizonP);
+    keyTmp[4] = fin(ridgesP);
+    keyTmp[5] = fin(peaksP);
+    keyTmp[6] = fin(roughP);
+    keyTmp[7] = fin(skyP);
+    keyTmp[8] = fin(paintP);
+    keyTmp[9] = fin(strokeP);
+    keyTmp[10] = fin(opacityP);
+    keyTmp[11] = fin(toothP);
+    keyTmp[12] = fin(bitP);
+    keyTmp[13] = fin(cellP);
+    keyTmp[14] = fin(stepsP);
+    keyTmp[15] = fin(splitP);
+    keyTmp[16] = fin(accentP);
+    keyTmp[17] = fin(sweepSl);
+    keyTmp[18] = paletteIdx;
+    keyTmp[19] = fin(hueP);
+    keyTmp[20] = fin(satP);
+    keyTmp[21] = fin(lightP);
+    keyTmp[22] = fin(depthP);
+    keyTmp[23] = fin(driftP);
 
-    const spec: BuildSpec = {
-      scene,
-      brush,
-      horizon,
-      nRidges: Math.max(scene === "coast" ? 1 : 0, Math.round(Math.round(ridgesP * 6) * mod.layersMul)),
-      nBands: Math.round(4 * mod.bandsMul),
-      ampMul: (0.2 + peaksP * 2.3) * mod.ampMul,
-      rough: 0.4 + roughP * 2.6,
-      haze,
-      clouds: Math.round(skyP * 60 * mod.cloudMul * 0.7),
-      depthContrast,
-      strokeLen: 0.3 + strokeP * 2.7,
-      baseAlpha: 0.04 + opacityP * 0.46,
-      nStrokes: Math.round(paintP * paintP * 12000 * OVER * OVER),
-      tooth: toothP * 2,
-      bakeStrokes: !flowLive,
-      cellU: 6 + cellP * 66,
-      steps: 2 + Math.round(stepsP * 22),
-      split: splitP,
-      bit: bitP,
-      sweep: sweepSl,
-      accent: accentP,
-      sx,
-      sy,
-      ramps: deriveRamps(pal, scene),
-    };
+    let ref = findRef();
+    if (!ref) {
+      // A miss: build the spec (the palette ramps are only ever graded here) and
+      // the size-independent memo, then slot it over the LRU entry.
+      const horizon = clamp((0.15 + horizonP * 0.75) * 0.5 + mod.hz * 0.5, 0.12, 0.9);
+      const haze = skyP * 3 * mod.hazeMul;
+      const pal = OIL_PALETTES[PALETTE_IDS[paletteIdx]];
+      const hueDeg = (hueP - 0.5) * 360;
+      const satMul = satP * 2;
+      const lightAdd = (lightP - 0.5) * 0.4;
+      // Depth spread (painter.ts's `contrast`): how hard distance washes toward
+      // the sky, and the per-depth lightness lift on ridges and bands.
+      const depthContrast = 0.3 + depthP * 1.5;
+      const spec: BuildSpec = {
+        scene,
+        brush,
+        horizon,
+        nRidges: Math.max(scene === "coast" ? 1 : 0, Math.round(Math.round(ridgesP * 6) * mod.layersMul)),
+        nBands: Math.round(4 * mod.bandsMul),
+        ampMul: (0.2 + peaksP * 2.3) * mod.ampMul,
+        rough: 0.4 + roughP * 2.6,
+        haze,
+        clouds: Math.round(skyP * 60 * mod.cloudMul * 0.7),
+        depthContrast,
+        strokeLen: 0.3 + strokeP * 2.7,
+        baseAlpha: 0.04 + opacityP * 0.46,
+        nStrokes: Math.round(paintP * paintP * 12000 * OVER * OVER),
+        tooth: toothP * 2,
+        drift: driftP * 60,
+        cellU: 6 + cellP * 66,
+        steps: 2 + Math.round(stepsP * 22),
+        split: splitP,
+        bit: bitP,
+        sweep: sweepSl,
+        accent: accentP,
+        sx,
+        sy,
+        pal,
+        hueDeg,
+        satMul,
+        lightAdd,
+        ramps: rampsFromPalette(pal, hueDeg, satMul, lightAdd, scene),
+      };
+      ref = buildRef(spec, noise, seed);
+      if (!ref) return;
+      slotRef(ref);
+    }
+    const B = bucketOf(S);
+    const slot = ensureRaster(B, ref, noise, seed);
+    if (!slot) return;
+    const horizon = ref.spec.horizon;
 
-    const key = [
-      seed, S, scene, brush,
-      horizonP, ridgesP, peaksP, roughP, skyP,
-      paintP, strokeP, opacityP, toothP,
-      bitP, cellP, stepsP, splitP, accentP, sweepSl,
-      flowLive ? 1 : 0, palKey,
-    ].join("|");
+    // ── (5) Per-frame motion scalars — every one EXACTLY 0 / 1 at frame 0 ─────
+    let tx = 0;
+    let ty = 0;
+    let sc = 1;
+    let F = 0; // tide front, from the crushed edge (t=1) toward the painted edge (t=0)
+    let G = 0; // participation gate
+    let breath = 1;
+    if (ANIM) {
+      const phi = anim.loopPhase;
+      const psi = clipPhaseOf(anim, p);
+      const b = anim.beat;
+      const kickS = Math.min(anim.kickEnv, 1.4) * att(b, 0.1);
+      const pumpS = Math.min(anim.pumpEnv, 1.4) * att(b, 0.2);
+      // The spring is released over the last quarter of the beat so the shove is
+      // 0 at BOTH b = 0 and b -> 1: the damped cosine is not 0 as the beat wraps,
+      // and without the release the camera stepped at every beat seam.
+      const springS = clamp(anim.kickSpring, -1.2, 1.2) * att(b, 0.1) * Math.min(1, 4 * (1 - b));
+      const envT = 0.5 * (1 - Math.cos(TAU * psi)); // the tide / the clip
+      const envC = 0.5 * (1 - Math.cos(TAU * phi)); // the cycle breath
+      const cs = Math.cos(TAU * psi);
+      const sn = Math.sin(TAU * psi);
 
-    const c = ensureCache(spec, noise, seed, S, key);
-    if (!c) return;
+      // CAMERA — one plane, no roll (a lens roll on a painting reads as shake).
+      // Wander on a closed noise circle over the clip, a lean WITH the tide toward
+      // the painted edge, a signed overshoot-and-settle shove on the kick, a dip
+      // on kick + pump, and a slow push-in (clip) + cycle breath + beat zoom.
+      const panX = S * 0.032 * swayA * nzc(noise, cam.camx, cam.camy, cs, sn, LANE_PANX);
+      const panY = S * 0.022 * swayA * nzc(noise, cam.camx, cam.camy, cs, sn, LANE_PANY);
+      const lean = S * 0.01 * swayA * envT;
+      const shove = S * 0.004 * swayA * springS;
+      const dipY = S * 0.006 * (0.5 * kickS + 0.5 * pumpS);
+      tx = panX - sx * lean + sx * shove;
+      ty = panY - sy * lean + sy * shove + dipY;
+      // Beat zoom is deliberately NOT scaled by Camera (the Kick / Pump sliders own
+      // beat amplitude, as in contours): Camera 0 is a locked-off frame that still
+      // nods on the beat — and ONLY on the beat (the clip push-in and the cycle
+      // breath both scale with Camera, so at 0 the frame is static between beats).
+      sc = 1 + 0.026 * swayA * envT + 0.01 * swayA * envC + 0.012 * pumpS + 0.008 * kickS;
+
+      // TIDE — the front rides envT out to REACH and back; the kick surge is gated
+      // by envT so F is EXACTLY 0 at ψ = 0 for any kick. The crush thumps ≤ 3 %.
+      G = BOOST_MAX * Math.pow(dissolveP, 1.5);
+      const reach = 0.9 + 0.9 * dissolveP;
+      F = reach * envT + KSURGE * kickS * Math.min(1, 6 * envT);
+      breath = 1 + Math.min(BREATH_MAX, dissolveP * (KBREATH * kickS + PBREATH * pumpS));
+    }
 
     ctx.save();
 
-    // ── (5) MACRO CAMERA — a NOISE-driven wander (smooth random walk) plus a
-    // breathing zoom and a micro-roll, so the whole painting visibly moves.
-    // ANIM-gated => the still is unchanged. The zoom term is always ≥ 1 and the
-    // translations stay inside the 6% overscan, so no unpainted edge can appear.
-    if (ANIM) {
-      const nw = (rate: number, lane: number): number => noise.vnoise(T * rate + camx, lane, camy) - 0.5;
-      const camTX = S * 0.05 * swayP * nw(0.05, 1.7);
-      const camTY = S * 0.03 * swayP * nw(0.043, 4.3) + S * 0.014 * swayP * (anim.kickEnv * 0.5 + anim.pumpEnv * 0.5);
-      const camSC =
-        1 + 0.035 * anim.pumpEnv + 0.03 * swayP * (nw(0.037, 7.1) + 0.5) + 0.018 * Math.max(0, anim.kickSpring);
-      const camROT = 0.012 * swayP * nw(0.031, 9.6);
-      ctx.translate(S * 0.5 + camTX, S * 0.5 + camTY);
-      ctx.rotate(camROT);
-      ctx.scale(camSC, camSC);
-      ctx.translate(-S * 0.5, -S * 0.5);
+    // ── (6) CAMERA transform about the horizon pivot (a push-in grows land
+    // downward and sky upward). |tx| ≤ 0.047·S, |ty| ≤ 0.040·S, sc ≥ 1 about an
+    // interior pivot ⇒ never samples outside the 6 % overscan. Skipped entirely
+    // when it would be the identity, so the still and frame 0 share one path.
+    if (tx !== 0 || ty !== 0 || sc !== 1) {
+      const px = 0.5 * S;
+      const py = horizon * S;
+      ctx.translate(px + tx, py + ty);
+      ctx.scale(sc, sc);
+      ctx.translate(-px, -py);
     }
 
-    // ── (6) the underlay (drawn 1:1 at an integer offset — no resampling) ──────
+    // ── (7) the painted raster — 1:1 at an integer offset when S is its bucket
+    // (the still), else one smoothed scaled blit (the raster is the only thing
+    // resampled; strokes are baked into it and the cells are vectors at S).
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(c.underlayS, -c.margin, -c.margin);
-
-    // ── (7) live oil strokes (already baked into the underlay otherwise) ───────
-    if (!c.bakedStrokes) drawStrokes(ctx, S, 0, c.strokePack, c.strokeCount, flowP, T);
-
-    // ── (8) the bit cells ─────────────────────────────────────────────────────
-    // Base visibility is the still: survivalHash < P. While animating, a coherent
-    // front sweeps the seed's axis once per resolve loop and lifts P inside a soft
-    // band, so extra cells appear and SCALE in behind it. `E` is 0 at loopPhase 0,
-    // so the resolve frame is exactly the still cell set.
-    const E = ANIM ? resolveEnv(anim.loopPhase) : 0;
-    const boostA = dissolveP * E * 0.9;
-    const rect = c.cellRect;
-    const rgbv = c.cellRGB;
-    for (let i = 0; i < c.cellCount; i++) {
-      const slack = c.cellProb[i] - c.cellSurv[i];
-      let pop = 1;
-      if (slack <= 0) {
-        if (boostA <= 0) continue;
-        const bx = (E - c.cellSweep[i]) / BAND; // distance behind the front
-        if (bx <= 0 || bx >= 1) continue;
-        const bump = Math.sin(bx * Math.PI);
-        if (slack + boostA * bump <= 0) continue;
-        pop = 0.6 + 0.4 * bump; // space-only pop-in (never an alpha fade)
-      }
-      const o = i * 4;
-      let x = rect[o] * S;
-      let y = rect[o + 1] * S;
-      let w = rect[o + 2] * S;
-      let h = rect[o + 3] * S;
-      if (pop < 1) {
-        x += w * (1 - pop) * 0.5;
-        y += h * (1 - pop) * 0.5;
-        w *= pop;
-        h *= pop;
-      }
-      const t3 = i * 3;
-      tmpCol[0] = rgbv[t3];
-      tmpCol[1] = rgbv[t3 + 1];
-      tmpCol[2] = rgbv[t3 + 2];
-      ctx.fillStyle = rgba(tmpCol, c.cellAlpha[i]);
-      ctx.fillRect(x, y, w, h);
+    const k = S / B;
+    if (k === 1) {
+      ctx.drawImage(slot.canvas, -slot.Mb, -slot.Mb);
+    } else {
+      const Bo = B + 2 * slot.Mb;
+      ctx.drawImage(slot.canvas, -slot.Mb * k, -slot.Mb * k, Bo * k, Bo * k);
     }
+
+    // ── (8) the bit cells — glued to the paint (inside the same transform) ─────
+    drawCells(ctx, S, ref, F, G, breath, flowP, sx, sy);
 
     ctx.restore();
   },
@@ -1089,6 +1497,22 @@ function oilParams(): ParamDef[] {
     { key: "oilPeaks", label: "PEAK HEIGHT", type: "range", group: "composition", min: 0, max: 100, default: 35 },
     { key: "oilRough", label: "ROUGHNESS", type: "range", group: "composition", min: 0, max: 100, default: 23 },
     { key: "oilSky", label: "ATMOSPHERE", type: "range", group: "composition", min: 0, max: 100, default: 40 },
+    { key: "oilDepth", label: "DEPTH", type: "range", group: "composition", min: 0, max: 100, default: 47 },
+    {
+      key: "oilPalette",
+      label: "PALETTE",
+      type: "select",
+      group: "palette",
+      default: "paper",
+      options: [
+        { value: "paper", label: "PAPER" },
+        { value: "dusk", label: "DUSK" },
+        { value: "ash", label: "ASH" },
+      ],
+    },
+    { key: "oilHue", label: "HUE", type: "range", group: "palette", min: 0, max: 100, default: 50 },
+    { key: "oilSat", label: "SATURATION", type: "range", group: "palette", min: 0, max: 100, default: 50 },
+    { key: "oilLight", label: "LIGHT", type: "range", group: "palette", min: 0, max: 100, default: 50 },
     {
       key: "oilBrush",
       label: "BRUSH",
@@ -1107,15 +1531,16 @@ function oilParams(): ParamDef[] {
     { key: "oilStroke", label: "STROKE LENGTH", type: "range", group: "composition", min: 0, max: 100, default: 26 },
     { key: "oilOpacity", label: "PAINT OPACITY", type: "range", group: "composition", min: 0, max: 100, default: 35 },
     { key: "oilTooth", label: "CANVAS TOOTH", type: "range", group: "composition", min: 0, max: 100, default: 50 },
+    { key: "oilDrift", label: "COLOUR DRIFT", type: "range", group: "texture", min: 0, max: 100, default: 40 },
     { key: "oilBit", label: "CELL DENSITY", type: "range", group: "composition", min: 0, max: 100, default: 43 },
     { key: "oilCell", label: "CELL SIZE", type: "range", group: "composition", min: 0, max: 100, default: 27 },
     { key: "oilSteps", label: "COLOUR STEPS", type: "range", group: "composition", min: 0, max: 100, default: 18 },
     { key: "oilSplit", label: "SUBDIVIDE", type: "range", group: "composition", min: 0, max: 100, default: 42 },
     { key: "oilAccent", label: "ACCENT CELLS", type: "range", group: "composition", min: 0, max: 100, default: 4 },
     { key: "oilSweep", label: "DISSOLVE SWEEP", type: "range", group: "composition", min: 0, max: 100, default: 53 },
-    { key: "oilSway", label: "CAMERA SWAY", type: "range", group: "motion", min: 0, max: 100, default: 50 },
-    { key: "oilFlow", label: "PAINT FLOW", type: "range", group: "motion", min: 0, max: 100, default: 35 },
-    { key: "oilDissolve", label: "DISSOLVE", type: "range", group: "motion", min: 0, max: 100, default: 45 },
+    { key: "oilSway", label: "CAMERA", type: "range", group: "motion", min: 0, max: 100, default: 50 },
+    { key: "oilFlow", label: "TIDE DRIFT", type: "range", group: "motion", min: 0, max: 100, default: 35 },
+    { key: "oilDissolve", label: "TIDE REACH", type: "range", group: "motion", min: 0, max: 100, default: 45 },
   ];
 }
 

@@ -48,6 +48,12 @@ export interface AnimState {
   // hits 0 on each resolve. The TxT engines gate ALL motion by an envelope of this
   // so the type returns to its readable still on the beat (and the loop is seamless).
   loopPhase: number;
+  // Phase of one EXPORT CLIP in [0,1): `clipCycles` resolve cycles (≈ 6 s, see
+  // loop.ts), 0 at frame 0, wrapping exactly where the exported loop wraps. Set
+  // by the BPM and Track drivers (render.ts / trackMotion.ts); an engine that
+  // rides the clip (Oil's tide) falls back to loop.ts's formula on `rt` when a
+  // driver leaves it undefined.
+  clipPhase?: number;
   kickEnv: number; // smooth attack-decay impulse (kick * (1-beat)^3.4) — calm pulse
   kickSpring: number; // damped bounce, SIGNED (overshoots then settles)
   pumpEnv: number; // breathing (pump * (1-beat)^2.0)

@@ -1,6 +1,7 @@
 import type { AudioFeatures } from "./features";
 import { zeroFeatures } from "./features";
 import type { AnimState } from "@/engine";
+import { clipPhaseOf } from "@/engine/loop";
 
 // ── Track-driven motion stepper (the SINGLE implementation) ──────────────────
 // Critically-damped springs + envelope followers + onset impulse that turn the
@@ -110,6 +111,9 @@ export function stepTrackMotion(
   const speed = clamp(0.35 + m.pump.x * 0.9 * Math.max(0.0001, intensity), 0, 1.4);
   const t = rt * (0.45 + speed);
   const loopPhase = ((rt * bps) / loopBeats) % 1;
+  // Clip phase on the SAME shared clock as the BPM driver (engine/loop.ts), so an
+  // engine riding the clip (Oil's tide) runs on clip time in Track mode too.
+  const clipPhase = clipPhaseOf(rt, bps, loopBeats);
   return {
     anim: true,
     t,
@@ -123,5 +127,6 @@ export function stepTrackMotion(
     swirl,
     speed,
     loopPhase,
+    clipPhase,
   };
 }

@@ -95,6 +95,14 @@ export interface StudioState {
   oilSplit: number; // 0..100; how far cells subdivide into smaller cells.
   oilAccent: number; // 0..100; how many cells take an accent colour.
   oilSweep: number; // 0..100; how far the dissolve sweep runs across the frame.
+  // Oil owns its own colour (the lane's Look panel) — the prototype's palettes +
+  // grade, NOT the shared mood/Color pipeline.
+  oilPalette: string; // "paper" | "dusk" | "ash"
+  oilHue: number; // 0..100; hue shift, 50 = none (maps to -180..180°).
+  oilSat: number; // 0..100; saturation multiplier, 50 = 1× (maps to 0..2×).
+  oilLight: number; // 0..100; lightness lift, 50 = none (maps to -0.2..0.2).
+  oilDepth: number; // 0..100; depth spread — how hard distance washes toward the sky (0.3..1.8×).
+  oilDrift: number; // 0..100; colour drift — per-stroke RGB jitter (0..60).
   oilSway: number; // 0..100; whole-frame camera sway (anim only).
   oilFlow: number; // 0..100; paint flow — the strokes keep re-laying (anim only).
   oilDissolve: number; // 0..100; beat-driven cell dissolve (anim only).
@@ -355,6 +363,12 @@ const defaults = {
   oilSplit: 42,
   oilAccent: 4,
   oilSweep: 53,
+  oilPalette: "paper",
+  oilHue: 50,
+  oilSat: 50,
+  oilLight: 50,
+  oilDepth: 47,
+  oilDrift: 40,
   oilSway: 50,
   oilFlow: 35,
   oilDissolve: 45,

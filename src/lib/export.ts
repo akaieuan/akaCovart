@@ -1,5 +1,6 @@
 import { renderFormatTo, resolveMood } from "@/engine";
 import type { Mood } from "@/engine";
+import { clipCycles, loopBeatsOf } from "@/engine/loop";
 import { renderParams, type StudioState } from "@/lib/store";
 import { ensureCoverFont } from "@/lib/fonts";
 import { getFormat, type Format } from "@/lib/formats";
@@ -179,17 +180,14 @@ function videoBitrate(w: number, h: number): number {
   return Math.min(16_000_000, Math.max(6_000_000, Math.round(w * h * FPS * 0.15)));
 }
 
-// Resolve-loop length in beats (shared with the live loop + the BPM encoder).
-function loopBeatsOf(state: StudioState): number {
-  return Math.max(1, Math.round(0.5 + ((state.txtLoopBeats ?? 20) / 100) * 7.5));
-}
-
-// Frames for an INTEGER number of resolve-cycles (seamless), ~6s target. Mirrors
-// the live loop's beat math so the exported loop matches what plays in the editor.
+// Frames for an INTEGER number of resolve-cycles (seamless), ~6s target. The beat
+// / cycle / clip arithmetic is engine/loop.ts's — the SAME clock the live loop and
+// the engines' clip phase run on — so the exported loop is exactly what plays in
+// the editor and wraps exactly where the engines' clip phase wraps.
 function loopFrames(state: StudioState): number {
   const bps = (state.animBPM || 128) / 60;
-  const cycleSec = loopBeatsOf(state) / bps;
-  const nCycles = Math.max(1, Math.round(6 / cycleSec));
+  const cycleSec = loopBeatsOf(state.txtLoopBeats) / bps;
+  const nCycles = clipCycles(cycleSec);
   return Math.min(900, Math.max(1, Math.round(nCycles * cycleSec * FPS)));
 }
 
@@ -384,7 +382,7 @@ function encodeTrackMp4(
   }
 
   const bps = (state.animBPM || 128) / 60;
-  const loopBeats = loopBeatsOf(state);
+  const loopBeats = loopBeatsOf(state.txtLoopBeats);
   const intensity = (state.audioReactive ? state.audioIntensity : 0) / 50;
   const motion = createTrackMotion();
 

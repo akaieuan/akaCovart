@@ -96,6 +96,12 @@ function paramSig(s: StudioState): string {
     s.oilSplit,
     s.oilAccent,
     s.oilSweep,
+    s.oilPalette,
+    s.oilHue,
+    s.oilSat,
+    s.oilLight,
+    s.oilDepth,
+    s.oilDrift,
     // TxT engine composition params (motion params are excluded, like the others)
     s.ditherSize,
     s.ditherBreak,

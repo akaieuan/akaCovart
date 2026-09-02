@@ -2,6 +2,7 @@ import type { AnimState, Mood, Palette, RenderResult, TextBox } from "./types";
 import { getEngine } from "./registry";
 import { palettes, parseHex, recolorPalette, resolveMood, transformPalette } from "./palettes";
 import { applySeedVariation } from "./seedVary";
+import { clipPhaseOf, loopBeatsOf } from "./loop";
 import { prng } from "./prng";
 import { rgb } from "./color";
 import {
@@ -38,6 +39,7 @@ function buildAnim(params: Record<string, any>): AnimState {
       swirl: audioAnim.swirl ?? 0,
       speed: audioAnim.speed ?? 0,
       loopPhase: audioAnim.loopPhase ?? 0,
+      clipPhase: audioAnim.clipPhase, // may be undefined: engines then derive it from rt
     };
   }
 
@@ -56,6 +58,7 @@ function buildAnim(params: Record<string, any>): AnimState {
       swirl: 0,
       speed: 0,
       loopPhase: 0,
+      clipPhase: 0,
     };
   }
   const t: number = params._t || 0;
@@ -80,12 +83,11 @@ function buildAnim(params: Record<string, any>): AnimState {
   const pumpEnv = pump * Math.pow(1 - beat, 2.0);
 
   // Beat-synced resolve-loop phase: wraps every `loopBeats` beats (integer so the
-  // per-beat kick aligns + the loop stays seamless), 0 at each resolve.
-  const loopBeats = Math.max(
-    1,
-    Math.round(0.5 + ((params.txtLoopBeats == null ? 20 : params.txtLoopBeats) / 100) * 7.5),
-  );
+  // per-beat kick aligns + the loop stays seamless), 0 at each resolve. The clip
+  // phase is the same clock one level up (loop.ts): one export clip of whole cycles.
+  const loopBeats = loopBeatsOf(params.txtLoopBeats);
   const loopPhase = ((rt * bps) / loopBeats) % 1;
+  const clipPhase = clipPhaseOf(rt, bps, loopBeats);
 
   return {
     anim: true,
@@ -100,6 +102,7 @@ function buildAnim(params: Record<string, any>): AnimState {
     swirl,
     speed,
     loopPhase,
+    clipPhase,
   };
 }
 
@@ -163,7 +166,7 @@ export function renderTo(
   // so it freezes — the text returns to its readable still, the art holds.
   const isStack = params.focus === "stack";
   const stillAnim: AnimState = {
-    anim: false, t: 0, rt: 0, bake: anim.bake, beat: 0, loopPhase: 0,
+    anim: false, t: 0, rt: 0, bake: anim.bake, beat: 0, loopPhase: 0, clipPhase: 0,
     kickEnv: 0, kickSpring: 0, pumpEnv: 0, drift: 0, swirl: 0, speed: 0,
   };
   const stackTarget = (params.stackAnim as string) || "txt";
@@ -187,9 +190,12 @@ export function renderTo(
 
   // TxT engines are meant to read as smooth, high-res, stark two-tone type, so
   // the film-grain / scratch texture is skipped for them (it muddies the look).
+  // Oil skips it too: its woven canvas tooth IS its texture, and film grain on
+  // top turns the painting to fizz (its Texture panel exposes tooth instead).
   const smoothTxt = engine?.focus === "txt";
+  const noFilmTexture = smoothTxt || engine?.focus === "oil";
 
-  if (params.scratches && !smoothTxt) {
+  if (params.scratches && !noFilmTexture) {
     scratches(ctx, S, params.scratchCount == null ? 6 : params.scratchCount, prng(seed ^ 0x2c1b3d77), cfg);
   }
 
@@ -206,7 +212,7 @@ export function renderTo(
     vignette(ctx, S, params.vignette || 0);
   }
 
-  if (!smoothTxt && (params.grain || 0) > 0) {
+  if (!noFilmTexture && (params.grain || 0) > 0) {
     grain(
       ctx,
       S,
