@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:share": "node scripts/gen-share-assets.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -34,7 +35,9 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.5.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "postcss": "^8.5.0",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.9.3"
   }
