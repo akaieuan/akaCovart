@@ -6,8 +6,10 @@ import { drawBlurred } from "../blur";
 import { clipPhaseOf as sharedClipPhase, loopBeatsOf } from "../loop";
 
 // OIL — an oil-painted landscape that BIT-CRUSHES itself. Three stacked passes,
-// ported from the "Abstract Oil-Bit Landscape Banner" study (poster-generator/
-// lib/painter.ts):
+// ported from the "Abstract Oil-Bit Landscape Banner" study — a separate design
+// prototype that does NOT live in this repo. The `poster-generator/…` paths
+// cited here and below are its files, kept as provenance for the transcribed
+// painter, palettes and grade:
 //
 //   1. UNDERLAY (vector) — a 3-stop sky gradient, blurred cloud masses, a stack
 //      of fbm ridge silhouettes receding into aerial haze, foreground field
