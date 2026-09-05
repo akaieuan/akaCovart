@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { renderTo, listEnginesByFocus } from "@/engine";
+import { renderTo, listEnginesByFocus, type EngineFocus } from "@/engine";
 import { useStudio, randSeed } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { CONTROL, FOCUS } from "@/components/controls/primitives/typography";
@@ -121,7 +121,7 @@ export default function StartGrid({
           : ART_START_LOOKS;
 
   const onRandom = () => {
-    const pickId = (f: "art" | "txt" | "oil", fallback: string) => {
+    const pickId = (f: EngineFocus, fallback: string) => {
       const es = listEnginesByFocus(f);
       return es.length ? es[Math.floor(Math.random() * es.length)].id : fallback;
     };
@@ -164,7 +164,7 @@ export default function StartGrid({
         aria-label="Start with a random look"
         className={cn(
           FOCUS,
-          "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-card border border-dashed border-white/25 bg-white/[0.03] text-center transition-colors hover:border-white/55 hover:bg-white/[0.08] active:bg-white/[0.12]",
+          "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-card border border-dashed border-white/25 active:bg-white/12 text-center transition-colors hover:border-white/55 hover:bg-white/8 ",
         )}
       >
         <span className={cn(CONTROL, "font-medium text-grey-100")}>Random</span>

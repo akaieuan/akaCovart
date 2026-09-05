@@ -1,14 +1,20 @@
 import { listEnginesByFocus } from "@/engine";
-import { useStudio, type StudioState } from "@/lib/store";
+import { useStudio } from "@/lib/store";
 
 /**
  * Focus (style lane) switching — the ONE implementation shared by the header
- * Style dropdown and the start screen's Style pills. Keep the lane list, the
- * per-lane engine roster and the switch logic here so the two entry points can
- * never drift apart.
+ * Style dropdown, the start screen's Style pills and the engine selector. Keep
+ * the lane list, the per-lane engine roster and the switch logic here so the
+ * entry points can never drift apart.
+ *
+ * The lane UNION itself lives in src/engine/types.ts (both the engine module and
+ * the store need it); this re-export is the studio-facing name for it. Which
+ * PARAM PANELS a lane shows is a separate table, in
+ * components/controls/sections/panels.ts.
  */
 
-export type Focus = StudioState["focus"];
+import type { Focus } from "@/engine/types";
+export type { Focus };
 
 export const FOCUS_OPTIONS: { value: Focus; label: string; hint: string }[] = [
   { value: "art", label: "Art", hint: "Abstract generative fields" },

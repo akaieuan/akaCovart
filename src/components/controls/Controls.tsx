@@ -10,15 +10,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import {
-  LookSection,
-  CompositionSection,
-  TextureSection,
-  TypeSection,
-  MotionSection,
-  StackTextSection,
-  StackMotionSection,
-} from "./sections";
+import { panelsFor } from "./sections";
 
 // ── Section shell (one accordion item) ───────────────────────────────────────
 function PanelSection({
@@ -56,51 +48,34 @@ const DEFAULT_OPEN: string[] = [];
  * Controls — the scrolling parameter body for the studio.
  *
  * Renders ONLY the parameter sections (accordion in STILL mode, the motion panel
- * in ANIMATE mode). Subscribes to `mode` + `focus` (which sections to show);
- * every row inside self-subscribes to its own store slice, so moving one slider
- * re-renders only that row.
+ * in ANIMATE mode). Subscribes to `mode` + `focus`; every row inside
+ * self-subscribes to its own store slice, so moving one slider re-renders only
+ * that row.
  *
- * The section BODIES are shared atomic, memoised components in ./sections — the
- * single source of truth consumed by both this desktop sidebar and the mobile
- * dock (MobileControls). All chrome (engine selector, seed, mode toggle, reset,
- * export) is owned by the Studio shell.
+ * WHICH panels a lane shows is not decided here — `panelsFor` in
+ * ./sections/panels.ts owns that, shared with the mobile dock (MobileControls)
+ * so the two can't drift. The section BODIES are the shared memoised components
+ * in ./sections. All chrome (engine selector, seed, mode toggle, reset, export)
+ * is owned by the Studio shell.
  */
 export default function Controls() {
   const mode = useStudio((s) => s.mode);
   const focus = useStudio((s) => s.focus);
+  const panels = panelsFor(focus, mode);
 
+  // ANIMATE is a single panel and wants no accordion chrome around it.
   if (mode === "animate") {
-    return focus === "stack" ? <StackMotionSection /> : <MotionSection />;
+    const { Section } = panels[0];
+    return <Section />;
   }
-
-  const stack = focus === "stack";
 
   return (
     <Accordion multiple defaultValue={DEFAULT_OPEN} className="flex w-full flex-col">
-      {/* LOOK — colour + atmosphere (TxT/Stack = two-tone ink; Art = palette + presets) */}
-      <PanelSection value="look" title="Look">
-        <LookSection />
-      </PanelSection>
-
-      {/* COMPOSITION (engine-specific + shared FINISH) — the Art bg in Stack */}
-      <PanelSection value="composition" title={stack ? "Background" : "Composition"}>
-        <CompositionSection />
-      </PanelSection>
-
-      {/* TEXTURE — Art + Stack get grain; TxT renders smooth/high-res (no grain) */}
-      {focus !== "txt" && (
-        <PanelSection value="texture" title="Texture">
-          <TextureSection />
+      {panels.map(({ id, title, Section }) => (
+        <PanelSection key={id} value={id} title={title}>
+          <Section />
         </PanelSection>
-      )}
-
-      {/* TYPE — Display text (TxT), Text layer (Stack), corner-credit overlay (Art) */}
-      <PanelSection
-        value="type"
-        title={focus === "txt" ? "Display text" : stack ? "Text layer" : "Type overlay"}
-      >
-        {stack ? <StackTextSection /> : <TypeSection />}
-      </PanelSection>
+      ))}
     </Accordion>
   );
 }

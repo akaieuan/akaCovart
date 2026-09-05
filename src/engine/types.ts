@@ -1,5 +1,24 @@
 export type Mood = "dark" | "cream" | "grey";
 
+// ── Creative focus (the "style lanes") ───────────────────────────────────────
+// The SINGLE source of truth for the lane union. Lives here (not in the store)
+// because both the framework-agnostic engine module and the React studio need
+// it; `src/lib/store.ts` and `src/components/studio/focus.ts` import it from
+// here rather than re-spelling the union.
+//
+//   art   — abstract field engines (the default)
+//   oil   — painted landform, bit-crushed; owns its own colour + texture chain
+//   txt   — type-driven engines, where the letterforms are the subject
+//   stack — a TxT type layer composited OVER an art/oil field background
+export type Focus = "art" | "txt" | "oil" | "stack";
+
+// The lanes an ENGINE may declare. "stack" is deliberately excluded: it is a
+// COMPOSITE of two engines (an `engine` background + a `stackTxt` overlay), so
+// no engine is ever tagged with it and `listEnginesByFocus("stack")` would
+// always return []. Use `enginesFor()` in components/studio/focus.ts for the
+// lane-facing roster, which resolves Stack to art + oil.
+export type EngineFocus = Exclude<Focus, "stack">;
+
 export type RNG = () => number;
 
 export interface ParamDef {
@@ -81,11 +100,10 @@ export interface FieldEngine {
   id: string;
   label: string;
   kind: "2d";
-  // Which creative mode this engine belongs to. "art" = the abstract field
-  // engines (the default); "txt" = the type-driven engines where the letterforms
-  // are the subject. The header Focus switch + EngineSelector filter on this.
-  // Optional so existing engines (untagged) default to "art".
-  focus?: "art" | "txt" | "oil";
+  // Which creative lane this engine belongs to. The header Focus switch +
+  // EngineSelector filter on this. Optional so untagged engines default to
+  // "art". See EngineFocus above for why "stack" is not a valid value.
+  focus?: EngineFocus;
   params: ParamDef[];
   field(args: FieldArgs): void;
 }

@@ -1,6 +1,9 @@
 import { create } from "zustand";
 
 import { DEFAULT_FORMAT } from "@/lib/formats";
+// Type-only: erased at build, so the store never pulls in the engine barrel
+// (which self-registers every engine as a side effect).
+import type { Focus } from "@/engine/types";
 
 // ── Studio state ───────────────────────────────────────────────────────────
 // All params are mirrored from the prototype defaults (index.html). The store
@@ -41,11 +44,10 @@ export interface StudioState {
   colorSat: number; // 0..100; 50 = neutral. Vibrance: <50 toward grey, >50 more vivid.
   colorWarm: number; // 0..100; 50 = neutral. Temperature: <50 cooler, >50 warmer.
 
-  // creative focus: "art" = abstract field engines, "txt" = type-driven engines,
-  // "stack" = a TxT type layer composited OVER an Art field background (`engine`
-  // is the art bg; `stackTxt` is the overlay type engine).
-  // Drives the header Focus switch + which engines the selector shows.
-  focus: "art" | "txt" | "stack" | "oil";
+  // Creative focus (style lane) — union defined in src/engine/types.ts. In
+  // "stack", `engine` is the art background and `stackTxt` the overlay type
+  // engine. Drives the header Focus switch + which engines the selector shows.
+  focus: Focus;
 
   // engine + engine-specific composition params
   engine: string;
@@ -324,7 +326,7 @@ const defaults = {
   colorSat: 50,
   colorWarm: 50,
 
-  focus: "art" as "art" | "txt" | "stack" | "oil",
+  focus: "art" as Focus,
 
   engine: "blob",
   gridCols: 9,

@@ -51,3 +51,6 @@ Abstract Oil-Bit Landscape Banner/
 
 # Local test fixtures (synthetic tracks for the preview)
 public/_test/
+
+# Agent/session upload residue (screenshots pasted into chat, never referenced)
+uploads/
