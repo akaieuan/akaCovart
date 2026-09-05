@@ -11,11 +11,11 @@ import {
   Sparkles,
   Mountain,
 } from "lucide-react";
-import { listEnginesByFocus } from "@/engine";
 import { useStudio } from "@/lib/store";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { FOCUS, MICRO } from "@/components/controls/primitives/typography";
+import { enginesFor, type Focus } from "./focus";
 
 // Engine display config. Labels + icons are driven from this single map so the
 // selector stays DRY; ordering/availability still defers to the registry.
@@ -52,13 +52,10 @@ const GRID_COLS: Record<number, string> = {
 };
 
 // Engines for the active focus, in registration order, decorated with icon/label.
-function engineList(focus: "art" | "txt" | "stack" | "oil"): EngineDef[] {
-  // Stack's selector picks the ART BACKGROUND (its `engine`) — any field engine,
-  // so Oil's lane engine is offered here too (type over a landscape).
-  const reg =
-    focus === "stack"
-      ? [...listEnginesByFocus("art"), ...listEnginesByFocus("oil")]
-      : listEnginesByFocus(focus);
+// The ROSTER comes from focus.ts (the one lane table — Stack resolves to the art
+// engines plus Oil there); this only supplies the icons and labels.
+function engineList(focus: Focus): EngineDef[] {
+  const reg = enginesFor(focus);
   if (!reg.length) return ENGINE_DEFS.slice(0, 4);
   return reg.map(
     (e) =>

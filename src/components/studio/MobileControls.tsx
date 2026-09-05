@@ -4,10 +4,11 @@
 // MobileControls — small-screen control dock (below md).
 //
 // A fixed bottom dock with a horizontal section-tab strip; the params live in a
-// FIXED-HEIGHT panel so switching tabs causes zero page movement. The section
-// BODIES are the SAME shared atomic components the desktop sidebar uses
-// (components/controls/sections), so there is one source of truth — this file
-// only owns the mobile dock chrome (tabs + collapse + footer).
+// FIXED-HEIGHT panel so switching tabs causes zero page movement. Both WHICH
+// panels a lane shows (`panelsFor`) and the section BODIES come from
+// components/controls/sections — the same source the desktop sidebar reads, so
+// the two surfaces cannot drift. This file only owns the mobile dock chrome
+// (the Engine/Seed tab, the tab strip, collapse and footer).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, type ComponentType } from "react";
@@ -16,15 +17,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useStudio } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { CONTROL, FOCUS } from "@/components/controls/primitives/typography";
-import {
-  LookSection,
-  CompositionSection,
-  TextureSection,
-  TypeSection,
-  MotionSection,
-  StackTextSection,
-  StackMotionSection,
-} from "@/components/controls/sections";
+import { panelsFor } from "@/components/controls/sections";
 
 import EngineSelector from "./EngineSelector";
 import { SeedRow } from "./SeedRow";
@@ -51,27 +44,15 @@ export default function MobileControls({ onExport }: { onExport: () => void }) {
   const showPreview = useStudio((s) => s.showPreview);
   const overlayOpen = showFormats || showPreview;
 
-  // Focus-aware tabs (same shared section bodies as desktop). TxT renders smooth
-  // (no Texture tab); Stack composites a type layer over the art bg, so its type
-  // tab is the Stack Text layer and its motion tab is the Stack motion panel.
-  const stack = focus === "stack";
-  // Oil is a one-engine lane: its selector hides itself, so the tab that's left
-  // holding the seed row is labelled for what it actually shows.
-  const engineTab = focus === "oil" ? "Seed" : "Engine";
-  const stillTabs: Tab[] = [
-    { id: "engine", label: engineTab, Body: EngineBody },
-    { id: "look", label: "Look", Body: LookSection },
-    { id: "composition", label: stack ? "Background" : "Compose", Body: CompositionSection },
-    ...(focus !== "txt"
-      ? [{ id: "texture", label: "Texture", Body: TextureSection } as Tab]
-      : []),
-    { id: "type", label: stack ? "Text" : "Type", Body: stack ? StackTextSection : TypeSection },
+  // Dock chrome first: Oil is a one-engine lane whose selector hides itself, so
+  // the tab left holding the seed row is labelled for what it actually shows.
+  // The param panels after it are the shared lane table (same as desktop).
+  const tabs: Tab[] = [
+    { id: "engine", label: focus === "oil" ? "Seed" : "Engine", Body: EngineBody },
+    ...panelsFor(focus, mode).map(
+      (p): Tab => ({ id: p.id, label: p.short, Body: p.Section }),
+    ),
   ];
-  const animTabs: Tab[] = [
-    { id: "engine", label: engineTab, Body: EngineBody },
-    { id: "motion", label: "Motion", Body: stack ? StackMotionSection : MotionSection },
-  ];
-  const tabs = mode === "animate" ? animTabs : stillTabs;
   const [tab, setTab] = useState<string>("composition");
   const [collapsed, setCollapsed] = useState(false);
   // Tab state persists across STILL/ANIMATE swaps; clamp to a valid one.
